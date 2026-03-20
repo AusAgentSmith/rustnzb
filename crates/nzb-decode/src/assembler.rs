@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::time::Instant;
 
 use parking_lot::{Mutex, RwLock};
 use thiserror::Error;
@@ -199,9 +200,13 @@ impl FileAssembler {
                 job_id: job_id.to_string(),
                 file_id: file_id.to_string(),
             })?;
+
+            let lock_start = Instant::now();
             let _io_guard = state.write_lock.lock();
+            let lock_wait_us = lock_start.elapsed().as_micros();
 
             // Perform the actual file I/O while holding the per-file lock.
+            let io_start = Instant::now();
             let mut file = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -210,6 +215,7 @@ impl FileAssembler {
 
             file.seek(SeekFrom::Start(data_begin))?;
             file.write_all(data)?;
+            let io_us = io_start.elapsed().as_micros();
 
             debug!(
                 job_id,
@@ -217,6 +223,8 @@ impl FileAssembler {
                 segment = segment_number,
                 offset = data_begin,
                 len = data.len(),
+                lock_wait_us,
+                io_us,
                 "Wrote article segment to file"
             );
         }

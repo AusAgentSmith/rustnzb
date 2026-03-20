@@ -14,9 +14,10 @@ use parking_lot::Mutex;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
-use nzb_core::config::ServerConfig;
+use nzb_core::config::{CategoryConfig, ServerConfig};
 use nzb_core::db::Database;
 use nzb_core::models::*;
+use nzb_postproc::{PostProcConfig, run_pipeline};
 
 use crate::download_engine::{DownloadEngine, ProgressUpdate};
 use crate::log_buffer::LogBuffer;
@@ -107,6 +108,8 @@ pub struct QueueManager {
     log_buffer: Option<LogBuffer>,
     /// Max concurrent active downloads (0 = unlimited).
     max_active_downloads: AtomicUsize,
+    /// Category configs for post-processing decisions.
+    categories: Mutex<Vec<CategoryConfig>>,
 }
 
 impl QueueManager {
@@ -118,6 +121,7 @@ impl QueueManager {
         complete_dir: std::path::PathBuf,
         log_buffer: LogBuffer,
         max_active_downloads: usize,
+        categories: Vec<CategoryConfig>,
     ) -> Arc<Self> {
         Arc::new(Self {
             jobs: Mutex::new(HashMap::new()),
@@ -132,7 +136,13 @@ impl QueueManager {
             history_retention: Mutex::new(None),
             log_buffer: Some(log_buffer),
             max_active_downloads: AtomicUsize::new(max_active_downloads),
+            categories: Mutex::new(categories),
         })
+    }
+
+    /// Update category configs (e.g. after config reload).
+    pub fn set_categories(&self, categories: Vec<CategoryConfig>) {
+        *self.categories.lock() = categories;
     }
 
     /// Set history retention limit.
@@ -273,6 +283,14 @@ impl QueueManager {
     /// Start the download for a job.
     fn start_download(self: &Arc<Self>, job: NzbJob, nzb_data: Option<Vec<u8>>) {
         let job_id = job.id.clone();
+        info!(
+            job_id = %job_id,
+            name = %job.name,
+            total_bytes = job.total_bytes,
+            article_count = job.article_count,
+            file_count = job.file_count,
+            "Starting download job"
+        );
         let engine = Arc::new(DownloadEngine::new());
         let job_speed = Arc::new(SpeedTracker::new());
         let (progress_tx, progress_rx) = mpsc::unbounded_channel();
@@ -439,7 +457,7 @@ impl QueueManager {
                         articles_failed,
                         "Job download finished"
                     );
-                    self.on_job_finished(&job_id, success, articles_failed);
+                    self.on_job_finished(&job_id, success, articles_failed).await;
                     break;
                 }
             }
@@ -447,24 +465,90 @@ impl QueueManager {
     }
 
     /// Called when a job's download phase completes.
-    fn on_job_finished(self: &Arc<Self>, job_id: &str, success: bool, articles_failed: usize) {
-        // Complete the job and move to history
+    async fn on_job_finished(self: &Arc<Self>, job_id: &str, success: bool, articles_failed: usize) {
+        let pipeline_start = Instant::now();
+
+        // Update status and extract info needed for post-processing
+        let (work_dir, output_dir, category, pp_level) = {
+            let mut jobs = self.jobs.lock();
+            let Some(state) = jobs.get_mut(job_id) else {
+                return;
+            };
+
+            if success {
+                state.job.status = JobStatus::PostProcessing;
+                state.job.completed_at = Some(chrono::Utc::now());
+                info!(job_id = %job_id, "Job moving to post-processing");
+            } else {
+                state.job.status = JobStatus::Failed;
+                state.job.completed_at = Some(chrono::Utc::now());
+                state.job.error_message = Some(format!(
+                    "{articles_failed} article(s) failed to download"
+                ));
+            }
+
+            let cat = state.job.category.clone();
+            let pp = self.categories.lock()
+                .iter()
+                .find(|c| c.name == cat)
+                .map(|c| c.post_processing)
+                .unwrap_or(3); // default: repair+unpack
+            (
+                state.job.work_dir.clone(),
+                state.job.output_dir.clone(),
+                cat,
+                pp,
+            )
+        };
+
+        // Run post-processing pipeline if download succeeded and pp_level > 0
+        let stages = if success && pp_level > 0 {
+            info!(
+                job_id = %job_id,
+                category = %category,
+                pp_level,
+                "Running post-processing pipeline"
+            );
+
+            let config = PostProcConfig {
+                cleanup_after_extract: true,
+                output_dir: Some(output_dir.clone()),
+            };
+
+            let result = run_pipeline(&work_dir, &config).await;
+
+            info!(
+                job_id = %job_id,
+                success = result.success,
+                stages = result.stages.len(),
+                elapsed_secs = pipeline_start.elapsed().as_secs_f64(),
+                "Post-processing pipeline finished"
+            );
+
+            // Update job status based on pipeline result
+            {
+                let mut jobs = self.jobs.lock();
+                if let Some(state) = jobs.get_mut(job_id) {
+                    if !result.success {
+                        state.job.status = JobStatus::Failed;
+                        state.job.error_message = result.error.clone();
+                    }
+                }
+            }
+
+            result.stages
+        } else {
+            if success {
+                info!(job_id = %job_id, pp_level, "Post-processing disabled for category, skipping pipeline");
+            }
+            Vec::new()
+        };
+
+        // Move to history with real stage results
         {
             let mut jobs = self.jobs.lock();
             if let Some(state) = jobs.get_mut(job_id) {
-                if success {
-                    state.job.status = JobStatus::PostProcessing;
-                    state.job.completed_at = Some(chrono::Utc::now());
-                    info!(job_id = %job_id, "Job moving to post-processing");
-                } else {
-                    state.job.status = JobStatus::Failed;
-                    state.job.completed_at = Some(chrono::Utc::now());
-                    state.job.error_message = Some(format!(
-                        "{articles_failed} article(s) failed to download"
-                    ));
-                }
-
-                self.move_to_history(state);
+                self.move_to_history(state, stages);
             }
         }
 
@@ -480,14 +564,19 @@ impl QueueManager {
     }
 
     /// Move a job's files to output and insert a history entry.
-    fn move_to_history(&self, state: &mut JobState) {
-        let final_status = if state.job.articles_failed == 0 {
+    fn move_to_history(&self, state: &mut JobState, stages: Vec<StageResult>) {
+        let move_start = Instant::now();
+
+        let final_status = if state.job.status == JobStatus::Failed {
+            // Already marked failed (by pipeline or download)
+            JobStatus::Failed
+        } else if state.job.articles_failed == 0 {
             JobStatus::Completed
         } else {
             JobStatus::Failed
         };
 
-        // Try to move files from work_dir to output_dir
+        // Move files from work_dir to output_dir (if not already done by pipeline extract)
         if final_status == JobStatus::Completed {
             if let Err(e) = std::fs::create_dir_all(&state.job.output_dir) {
                 warn!(job_id = %state.job.id, "Failed to create output dir: {e}");
@@ -513,9 +602,18 @@ impl QueueManager {
             }
         }
 
+        let file_move_secs = move_start.elapsed().as_secs_f64();
+        info!(
+            job_id = %state.job.id,
+            final_status = %final_status,
+            file_move_secs = format!("{file_move_secs:.3}"),
+            stage_count = stages.len(),
+            "Moving job to history"
+        );
+
         state.job.status = final_status;
 
-        // Insert into history
+        // Insert into history with real stage results
         let history_entry = HistoryEntry {
             id: state.job.id.clone(),
             name: state.job.name.clone(),
@@ -526,7 +624,7 @@ impl QueueManager {
             added_at: state.job.added_at,
             completed_at: state.job.completed_at.unwrap_or_else(chrono::Utc::now),
             output_dir: state.job.output_dir.clone(),
-            stages: Vec::new(),
+            stages,
             error_message: state.job.error_message.clone(),
             server_stats: state.job.server_stats.clone(),
             nzb_data: state.nzb_data.clone(),

@@ -32,6 +32,7 @@ async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {
         complete_dir,
         log_buffer.clone(),
         config.general.max_active_downloads,
+        config.categories.clone(),
     );
     let state = Arc::new(AppState::new(config, std::path::PathBuf::from("config.toml"), qm, log_buffer));
 

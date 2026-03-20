@@ -16,6 +16,7 @@ use std::time::Duration;
 
 use parking_lot::Mutex;
 use tokio::sync::mpsc;
+use std::time::Instant;
 use tracing::{debug, error, info, warn};
 
 use nzb_core::config::ServerConfig;
@@ -125,6 +126,7 @@ impl DownloadEngine {
         progress_tx: mpsc::UnboundedSender<ProgressUpdate>,
     ) {
         let job_id = job.id.clone();
+        let engine_start = Instant::now();
 
         // Build work queue from all unfinished articles
         let work_items: Vec<WorkItem> = job
@@ -236,6 +238,21 @@ impl DownloadEngine {
         for handle in worker_handles {
             let _ = handle.await;
         }
+
+        let download_elapsed = engine_start.elapsed();
+        let total_bytes = job.total_bytes;
+        let throughput_mbps = if download_elapsed.as_secs_f64() > 0.001 {
+            (total_bytes as f64 / download_elapsed.as_secs_f64()) / (1024.0 * 1024.0)
+        } else {
+            0.0
+        };
+        info!(
+            job_id = %job_id,
+            elapsed_secs = download_elapsed.as_secs_f64(),
+            total_bytes,
+            throughput_mbps = format!("{throughput_mbps:.2}"),
+            "Download phase complete"
+        );
 
         // Drain any remaining items (stuck because needed servers exited)
         let remaining: Vec<WorkItem> = work_queue.lock().drain(..).collect();
@@ -499,9 +516,18 @@ async fn fetch_article_with_retry(
     let mut last_error = None;
 
     for attempt in 1..=MAX_TRIES_PER_SERVER {
+        let fetch_start = Instant::now();
         match conn.fetch_article(&item.message_id).await {
             Ok(response) => {
+                let fetch_us = fetch_start.elapsed().as_micros();
                 let raw_data = response.data.unwrap_or_default();
+                debug!(
+                    worker = %worker_id,
+                    article = %item.message_id,
+                    raw_bytes = raw_data.len(),
+                    fetch_us,
+                    "NNTP fetch complete"
+                );
                 return decode_and_assemble(item, &raw_data, assembler);
             }
             Err(NntpError::ArticleNotFound(_)) => {
@@ -565,16 +591,19 @@ fn decode_and_assemble(
     raw_data: &[u8],
     assembler: &FileAssembler,
 ) -> Result<ProcessResult, ArticleError> {
+    let decode_start = Instant::now();
     let decoded = decode_yenc(raw_data).map_err(|e| {
         ArticleError::DecodeError(format!(
             "yEnc decode failed for {} seg {}: {e}",
             item.filename, item.segment_number
         ))
     })?;
+    let decode_us = decode_start.elapsed().as_micros();
 
     let data_begin = decoded.part_begin.unwrap_or(0);
     let decoded_len = decoded.data.len() as u64;
 
+    let assemble_start = Instant::now();
     let file_complete = assembler
         .assemble_article(
             &item.job_id,
@@ -589,6 +618,17 @@ fn decode_and_assemble(
                 item.filename, item.segment_number
             ))
         })?;
+    let assemble_us = assemble_start.elapsed().as_micros();
+
+    debug!(
+        file = %item.filename,
+        segment = item.segment_number,
+        raw_bytes = raw_data.len(),
+        decoded_bytes = decoded_len,
+        decode_us,
+        assemble_us,
+        "Article decode+assemble timing"
+    );
 
     Ok(ProcessResult {
         decoded_bytes: decoded_len,
