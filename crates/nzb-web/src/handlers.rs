@@ -54,6 +54,11 @@ pub struct HistoryRetentionBody {
     pub retention: Option<usize>,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct MaxActiveDownloadsBody {
+    pub max_active_downloads: usize,
+}
+
 // ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
@@ -644,6 +649,30 @@ pub async fn h_history_retention_get(
     let config = state.config();
     Ok(Json(HistoryRetentionBody {
         retention: config.general.history_retention,
+    }))
+}
+
+/// PUT /api/config/max-active-downloads -- Update max concurrent downloads.
+pub async fn h_max_active_downloads_set(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<MaxActiveDownloadsBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    let mut config = (*state.config()).clone();
+    config.general.max_active_downloads = body.max_active_downloads;
+    state.update_config(config).map_err(ApiError::from)?;
+    state
+        .queue_manager
+        .set_max_active_downloads(body.max_active_downloads);
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+/// GET /api/config/max-active-downloads -- Get max concurrent downloads.
+pub async fn h_max_active_downloads_get(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<MaxActiveDownloadsBody>, ApiError> {
+    let config = state.config();
+    Ok(Json(MaxActiveDownloadsBody {
+        max_active_downloads: config.general.max_active_downloads,
     }))
 }
 

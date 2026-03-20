@@ -1165,6 +1165,14 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     });
     retOptions += '</select>';
 
+    var madVal = g.max_active_downloads || 1;
+    var madOptions = '<select id="setting-max-downloads" onchange="window._setMaxDownloads(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">';
+    [['1','1'],['2','2'],['3','3'],['5','5'],['10','10'],['0','Unlimited']].forEach(function(o) {
+      var sel = String(madVal) === o[0] ? ' selected' : '';
+      madOptions += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
+    });
+    madOptions += '</select>';
+
     var html =
       '<div class="settings-section"><div class="settings-section-title">Network</div>'+
         '<div class="setting-row"><span class="setting-label">Listen Address</span><span class="setting-value">'+esc(g.listen_addr||'--')+'</span></div>'+
@@ -1175,6 +1183,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         '<div class="setting-row"><span class="setting-label">Complete Dir</span><span class="setting-value">'+esc(g.complete_dir||'--')+'</span></div>'+
         '<div class="setting-row"><span class="setting-label">Data Dir</span><span class="setting-value">'+esc(g.data_dir||'--')+'</span></div></div>'+
       '<div class="settings-section"><div class="settings-section-title">Performance</div>'+
+        '<div class="setting-row"><span class="setting-label">Concurrent Downloads</span><span class="setting-value">'+madOptions+'</span></div>'+
         '<div class="setting-row"><span class="setting-label">Speed Limit</span><span class="setting-value">'+speedLimit+'</span></div>'+
         '<div class="setting-row"><span class="setting-label">Cache Size</span><span class="setting-value">'+cacheSize+'</span></div></div>'+
       '<div class="settings-section"><div class="settings-section-title">Logging</div>'+
@@ -1200,6 +1209,11 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   window._setRetention = function(val) {
     var body = { retention: val === '' ? null : parseInt(val) };
     api('PUT','/api/config/history-retention', body).then(function(){ notify('History retention updated'); }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+
+  window._setMaxDownloads = function(val) {
+    var body = { max_active_downloads: parseInt(val) };
+    api('PUT','/api/config/max-active-downloads', body).then(function(){ notify('Concurrent downloads updated'); }).catch(function(e){ notify('Error: '+e.message,'error'); });
   };
 
   // ---- Logs ----

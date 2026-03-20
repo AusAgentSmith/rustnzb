@@ -95,6 +95,14 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route(
             "/config/history-retention",
             put(handlers::h_history_retention_set),
+        )
+        .route(
+            "/config/max-active-downloads",
+            get(handlers::h_max_active_downloads_get),
+        )
+        .route(
+            "/config/max-active-downloads",
+            put(handlers::h_max_active_downloads_set),
         );
 
     // Arr-compatible API (Sonarr/Radarr)

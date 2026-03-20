@@ -201,6 +201,7 @@ async fn main() -> anyhow::Result<()> {
         config.general.incomplete_dir.clone(),
         config.general.complete_dir.clone(),
         log_buffer.clone(),
+        config.general.max_active_downloads,
     );
 
     // Set history retention

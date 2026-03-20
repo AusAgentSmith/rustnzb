@@ -49,6 +49,8 @@ pub struct GeneralConfig {
     pub log_file: Option<PathBuf>,
     /// History retention: how many NZBs to keep in history (None = keep all)
     pub history_retention: Option<usize>,
+    /// Max number of NZBs downloading simultaneously (default 1)
+    pub max_active_downloads: usize,
 }
 
 impl Default for GeneralConfig {
@@ -65,6 +67,7 @@ impl Default for GeneralConfig {
             log_level: "info".into(),
             log_file: None,
             history_retention: None, // keep all
+            max_active_downloads: 1,
         }
     }
 }

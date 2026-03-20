@@ -5,7 +5,7 @@
 //! to interact with.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -105,6 +105,8 @@ pub struct QueueManager {
     history_retention: Mutex<Option<usize>>,
     /// Log buffer for capturing per-job logs into history.
     log_buffer: Option<LogBuffer>,
+    /// Max concurrent active downloads (0 = unlimited).
+    max_active_downloads: AtomicUsize,
 }
 
 impl QueueManager {
@@ -115,6 +117,7 @@ impl QueueManager {
         incomplete_dir: std::path::PathBuf,
         complete_dir: std::path::PathBuf,
         log_buffer: LogBuffer,
+        max_active_downloads: usize,
     ) -> Arc<Self> {
         Arc::new(Self {
             jobs: Mutex::new(HashMap::new()),
@@ -128,12 +131,71 @@ impl QueueManager {
             pause_until: Mutex::new(None),
             history_retention: Mutex::new(None),
             log_buffer: Some(log_buffer),
+            max_active_downloads: AtomicUsize::new(max_active_downloads),
         })
     }
 
     /// Set history retention limit.
     pub fn set_history_retention(&self, limit: Option<usize>) {
         *self.history_retention.lock() = limit;
+    }
+
+    /// Set max active downloads and start queued jobs if capacity allows.
+    pub fn set_max_active_downloads(self: &Arc<Self>, max: usize) {
+        self.max_active_downloads.store(max, Ordering::Relaxed);
+        self.start_next_queued();
+    }
+
+    /// Get max active downloads.
+    pub fn get_max_active_downloads(&self) -> usize {
+        self.max_active_downloads.load(Ordering::Relaxed)
+    }
+
+    /// Count currently downloading jobs.
+    fn active_download_count(&self) -> usize {
+        let jobs = self.jobs.lock();
+        jobs.values()
+            .filter(|s| s.job.status == JobStatus::Downloading)
+            .count()
+    }
+
+    /// Start queued jobs up to the concurrency limit.
+    fn start_next_queued(self: &Arc<Self>) {
+        let max = self.max_active_downloads.load(Ordering::Relaxed);
+        loop {
+            let active = self.active_download_count();
+            if max > 0 && active >= max {
+                break;
+            }
+
+            // Find the first queued job (in order)
+            let next = {
+                let jobs = self.jobs.lock();
+                let order = self.job_order.lock();
+                order
+                    .iter()
+                    .find(|id| {
+                        jobs.get(*id)
+                            .map(|s| s.job.status == JobStatus::Queued)
+                            .unwrap_or(false)
+                    })
+                    .cloned()
+            };
+
+            let Some(job_id) = next else { break };
+
+            // Remove from jobs map and start download
+            let job_data = {
+                let mut jobs = self.jobs.lock();
+                jobs.remove(&job_id).map(|s| (s.job, s.nzb_data))
+            };
+
+            if let Some((mut job, nzb_data)) = job_data {
+                job.status = JobStatus::Downloading;
+                info!(job_id = %job_id, name = %job.name, "Starting queued job");
+                self.start_download(job, nzb_data);
+            }
+        }
     }
 
     /// Add a job to the queue and start downloading.
@@ -180,6 +242,25 @@ impl QueueManager {
             };
             self.jobs.lock().insert(job_id.clone(), state);
             self.job_order.lock().push(job_id);
+            return Ok(());
+        }
+
+        // Check concurrency limit
+        let max = self.max_active_downloads.load(Ordering::Relaxed);
+        if max > 0 && self.active_download_count() >= max {
+            // Queue the job instead of starting it immediately
+            job.status = JobStatus::Queued;
+            let engine = Arc::new(DownloadEngine::new());
+            let state = JobState {
+                job,
+                engine,
+                task_handle: None,
+                speed: Arc::new(SpeedTracker::new()),
+                nzb_data,
+            };
+            self.jobs.lock().insert(job_id.clone(), state);
+            self.job_order.lock().push(job_id.clone());
+            info!(job_id = %job_id, "Job queued (active download limit reached)");
             return Ok(());
         }
 
@@ -366,7 +447,7 @@ impl QueueManager {
     }
 
     /// Called when a job's download phase completes.
-    fn on_job_finished(&self, job_id: &str, success: bool, articles_failed: usize) {
+    fn on_job_finished(self: &Arc<Self>, job_id: &str, success: bool, articles_failed: usize) {
         // Complete the job and move to history
         {
             let mut jobs = self.jobs.lock();
@@ -393,6 +474,9 @@ impl QueueManager {
         // Remove from in-memory queue
         self.jobs.lock().remove(job_id);
         self.job_order.lock().retain(|jid| jid != job_id);
+
+        // Start next queued job(s) now that a slot is free
+        self.start_next_queued();
     }
 
     /// Move a job's files to output and insert a history entry.
@@ -526,17 +610,23 @@ impl QueueManager {
     pub fn resume_job(self: &Arc<Self>, id: &str) -> nzb_core::Result<()> {
         let needs_start = {
             let mut jobs = self.jobs.lock();
-            let state = jobs
-                .get_mut(id)
-                .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
+            // Check existence first
+            if !jobs.contains_key(id) {
+                return Err(nzb_core::NzbError::JobNotFound(id.to_string()));
+            }
 
-            state.job.status = JobStatus::Downloading;
-            state.engine.resume();
+            // Count active downloads before taking a mutable borrow
+            let active = jobs
+                .values()
+                .filter(|s| s.job.status == JobStatus::Downloading)
+                .count();
 
-            if state.task_handle.is_none() {
-                // Need to start the download task
-                Some((state.job.clone(), state.nzb_data.clone()))
-            } else {
+            let state = jobs.get_mut(id).unwrap();
+
+            if state.task_handle.is_some() {
+                // Engine is running, just resume it
+                state.job.status = JobStatus::Downloading;
+                state.engine.resume();
                 let db = self.db.lock();
                 let _ = db.queue_update_progress(
                     id,
@@ -547,12 +637,24 @@ impl QueueManager {
                     state.job.files_completed,
                 );
                 None
+            } else {
+                // Check concurrency limit
+                let max = self.max_active_downloads.load(Ordering::Relaxed);
+                if max > 0 && active >= max {
+                    // Mark as queued — will start when a slot opens
+                    state.job.status = JobStatus::Queued;
+                    info!(job_id = %id, "Job queued (active download limit reached)");
+                    None
+                } else {
+                    Some((state.job.clone(), state.nzb_data.clone()))
+                }
             }
         };
 
-        if let Some((job, nzb_data)) = needs_start {
+        if let Some((mut job, nzb_data)) = needs_start {
             // Remove old state and start fresh
             self.jobs.lock().remove(&job.id);
+            job.status = JobStatus::Downloading;
             self.start_download(job, nzb_data);
         }
 
@@ -637,25 +739,25 @@ impl QueueManager {
         self.globally_paused.store(false, Ordering::Relaxed);
         *self.pause_until.lock() = None;
 
-        let jobs_to_start: Vec<(NzbJob, Option<Vec<u8>>)> = {
+        // Resume already-running paused engines and mark paused jobs as queued
+        {
             let mut jobs = self.jobs.lock();
-            let mut to_start = Vec::new();
             for (_id, state) in jobs.iter_mut() {
                 if state.job.status == JobStatus::Paused {
                     state.engine.resume();
-                    state.job.status = JobStatus::Downloading;
-                    if state.task_handle.is_none() {
-                        to_start.push((state.job.clone(), state.nzb_data.clone()));
+                    if state.task_handle.is_some() {
+                        // Engine is running, just resume it
+                        state.job.status = JobStatus::Downloading;
+                    } else {
+                        // Needs a fresh start — mark as queued for start_next_queued
+                        state.job.status = JobStatus::Queued;
                     }
                 }
             }
-            to_start
-        };
-
-        for (job, nzb_data) in jobs_to_start {
-            self.jobs.lock().remove(&job.id);
-            self.start_download(job, nzb_data);
         }
+
+        // Start queued jobs up to the concurrency limit
+        self.start_next_queued();
 
         info!("All downloads resumed");
     }
@@ -775,7 +877,7 @@ impl QueueManager {
 
         info!(count = jobs.len(), "Restoring jobs from database");
 
-        for job in jobs {
+        for mut job in jobs {
             let job_id = job.id.clone();
             let engine = Arc::new(DownloadEngine::new());
 
@@ -787,6 +889,9 @@ impl QueueManager {
 
             if job.status == JobStatus::Paused {
                 engine.pause();
+            } else if job.status == JobStatus::Downloading {
+                // Mark as queued; start_next_queued will pick them up
+                job.status = JobStatus::Queued;
             }
 
             let state = JobState {
@@ -799,6 +904,9 @@ impl QueueManager {
             self.jobs.lock().insert(job_id.clone(), state);
             self.job_order.lock().push(job_id);
         }
+
+        // Start queued jobs up to the concurrency limit
+        self.start_next_queued();
 
         Ok(())
     }
