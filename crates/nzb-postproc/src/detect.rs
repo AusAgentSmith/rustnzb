@@ -32,7 +32,7 @@ pub fn find_par2_files(dir: &Path) -> Vec<PathBuf> {
     let mut index_files: Vec<PathBuf> = Vec::new();
     let mut volume_files: Vec<PathBuf> = Vec::new();
 
-    for entry in WalkDir::new(dir).max_depth(1).into_iter().flatten() {
+    for entry in WalkDir::new(dir).into_iter().flatten() {
         let path = entry.path();
         if !path.is_file() {
             continue;
@@ -90,7 +90,7 @@ fn is_par2_volume(name_lower: &str) -> bool {
 pub fn find_rar_files(dir: &Path) -> Vec<PathBuf> {
     let mut first_volumes: Vec<PathBuf> = Vec::new();
 
-    for entry in WalkDir::new(dir).max_depth(1).into_iter().flatten() {
+    for entry in WalkDir::new(dir).into_iter().flatten() {
         let path = entry.path();
         if !path.is_file() {
             continue;
@@ -140,7 +140,7 @@ pub fn find_archives(dir: &Path) -> Vec<(ArchiveType, PathBuf)> {
     }
 
     // 7z and ZIP
-    for entry in WalkDir::new(dir).max_depth(1).into_iter().flatten() {
+    for entry in WalkDir::new(dir).into_iter().flatten() {
         let path = entry.path();
         if !path.is_file() {
             continue;
@@ -167,7 +167,7 @@ pub fn find_archives(dir: &Path) -> Vec<(ArchiveType, PathBuf)> {
 pub fn find_cleanup_files(dir: &Path) -> Vec<PathBuf> {
     let mut cleanup: Vec<PathBuf> = Vec::new();
 
-    for entry in WalkDir::new(dir).max_depth(1).into_iter().flatten() {
+    for entry in WalkDir::new(dir).into_iter().flatten() {
         let path = entry.path();
         if !path.is_file() {
             continue;

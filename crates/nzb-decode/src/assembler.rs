@@ -1,17 +1,23 @@
 //! File assembler — writes decoded articles into final output files.
 //!
 //! Articles can arrive out of order from multiple NNTP connections.
-//! The assembler uses per-file locks so concurrent writes to
-//! *different* files proceed in parallel, while writes to the *same*
-//! file are serialized.
+//! Uses `pwrite` (`write_at`) for lock-free concurrent writes — multiple
+//! threads can write to the same file at different offsets without
+//! serialization. File handles are opened once at registration and
+//! reused for all segments.
 
 use std::collections::HashMap;
-use std::fs::{self, OpenOptions};
-use std::io::{self, Seek, SeekFrom, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io;
+#[cfg(unix)]
+use std::os::unix::fs::FileExt;
+#[cfg(windows)]
+use std::os::windows::fs::FileExt;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Instant;
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::{debug, info};
 
@@ -37,44 +43,53 @@ pub type AssemblerResult<T> = std::result::Result<T, AssemblerError>;
 
 /// Tracks assembly progress for a single output file.
 struct FileState {
-    /// Path to the output file on disk.
+    /// Path to the output file on disk (retained for diagnostics).
+    #[allow(dead_code)]
     output_path: PathBuf,
+    /// Persistent file handle — opened once, reused for all segment writes.
+    file: File,
     /// Total number of segments expected.
     total_segments: u32,
     /// Which segments have been written (indexed by segment_number - 1).
-    written: Vec<bool>,
+    /// Uses a Vec<AtomicU8> as atomic bitflags so bitmap updates don't
+    /// need a write-lock on the outer HashMap.
+    written: Vec<std::sync::atomic::AtomicU8>,
     /// How many segments have been written so far.
-    written_count: u32,
-    /// Per-file mutex so concurrent writes to the same file are serialized.
-    write_lock: Mutex<()>,
+    written_count: AtomicU32,
 }
 
 impl FileState {
-    fn new(output_path: PathBuf, total_segments: u32) -> Self {
+    fn new(output_path: PathBuf, file: File, total_segments: u32) -> Self {
+        let written: Vec<std::sync::atomic::AtomicU8> = (0..total_segments)
+            .map(|_| std::sync::atomic::AtomicU8::new(0))
+            .collect();
         Self {
             output_path,
+            file,
             total_segments,
-            written: vec![false; total_segments as usize],
-            written_count: 0,
-            write_lock: Mutex::new(()),
+            written,
+            written_count: AtomicU32::new(0),
         }
     }
 
     fn is_complete(&self) -> bool {
-        self.written_count == self.total_segments
+        self.written_count.load(Ordering::Acquire) == self.total_segments
     }
 
     /// Return (segments_written, total_segments).
     fn progress(&self) -> (u32, u32) {
-        (self.written_count, self.total_segments)
+        (self.written_count.load(Ordering::Relaxed), self.total_segments)
     }
 
     /// Mark a segment as written. Returns `true` if the file just became complete.
-    fn mark_written(&mut self, segment_number: u32) -> bool {
+    fn mark_written(&self, segment_number: u32) -> bool {
         let idx = (segment_number - 1) as usize;
-        if idx < self.written.len() && !self.written[idx] {
-            self.written[idx] = true;
-            self.written_count += 1;
+        if idx < self.written.len() {
+            // CAS: only increment counter if this is the first time marking this segment
+            let prev = self.written[idx].swap(1, Ordering::AcqRel);
+            if prev == 0 {
+                self.written_count.fetch_add(1, Ordering::AcqRel);
+            }
         }
         self.is_complete()
     }
@@ -84,7 +99,7 @@ impl FileState {
         self.written
             .iter()
             .enumerate()
-            .filter(|&(_, w)| !w)
+            .filter(|(_, w)| w.load(Ordering::Relaxed) == 0)
             .map(|(i, _)| (i + 1) as u32)
             .collect()
     }
@@ -107,8 +122,8 @@ struct FileKey {
 /// Assembles decoded articles into final output files.
 ///
 /// Thread-safe: multiple NNTP connections can call `assemble_article`
-/// concurrently. Writes to the same file are serialized via a per-file
-/// mutex; writes to different files proceed in parallel.
+/// concurrently. Uses `pwrite` (write_at) for lock-free writes at
+/// arbitrary offsets — no per-file mutex needed.
 pub struct FileAssembler {
     /// Per-file state, behind a RwLock for safe concurrent registration and lookup.
     files: RwLock<HashMap<FileKey, FileState>>,
@@ -139,21 +154,28 @@ impl FileAssembler {
             fs::create_dir_all(parent)?;
         }
 
+        // Open file handle once — kept open for all segment writes.
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&output_path)?;
+
         let key = FileKey {
             job_id: job_id.to_string(),
             file_id: file_id.to_string(),
         };
 
         let mut files = self.files.write();
-        files.insert(key, FileState::new(output_path, total_segments));
+        files.insert(key, FileState::new(output_path, file, total_segments));
         Ok(())
     }
 
     /// Write a decoded article directly to the output file at the given offset.
     ///
-    /// This is the "direct write" path — no caching needed when the byte
-    /// offset is known. The article data is written at `data_begin` in the
-    /// output file.
+    /// Uses `pwrite` (write_at) for lock-free concurrent writes — multiple
+    /// threads can write to different offsets of the same file simultaneously
+    /// without any mutex. The kernel handles synchronization.
     ///
     /// Returns `true` if the file is now complete (all segments written).
     pub fn assemble_article(
@@ -169,86 +191,56 @@ impl FileAssembler {
             file_id: file_id.to_string(),
         };
 
-        // We need to:
-        // 1. Read-lock to get the file state and validate.
-        // 2. Acquire the per-file write_lock to serialize I/O.
-        // 3. Write-lock to update the written bitmap.
+        // Read-lock only — pwrite + atomic bitmap need no write-lock.
+        let files = self.files.read();
+        let state = files.get(&key).ok_or_else(|| AssemblerError::FileNotRegistered {
+            job_id: job_id.to_string(),
+            file_id: file_id.to_string(),
+        })?;
 
-        // Step 1: validate and get output path.
-        let (output_path, total_segments) = {
-            let files = self.files.read();
-            let state = files.get(&key).ok_or_else(|| AssemblerError::FileNotRegistered {
-                job_id: job_id.to_string(),
-                file_id: file_id.to_string(),
-            })?;
-
-            if segment_number == 0 || segment_number > state.total_segments {
-                return Err(AssemblerError::SegmentOutOfRange {
-                    segment: segment_number,
-                    total: state.total_segments,
-                });
-            }
-
-            (state.output_path.clone(), state.total_segments)
-        };
-
-        // Step 2: acquire per-file I/O lock and write.
-        // We hold the read lock briefly just to get the Mutex reference.
-        {
-            let files = self.files.read();
-            let state = files.get(&key).ok_or_else(|| AssemblerError::FileNotRegistered {
-                job_id: job_id.to_string(),
-                file_id: file_id.to_string(),
-            })?;
-
-            let lock_start = Instant::now();
-            let _io_guard = state.write_lock.lock();
-            let lock_wait_us = lock_start.elapsed().as_micros();
-
-            // Perform the actual file I/O while holding the per-file lock.
-            let io_start = Instant::now();
-            let mut file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(false)
-                .open(&output_path)?;
-
-            file.seek(SeekFrom::Start(data_begin))?;
-            file.write_all(data)?;
-            let io_us = io_start.elapsed().as_micros();
-
-            debug!(
-                job_id,
-                file_id,
-                segment = segment_number,
-                offset = data_begin,
-                len = data.len(),
-                lock_wait_us,
-                io_us,
-                "Wrote article segment to file"
-            );
+        if segment_number == 0 || segment_number > state.total_segments {
+            return Err(AssemblerError::SegmentOutOfRange {
+                segment: segment_number,
+                total: state.total_segments,
+            });
         }
 
-        // Step 3: update the written bitmap.
-        let complete = {
-            let mut files = self.files.write();
-            let state = files.get_mut(&key).ok_or_else(|| AssemblerError::FileNotRegistered {
-                job_id: job_id.to_string(),
-                file_id: file_id.to_string(),
-            })?;
-            let complete = state.mark_written(segment_number);
-
-            if complete {
-                info!(
-                    job_id,
-                    file_id,
-                    total_segments,
-                    "File assembly complete"
-                );
+        // pwrite: write at offset without seeking — concurrent-safe on the same fd.
+        let io_start = Instant::now();
+        #[cfg(unix)]
+        state.file.write_all_at(data, data_begin)?;
+        #[cfg(windows)]
+        {
+            let mut offset = data_begin;
+            let mut remaining = data;
+            while !remaining.is_empty() {
+                let n = state.file.seek_write(remaining, offset)?;
+                offset += n as u64;
+                remaining = &remaining[n..];
             }
+        }
+        let io_us = io_start.elapsed().as_micros();
 
-            complete
-        };
+        debug!(
+            job_id,
+            file_id,
+            segment = segment_number,
+            offset = data_begin,
+            len = data.len(),
+            io_us,
+            "Wrote article segment to file"
+        );
+
+        // Atomic bitmap update — no write-lock needed.
+        let complete = state.mark_written(segment_number);
+        if complete {
+            info!(
+                job_id,
+                file_id,
+                total_segments = state.total_segments,
+                "File assembly complete"
+            );
+        }
 
         Ok(complete)
     }

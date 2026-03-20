@@ -9,7 +9,7 @@
 //! 6. Job continues even with failed articles (par2 can repair)
 //! 7. Job only fails if failed articles exceed threshold AND no par2 recovery possible
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,6 +25,7 @@ use nzb_decode::yenc::decode_yenc;
 use nzb_decode::FileAssembler;
 use nzb_nntp::connection::NntpConnection;
 use nzb_nntp::error::NntpError;
+use nzb_nntp::Pipeline;
 
 /// Max times to retry an article on the SAME server before trying the next.
 const MAX_TRIES_PER_SERVER: u32 = 3;
@@ -304,8 +305,302 @@ async fn download_worker(
         return;
     }
 
-    debug!(worker = %worker_id, server = %primary_server.host, "Worker connected");
+    let pipe_depth = primary_server.pipelining.max(1);
+    debug!(
+        worker = %worker_id,
+        server = %primary_server.host,
+        pipelining = pipe_depth,
+        "Worker connected"
+    );
 
+    // Use non-pipelined path for depth 1 (simpler, avoids pipeline overhead)
+    if pipe_depth <= 1 {
+        download_worker_serial(
+            &mut conn,
+            &primary_server,
+            &worker_id,
+            &work_queue,
+            &assembler,
+            &progress_tx,
+            &cancelled,
+            &paused,
+            &articles_failed,
+            &all_servers,
+        )
+        .await;
+    } else {
+        download_worker_pipelined(
+            &mut conn,
+            &primary_server,
+            &worker_id,
+            pipe_depth,
+            &work_queue,
+            &assembler,
+            &progress_tx,
+            &cancelled,
+            &paused,
+            &articles_failed,
+            &all_servers,
+        )
+        .await;
+    }
+
+    let _ = conn.quit().await;
+}
+
+/// Pipelined download: sends multiple ARTICLE commands before reading responses.
+#[allow(clippy::too_many_arguments)]
+async fn download_worker_pipelined(
+    conn: &mut NntpConnection,
+    primary_server: &ServerConfig,
+    worker_id: &str,
+    pipe_depth: u8,
+    work_queue: &Arc<Mutex<VecDeque<WorkItem>>>,
+    assembler: &Arc<FileAssembler>,
+    progress_tx: &mpsc::UnboundedSender<ProgressUpdate>,
+    cancelled: &Arc<AtomicBool>,
+    paused: &Arc<AtomicBool>,
+    articles_failed: &Arc<AtomicUsize>,
+    all_servers: &[ServerConfig],
+) {
+    let mut pipeline = Pipeline::new(pipe_depth);
+    // In-flight items indexed by pipeline tag
+    let mut in_flight_items: HashMap<u64, WorkItem> = HashMap::new();
+    let mut next_tag: u64 = 0;
+    let mut consecutive_errors: u32 = 0;
+
+    loop {
+        if cancelled.load(Ordering::Relaxed) {
+            break;
+        }
+
+        // Wait while paused
+        while paused.load(Ordering::Relaxed) && !cancelled.load(Ordering::Relaxed) {
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+        if cancelled.load(Ordering::Relaxed) {
+            break;
+        }
+
+        // Fill the pipeline with work items
+        while pipeline.pending_count() + pipeline.in_flight_count() < pipe_depth as usize {
+            let item = { work_queue.lock().pop_front() };
+            let Some(item) = item else {
+                break;
+            };
+
+            // Skip if this worker's server was already tried
+            if item.tried_servers.contains(&primary_server.id) {
+                work_queue.lock().push_back(item);
+                continue;
+            }
+
+            let tag = next_tag;
+            next_tag += 1;
+            pipeline.submit(item.message_id.clone(), tag);
+            in_flight_items.insert(tag, item);
+        }
+
+        // If nothing to do, we're done
+        if pipeline.is_empty() && in_flight_items.is_empty() {
+            debug!(worker = %worker_id, "Pipeline empty, work queue exhausted, exiting");
+            break;
+        }
+
+        // Flush pending sends
+        if let Err(e) = pipeline.flush_sends(conn).await {
+            warn!(worker = %worker_id, "Pipeline send error: {e}");
+            // Re-queue all in-flight items
+            requeue_all(&mut in_flight_items, work_queue);
+            // Try reconnect
+            consecutive_errors += 1;
+            if consecutive_errors > MAX_RECONNECT_ATTEMPTS {
+                warn!(worker = %worker_id, "Too many pipeline errors, exiting");
+                break;
+            }
+            tokio::time::sleep(RECONNECT_DELAY).await;
+            *conn = NntpConnection::new(worker_id.to_string());
+            if let Err(e) = connect_with_retry(conn, primary_server, worker_id).await {
+                warn!(worker = %worker_id, "Reconnect failed: {e}");
+                break;
+            }
+            pipeline = Pipeline::new(pipe_depth);
+            continue;
+        }
+
+        // Read one response
+        let result = pipeline.receive_one(conn).await;
+        match result {
+            Ok(Some(pipe_result)) => {
+                let Some(mut item) = in_flight_items.remove(&pipe_result.request.tag) else {
+                    continue;
+                };
+
+                match pipe_result.result {
+                    Ok(response) => {
+                        consecutive_errors = 0;
+                        let raw_data = response.data.unwrap_or_default();
+                        match decode_and_assemble(&item, &raw_data, assembler) {
+                            Ok(process_result) => {
+                                let _ = progress_tx.send(ProgressUpdate::ArticleComplete {
+                                    job_id: item.job_id.clone(),
+                                    file_id: item.file_id.clone(),
+                                    segment_number: item.segment_number,
+                                    decoded_bytes: process_result.decoded_bytes,
+                                    file_complete: process_result.file_complete,
+                                    server_id: Some(primary_server.id.clone()),
+                                });
+                            }
+                            Err(ArticleError::DecodeError(msg)) => {
+                                handle_article_not_available(
+                                    &mut item,
+                                    primary_server,
+                                    all_servers,
+                                    articles_failed,
+                                    work_queue,
+                                    progress_tx,
+                                    &format!("Decode error: {msg}"),
+                                );
+                            }
+                            Err(ArticleError::AssemblyError(msg)) => {
+                                articles_failed.fetch_add(1, Ordering::Relaxed);
+                                error!(article = %item.message_id, "Assembly error: {msg}");
+                                let _ = progress_tx.send(ProgressUpdate::ArticleFailed {
+                                    job_id: item.job_id.clone(),
+                                    file_id: item.file_id.clone(),
+                                    segment_number: item.segment_number,
+                                    error: format!("Assembly error: {msg}"),
+                                    server_id: Some(primary_server.id.clone()),
+                                });
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                    Err(NntpError::ArticleNotFound(_)) => {
+                        handle_article_not_available(
+                            &mut item,
+                            primary_server,
+                            all_servers,
+                            articles_failed,
+                            work_queue,
+                            progress_tx,
+                            "Article not found on any server",
+                        );
+                    }
+                    Err(NntpError::Connection(_) | NntpError::Io(_)) => {
+                        // Connection lost — requeue this item and all remaining in-flight
+                        work_queue.lock().push_front(item);
+                        requeue_all(&mut in_flight_items, work_queue);
+                        consecutive_errors += 1;
+                        if consecutive_errors > MAX_RECONNECT_ATTEMPTS {
+                            warn!(worker = %worker_id, "Too many errors, exiting");
+                            break;
+                        }
+                        tokio::time::sleep(RECONNECT_DELAY).await;
+                        *conn = NntpConnection::new(worker_id.to_string());
+                        if let Err(e) = connect_with_retry(conn, primary_server, worker_id).await {
+                            warn!(worker = %worker_id, "Reconnect failed: {e}");
+                            break;
+                        }
+                        pipeline = Pipeline::new(pipe_depth);
+                        continue;
+                    }
+                    Err(e) => {
+                        warn!(worker = %worker_id, article = %item.message_id, "Pipeline error: {e}");
+                        handle_article_not_available(
+                            &mut item,
+                            primary_server,
+                            all_servers,
+                            articles_failed,
+                            work_queue,
+                            progress_tx,
+                            &format!("Pipeline error: {e}"),
+                        );
+                    }
+                }
+            }
+            Ok(None) => {
+                // No in-flight requests — loop will either fill more or exit
+            }
+            Err(e) => {
+                warn!(worker = %worker_id, "Pipeline receive error: {e}");
+                requeue_all(&mut in_flight_items, work_queue);
+                consecutive_errors += 1;
+                if consecutive_errors > MAX_RECONNECT_ATTEMPTS {
+                    break;
+                }
+                tokio::time::sleep(RECONNECT_DELAY).await;
+                *conn = NntpConnection::new(worker_id.to_string());
+                if let Err(e) = connect_with_retry(conn, primary_server, worker_id).await {
+                    warn!(worker = %worker_id, "Reconnect failed: {e}");
+                    break;
+                }
+                pipeline = Pipeline::new(pipe_depth);
+            }
+        }
+    }
+}
+
+/// Handle an article that's not available on this server (not found or decode error).
+fn handle_article_not_available(
+    item: &mut WorkItem,
+    primary_server: &ServerConfig,
+    all_servers: &[ServerConfig],
+    articles_failed: &Arc<AtomicUsize>,
+    work_queue: &Arc<Mutex<VecDeque<WorkItem>>>,
+    progress_tx: &mpsc::UnboundedSender<ProgressUpdate>,
+    error_msg: &str,
+) {
+    item.tried_servers.push(primary_server.id.clone());
+    item.tries_on_current = 0;
+
+    let all_tried = all_servers
+        .iter()
+        .all(|s| item.tried_servers.contains(&s.id));
+
+    if all_tried {
+        articles_failed.fetch_add(1, Ordering::Relaxed);
+        warn!(article = %item.message_id, "{error_msg}");
+        let _ = progress_tx.send(ProgressUpdate::ArticleFailed {
+            job_id: item.job_id.clone(),
+            file_id: item.file_id.clone(),
+            segment_number: item.segment_number,
+            error: error_msg.to_string(),
+            server_id: Some(primary_server.id.clone()),
+        });
+    } else {
+        work_queue.lock().push_back(item.clone());
+    }
+}
+
+/// Re-queue all in-flight items back to the work queue (on connection loss).
+fn requeue_all(
+    in_flight: &mut HashMap<u64, WorkItem>,
+    work_queue: &Arc<Mutex<VecDeque<WorkItem>>>,
+) {
+    let items: Vec<WorkItem> = in_flight.drain().map(|(_, item)| item).collect();
+    if !items.is_empty() {
+        let mut q = work_queue.lock();
+        for item in items {
+            q.push_front(item);
+        }
+    }
+}
+
+/// Serial (non-pipelined) download path — used when pipelining depth is 1.
+#[allow(clippy::too_many_arguments)]
+async fn download_worker_serial(
+    conn: &mut NntpConnection,
+    primary_server: &ServerConfig,
+    worker_id: &str,
+    work_queue: &Arc<Mutex<VecDeque<WorkItem>>>,
+    assembler: &Arc<FileAssembler>,
+    progress_tx: &mpsc::UnboundedSender<ProgressUpdate>,
+    cancelled: &Arc<AtomicBool>,
+    paused: &Arc<AtomicBool>,
+    articles_failed: &Arc<AtomicUsize>,
+    all_servers: &[ServerConfig],
+) {
     let mut consecutive_errors: u32 = 0;
     let mut consecutive_skips: usize = 0;
 
@@ -354,11 +649,11 @@ async fn download_worker(
 
         // Try to fetch on our server
         let result = fetch_article_with_retry(
-            &mut conn,
+            conn,
             &item,
-            &assembler,
-            &primary_server,
-            &worker_id,
+            assembler,
+            primary_server,
+            worker_id,
         )
         .await;
 
@@ -375,33 +670,15 @@ async fn download_worker(
                 });
             }
             Err(ArticleError::ArticleNotFound) => {
-                // Article not on this server — mark server tried, put back in queue
-                item.tried_servers.push(primary_server.id.clone());
-                item.tries_on_current = 0;
-
-                // Check if all servers have been tried
-                let all_tried = all_servers
-                    .iter()
-                    .all(|s| item.tried_servers.contains(&s.id));
-
-                if all_tried {
-                    // Article unavailable on ALL servers — permanent failure
-                    articles_failed.fetch_add(1, Ordering::Relaxed);
-                    warn!(
-                        article = %item.message_id,
-                        "Article unavailable on all servers (missing)"
-                    );
-                    let _ = progress_tx.send(ProgressUpdate::ArticleFailed {
-                        job_id: item.job_id.clone(),
-                        file_id: item.file_id.clone(),
-                        segment_number: item.segment_number,
-                        error: "Article not found on any server".into(),
-                        server_id: Some(primary_server.id.clone()),
-                    });
-                } else {
-                    // Put back for another server's worker
-                    work_queue.lock().push_back(item);
-                }
+                handle_article_not_available(
+                    &mut item,
+                    primary_server,
+                    all_servers,
+                    articles_failed,
+                    work_queue,
+                    progress_tx,
+                    "Article not found on any server",
+                );
             }
             Err(ArticleError::ConnectionLost(msg)) => {
                 consecutive_errors += 1;
@@ -417,36 +694,23 @@ async fn download_worker(
                 }
 
                 tokio::time::sleep(RECONNECT_DELAY).await;
-                conn = NntpConnection::new(worker_id.clone());
-                if let Err(e) = connect_with_retry(&mut conn, &primary_server, &worker_id).await {
+                *conn = NntpConnection::new(worker_id.to_string());
+                if let Err(e) = connect_with_retry(conn, primary_server, worker_id).await {
                     warn!(worker = %worker_id, "Reconnect failed: {e}, worker exiting");
                     break;
                 }
                 debug!(worker = %worker_id, "Reconnected successfully");
             }
             Err(ArticleError::DecodeError(msg)) => {
-                // Decode failed — try on another server (data might differ)
-                item.tried_servers.push(primary_server.id.clone());
-                item.tries_on_current = 0;
-
-                let all_tried = all_servers
-                    .iter()
-                    .all(|s| item.tried_servers.contains(&s.id));
-
-                if all_tried {
-                    articles_failed.fetch_add(1, Ordering::Relaxed);
-                    warn!(article = %item.message_id, "Decode failed on all servers: {msg}");
-                    let _ = progress_tx.send(ProgressUpdate::ArticleFailed {
-                        job_id: item.job_id.clone(),
-                        file_id: item.file_id.clone(),
-                        segment_number: item.segment_number,
-                        error: format!("Decode error: {msg}"),
-                        server_id: Some(primary_server.id.clone()),
-                    });
-                } else {
-                    debug!(article = %item.message_id, "Decode failed, trying other server");
-                    work_queue.lock().push_back(item);
-                }
+                handle_article_not_available(
+                    &mut item,
+                    primary_server,
+                    all_servers,
+                    articles_failed,
+                    work_queue,
+                    progress_tx,
+                    &format!("Decode error: {msg}"),
+                );
             }
             Err(ArticleError::AssemblyError(msg)) => {
                 // Assembly error is local — don't retry on other servers
@@ -462,8 +726,6 @@ async fn download_worker(
             }
         }
     }
-
-    let _ = conn.quit().await;
 }
 
 // ---------------------------------------------------------------------------

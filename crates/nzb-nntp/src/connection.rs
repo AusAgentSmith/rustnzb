@@ -178,9 +178,9 @@ impl NntpConnection {
                 NntpError::Tls(format!("TLS handshake with {addr}: {e}"))
             })?;
 
-            self.transport = Some(Transport::Tls(BufReader::new(tls_stream)));
+            self.transport = Some(Transport::Tls(BufReader::with_capacity(256 * 1024, tls_stream)));
         } else {
-            self.transport = Some(Transport::Plain(BufReader::new(tcp)));
+            self.transport = Some(Transport::Plain(BufReader::with_capacity(256 * 1024, tcp)));
         }
 
         // 3. Read welcome banner
@@ -474,8 +474,8 @@ impl NntpConnection {
             .as_mut()
             .ok_or(NntpError::Connection("Not connected".into()))?;
 
-        let mut body = Vec::with_capacity(64 * 1024);
-        let mut line_buf: Vec<u8> = Vec::with_capacity(4096);
+        let mut body = Vec::with_capacity(1024 * 1024);
+        let mut line_buf: Vec<u8> = Vec::with_capacity(16 * 1024);
 
         loop {
             line_buf.clear();

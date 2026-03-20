@@ -475,16 +475,16 @@ impl QueueManager {
                 return;
             };
 
+            state.job.status = JobStatus::PostProcessing;
+            state.job.completed_at = Some(chrono::Utc::now());
             if success {
-                state.job.status = JobStatus::PostProcessing;
-                state.job.completed_at = Some(chrono::Utc::now());
                 info!(job_id = %job_id, "Job moving to post-processing");
             } else {
-                state.job.status = JobStatus::Failed;
-                state.job.completed_at = Some(chrono::Utc::now());
-                state.job.error_message = Some(format!(
-                    "{articles_failed} article(s) failed to download"
-                ));
+                info!(
+                    job_id = %job_id,
+                    articles_failed,
+                    "Job moving to post-processing ({articles_failed} article(s) failed, par2 may repair)"
+                );
             }
 
             let cat = state.job.category.clone();
@@ -501,8 +501,8 @@ impl QueueManager {
             )
         };
 
-        // Run post-processing pipeline if download succeeded and pp_level > 0
-        let stages = if success && pp_level > 0 {
+        // Run post-processing pipeline (par2 can repair failed articles)
+        let stages = if pp_level > 0 {
             info!(
                 job_id = %job_id,
                 category = %category,
@@ -538,8 +538,16 @@ impl QueueManager {
 
             result.stages
         } else {
-            if success {
-                info!(job_id = %job_id, pp_level, "Post-processing disabled for category, skipping pipeline");
+            info!(job_id = %job_id, pp_level, "Post-processing disabled for category, skipping pipeline");
+            // No pipeline to repair — if articles failed, mark as failed now
+            if !success {
+                let mut jobs = self.jobs.lock();
+                if let Some(state) = jobs.get_mut(job_id) {
+                    state.job.status = JobStatus::Failed;
+                    state.job.error_message = Some(format!(
+                        "{articles_failed} article(s) failed to download"
+                    ));
+                }
             }
             Vec::new()
         };
@@ -568,12 +576,12 @@ impl QueueManager {
         let move_start = Instant::now();
 
         let final_status = if state.job.status == JobStatus::Failed {
-            // Already marked failed (by pipeline or download)
+            // Already marked failed (by pipeline or download with pp disabled)
             JobStatus::Failed
-        } else if state.job.articles_failed == 0 {
-            JobStatus::Completed
         } else {
-            JobStatus::Failed
+            // Pipeline ran successfully (or no articles failed) — job is complete.
+            // Par2 may have repaired missing articles, so articles_failed > 0 is OK.
+            JobStatus::Completed
         };
 
         // Move files from work_dir to output_dir (if not already done by pipeline extract)
