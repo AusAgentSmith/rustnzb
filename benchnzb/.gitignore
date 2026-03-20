@@ -5,4 +5,4 @@
 /results/*.csv
 /results/*.txt
 /results/charts_*
-Cargo.lock
+/results/logs_*
