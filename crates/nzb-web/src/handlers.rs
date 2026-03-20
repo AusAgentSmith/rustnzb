@@ -554,6 +554,32 @@ pub struct ServerTestResponse {
     pub message: String,
 }
 
+/// POST /api/config/servers/test-config -- Test a server config without saving.
+pub async fn h_server_test_inline(
+    Json(server): Json<ServerConfig>,
+) -> Result<Json<ServerTestResponse>, ApiError> {
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(15),
+        test_server_connection(server),
+    )
+    .await;
+
+    match result {
+        Ok(Ok(msg)) => Ok(Json(ServerTestResponse {
+            success: true,
+            message: msg,
+        })),
+        Ok(Err(msg)) => Ok(Json(ServerTestResponse {
+            success: false,
+            message: msg,
+        })),
+        Err(_) => Ok(Json(ServerTestResponse {
+            success: false,
+            message: "Connection timed out after 15 seconds".into(),
+        })),
+    }
+}
+
 async fn test_server_connection(server: ServerConfig) -> Result<String, String> {
     use nzb_nntp::connection::NntpConnection;
 
@@ -566,6 +592,30 @@ async fn test_server_connection(server: ServerConfig) -> Result<String, String> 
         "Successfully connected to {}:{}",
         server.host, server.port
     ))
+}
+
+/// GET /api/history/{id}/logs -- Get persisted logs for a history entry.
+pub async fn h_history_logs(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<LogResponse>, ApiError> {
+    let logs_json = state
+        .queue_manager
+        .history_get_logs(&id)
+        .map_err(ApiError::from)?;
+
+    let entries: Vec<LogEntry> = match logs_json {
+        Some(json) if !json.is_empty() && json != "[]" => {
+            serde_json::from_str(&json).unwrap_or_default()
+        }
+        _ => Vec::new(),
+    };
+
+    let latest_seq = entries.last().map(|e| e.seq).unwrap_or(0);
+    Ok(Json(LogResponse {
+        entries,
+        latest_seq,
+    }))
 }
 
 /// GET /api/config/categories -- List configured categories.

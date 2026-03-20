@@ -71,6 +71,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/history", get(handlers::h_history_list))
         .route("/history/{id}", delete(handlers::h_history_delete))
         .route("/history/{id}/retry", post(handlers::h_history_retry))
+        .route("/history/{id}/logs", get(handlers::h_history_logs))
         .route("/history", delete(handlers::h_history_clear))
         // Config
         .route("/config", get(handlers::h_config_get))
@@ -78,6 +79,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/config/servers", post(handlers::h_server_add))
         .route("/config/servers/{id}", put(handlers::h_server_update))
         .route("/config/servers/{id}", delete(handlers::h_server_delete))
+        .route(
+            "/config/servers/test-config",
+            post(handlers::h_server_test_inline),
+        )
         .route(
             "/config/servers/{id}/test",
             post(handlers::h_server_test),

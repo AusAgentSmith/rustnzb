@@ -411,6 +411,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         <span style="font-size:0.9rem;color:var(--text-secondary)">NNTP Servers</span>
       </div>
       <div class="toolbar-right">
+        <button class="btn btn-success" id="btn-test-all-servers">Test All</button>
         <button class="btn btn-primary" id="btn-add-server">+ Add Server</button>
       </div>
     </div>
@@ -554,18 +555,19 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         <input type="number" id="srv-retention" value="0" min="0">
       </div>
       <div class="modal-field">
-        <label>Pipelining</label>
-        <input type="number" id="srv-pipelining" value="1" min="1" max="20">
+        <label title="Number of concurrent NNTP commands sent per connection before waiting for responses. Higher values can improve throughput but some servers may not support it.">Pipelining <span style="cursor:help;color:var(--text-muted);">&#9432;</span></label>
+        <input type="number" id="srv-pipelining" value="1" min="1" max="20" title="Number of concurrent NNTP commands sent per connection before waiting for responses. Higher values can improve throughput but some servers may not support it.">
       </div>
     </div>
     <div class="modal-field" style="display:flex;gap:20px;flex-wrap:wrap;">
-      <label class="checkbox-label"><input type="checkbox" id="srv-ssl" checked> SSL/TLS</label>
-      <label class="checkbox-label"><input type="checkbox" id="srv-ssl-verify" checked> Verify Certs</label>
-      <label class="checkbox-label"><input type="checkbox" id="srv-enabled" checked> Enabled</label>
-      <label class="checkbox-label"><input type="checkbox" id="srv-optional"> Optional</label>
+      <label class="checkbox-label" title="Encrypt the connection using SSL/TLS. Most modern servers require this on port 563."><input type="checkbox" id="srv-ssl" checked> SSL/TLS <span style="cursor:help;color:var(--text-muted);">&#9432;</span></label>
+      <label class="checkbox-label" title="Verify the server's SSL certificate against trusted certificate authorities. Disable only if using self-signed certificates."><input type="checkbox" id="srv-ssl-verify" checked> Verify Certs <span style="cursor:help;color:var(--text-muted);">&#9432;</span></label>
+      <label class="checkbox-label" title="Whether this server is active and will be used for downloading."><input type="checkbox" id="srv-enabled" checked> Enabled <span style="cursor:help;color:var(--text-muted);">&#9432;</span></label>
+      <label class="checkbox-label" title="If enabled, articles not found on this server are not counted as failures. Useful for incomplete or backup servers with limited retention."><input type="checkbox" id="srv-optional"> Optional <span style="cursor:help;color:var(--text-muted);">&#9432;</span></label>
     </div>
     <div class="modal-actions">
       <button class="btn" id="btn-server-cancel">Cancel</button>
+      <button class="btn btn-success" id="btn-server-test-modal">Test</button>
       <button class="btn btn-primary" id="btn-server-save">Save</button>
     </div>
   </div>
@@ -909,7 +911,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     var html = '';
     for (var i=0;i<entries.length;i++) {
       var e = entries[i], s = sc(e.status);
-      html += '<tr><td title="'+esc(e.name)+'"><div style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.name)+'</div>'+
+      html += '<tr><td title="'+esc(e.name)+'" style="cursor:pointer;" onclick="window._showHistoryDetail(\''+e.id+'\')"><div style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.name)+'</div>'+
         (e.error_message?'<div style="font-size:0.75rem;color:var(--red);margin-top:2px;">'+esc(e.error_message)+'</div>':'')+'</td>'+
         '<td><span class="badge badge-'+s+'">'+sl(e.status)+'</span></td>'+
         '<td>'+formatBytes(e.total_bytes)+'</td>'+
@@ -929,6 +931,53 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       notify('NZB re-added to queue','success');
       fetchQueue(); fetchHistory();
     }).catch(function(e){ notify('Retry failed: '+e.message,'error'); });
+  };
+
+  window._showHistoryDetail = function(historyId) {
+    api('GET','/api/history?limit=200').then(function(d) {
+      var entries = d.entries||[], entry = null;
+      for (var i=0;i<entries.length;i++) if(entries[i].id===historyId){entry=entries[i];break;}
+      if (!entry) return;
+      document.getElementById('files-modal-title').textContent = entry.name;
+      // Files tab: show summary
+      var list = document.getElementById('files-list');
+      list.innerHTML = '<div style="padding:16px;color:var(--text-secondary);">'+
+        '<div><strong>Status:</strong> '+sl(entry.status)+'</div>'+
+        '<div><strong>Size:</strong> '+formatBytes(entry.downloaded_bytes)+' / '+formatBytes(entry.total_bytes)+'</div>'+
+        '<div><strong>Category:</strong> '+esc(entry.category||'Default')+'</div>'+
+        '<div><strong>Completed:</strong> '+formatDateFull(entry.completed_at)+'</div>'+
+        (entry.output_dir?'<div><strong>Output:</strong> '+esc(entry.output_dir)+'</div>':'')+
+        (entry.error_message?'<div style="color:var(--red);margin-top:8px;"><strong>Error:</strong> '+esc(entry.error_message)+'</div>':'')+
+        '</div>';
+      // Stats tab
+      var statsDiv = document.getElementById('job-stats-content');
+      var ss = entry.server_stats || [];
+      if (ss.length > 0) {
+        var sh = '<table class="server-stats-table"><thead><tr><th>Server</th><th>Downloaded</th><th>Failed</th><th>Bytes</th></tr></thead><tbody>';
+        for (var si=0;si<ss.length;si++) {
+          sh += '<tr><td>'+esc(ss[si].server_name||ss[si].server_id)+'</td><td>'+ss[si].articles_downloaded+'</td><td style="color:'+(ss[si].articles_failed>0?'var(--red)':'inherit')+'">'+ss[si].articles_failed+'</td><td>'+formatBytes(ss[si].bytes_downloaded)+'</td></tr>';
+        }
+        sh += '</tbody></table>';
+        statsDiv.innerHTML = sh;
+      } else {
+        statsDiv.innerHTML = '<div style="color:var(--text-muted);padding:16px;">No per-server stats recorded.</div>';
+      }
+      // Logs tab: fetch from history
+      var jlv = document.getElementById('job-log-viewer');
+      jlv.innerHTML = '<div style="padding:12px;color:var(--text-muted);">Loading...</div>';
+      api('GET','/api/history/'+encodeURIComponent(historyId)+'/logs').then(function(lr) {
+        var logEntries = lr.entries || [];
+        if (logEntries.length === 0) { jlv.innerHTML = '<div style="padding:12px;color:var(--text-muted);">No logs recorded for this download.</div>'; return; }
+        var lh = '';
+        for (var li=0;li<logEntries.length;li++) { lh += renderLogLine(logEntries[li]); }
+        jlv.innerHTML = lh;
+        jlv.scrollTop = jlv.scrollHeight;
+      }).catch(function(){ jlv.innerHTML = '<div style="padding:12px;color:var(--text-muted);">Failed to load logs.</div>'; });
+      // Reset to files tab
+      document.querySelectorAll('#modal-files .modal-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.mtab==='files'); });
+      document.querySelectorAll('#modal-files .modal-tab-content').forEach(function(t){ t.classList.toggle('active', t.id==='mtab-files'); });
+      document.getElementById('modal-files').classList.add('active');
+    }).catch(function(){});
   };
 
   document.getElementById('btn-clear-history').addEventListener('click', function() {
@@ -959,6 +1008,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         '</div>'+
         '<div class="server-card-actions">'+
           '<button class="btn btn-sm" onclick="window._serverTest(\''+esc(s.id)+'\')">Test</button>'+
+          '<button class="btn btn-sm" onclick="window._serverClone(\''+esc(s.id)+'\')">Clone</button>'+
           '<button class="btn btn-sm" onclick="window._serverEdit(\''+esc(s.id)+'\')">Edit</button>'+
           '<button class="btn btn-sm btn-danger" onclick="window._serverDelete(\''+esc(s.id)+'\')">Delete</button>'+
         '</div></div>';
@@ -1038,6 +1088,64 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       if(r.success) notify(r.message,'success'); else notify(r.message,'error');
     }).catch(function(e){ notify('Test failed: '+e.message,'error'); });
   };
+
+  window._serverClone = function(id) {
+    api('GET','/api/config/servers').then(function(servers) {
+      var srv = null;
+      for (var i=0;i<servers.length;i++) if(servers[i].id===id){srv=servers[i];break;}
+      if (!srv) return;
+      var clone = JSON.parse(JSON.stringify(srv));
+      clone.id = '';
+      clone.name = 'Copy of ' + (clone.name || clone.host);
+      api('POST','/api/config/servers', clone).then(function() {
+        notify('Server cloned','success');
+        fetchServers();
+      }).catch(function(e){ notify('Clone failed: '+e.message,'error'); });
+    }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+
+  // Test button inside server editor modal
+  document.getElementById('btn-server-test-modal').addEventListener('click', function() {
+    var srv = {
+      id: document.getElementById('srv-edit-id').value || 'test-new',
+      name: document.getElementById('srv-name').value.trim() || 'test',
+      host: document.getElementById('srv-host').value.trim(),
+      port: parseInt(document.getElementById('srv-port').value) || 563,
+      username: document.getElementById('srv-username').value.trim() || null,
+      password: document.getElementById('srv-password').value || null,
+      connections: parseInt(document.getElementById('srv-connections').value) || 8,
+      priority: parseInt(document.getElementById('srv-priority').value) || 0,
+      retention: parseInt(document.getElementById('srv-retention').value) || 0,
+      pipelining: parseInt(document.getElementById('srv-pipelining').value) || 1,
+      ssl: document.getElementById('srv-ssl').checked,
+      ssl_verify: document.getElementById('srv-ssl-verify').checked,
+      enabled: document.getElementById('srv-enabled').checked,
+      optional: document.getElementById('srv-optional').checked
+    };
+    if (!srv.host) { notify('Host is required to test','error'); return; }
+    notify('Testing connection...','info');
+    api('POST','/api/config/servers/test-config', srv).then(function(r) {
+      if(r.success) notify(r.message,'success'); else notify(r.message,'error');
+    }).catch(function(e){ notify('Test failed: '+e.message,'error'); });
+  });
+
+  // Test All servers button
+  document.getElementById('btn-test-all-servers').addEventListener('click', function() {
+    api('GET','/api/config/servers').then(function(servers) {
+      if (!servers || servers.length === 0) { notify('No servers to test','info'); return; }
+      notify('Testing '+servers.length+' server(s)...','info');
+      var done = 0, pass = 0, fail = 0;
+      for (var i=0;i<servers.length;i++) {
+        (function(s) {
+          api('POST','/api/config/servers/'+s.id+'/test').then(function(r) {
+            done++;
+            if(r.success) { pass++; } else { fail++; notify((s.name||s.host)+': '+r.message,'error'); }
+            if(done===servers.length) notify('Test complete: '+pass+' passed, '+fail+' failed', fail>0?'error':'success');
+          }).catch(function(e) { done++; fail++; notify((s.name||s.host)+': '+e.message,'error'); if(done===servers.length) notify('Test complete: '+pass+' passed, '+fail+' failed','error'); });
+        })(servers[i]);
+      }
+    }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  });
 
   // ---- Settings ----
   function fetchSettings() {

@@ -24,13 +24,14 @@ async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {
     std::fs::create_dir_all(&incomplete_dir).ok();
     std::fs::create_dir_all(&complete_dir).ok();
 
+    let log_buffer = nzb_web::LogBuffer::new();
     let qm = QueueManager::new(
         config.servers.clone(),
         db,
         incomplete_dir,
         complete_dir,
+        log_buffer.clone(),
     );
-    let log_buffer = nzb_web::LogBuffer::new();
     let state = Arc::new(AppState::new(config, std::path::PathBuf::from("config.toml"), qm, log_buffer));
 
     let router = build_router(state);

@@ -18,7 +18,7 @@ use tracing_subscriber::Layer;
 const MAX_LOG_ENTRIES: usize = 2000;
 
 /// A single captured log entry.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
 pub struct LogEntry {
     pub timestamp: DateTime<Utc>,
     pub level: String,

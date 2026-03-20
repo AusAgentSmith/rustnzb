@@ -200,6 +200,7 @@ async fn main() -> anyhow::Result<()> {
         db,
         config.general.incomplete_dir.clone(),
         config.general.complete_dir.clone(),
+        log_buffer.clone(),
     );
 
     // Set history retention

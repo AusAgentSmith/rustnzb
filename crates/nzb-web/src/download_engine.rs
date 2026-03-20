@@ -237,6 +237,23 @@ impl DownloadEngine {
             let _ = handle.await;
         }
 
+        // Drain any remaining items (stuck because needed servers exited)
+        let remaining: Vec<WorkItem> = work_queue.lock().drain(..).collect();
+        for item in remaining {
+            articles_failed.fetch_add(1, Ordering::Relaxed);
+            warn!(
+                article = %item.message_id,
+                "Article could not be downloaded — no available server"
+            );
+            let _ = progress_tx.send(ProgressUpdate::ArticleFailed {
+                job_id: item.job_id,
+                file_id: item.file_id,
+                segment_number: item.segment_number,
+                error: "No available server could download this article".into(),
+                server_id: None,
+            });
+        }
+
         let failed_count = articles_failed.load(Ordering::Relaxed);
         let _ = progress_tx.send(ProgressUpdate::JobFinished {
             job_id,
@@ -273,6 +290,7 @@ async fn download_worker(
     debug!(worker = %worker_id, server = %primary_server.host, "Worker connected");
 
     let mut consecutive_errors: u32 = 0;
+    let mut consecutive_skips: usize = 0;
 
     loop {
         // Check cancellation
@@ -297,12 +315,25 @@ async fn download_worker(
 
         // Skip if this worker's server was already tried for this article
         if item.tried_servers.contains(&primary_server.id) {
-            // Put it back for another server's worker to pick up
-            work_queue.lock().push_back(item);
+            let queue_len = {
+                let mut q = work_queue.lock();
+                q.push_back(item);
+                q.len()
+            };
+            consecutive_skips += 1;
+
+            // If we've skipped more items than exist in the queue,
+            // every remaining item needs a different server — exit
+            if consecutive_skips > queue_len {
+                debug!(worker = %worker_id, "No serviceable articles remaining, exiting");
+                break;
+            }
+
             // Brief yield to avoid busy-loop
             tokio::time::sleep(Duration::from_millis(10)).await;
             continue;
         }
+        consecutive_skips = 0;
 
         // Try to fetch on our server
         let result = fetch_article_with_retry(

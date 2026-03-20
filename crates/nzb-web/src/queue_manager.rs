@@ -19,6 +19,7 @@ use nzb_core::db::Database;
 use nzb_core::models::*;
 
 use crate::download_engine::{DownloadEngine, ProgressUpdate};
+use crate::log_buffer::LogBuffer;
 
 // ---------------------------------------------------------------------------
 // Speed tracker (simple rolling window)
@@ -102,6 +103,8 @@ pub struct QueueManager {
     pause_until: Mutex<Option<DateTime<Utc>>>,
     /// History retention limit (None = keep all).
     history_retention: Mutex<Option<usize>>,
+    /// Log buffer for capturing per-job logs into history.
+    log_buffer: Option<LogBuffer>,
 }
 
 impl QueueManager {
@@ -111,6 +114,7 @@ impl QueueManager {
         db: Database,
         incomplete_dir: std::path::PathBuf,
         complete_dir: std::path::PathBuf,
+        log_buffer: LogBuffer,
     ) -> Arc<Self> {
         Arc::new(Self {
             jobs: Mutex::new(HashMap::new()),
@@ -123,6 +127,7 @@ impl QueueManager {
             complete_dir,
             pause_until: Mutex::new(None),
             history_retention: Mutex::new(None),
+            log_buffer: Some(log_buffer),
         })
     }
 
@@ -447,6 +452,18 @@ impl QueueManager {
         if let Err(e) = db.history_insert(&history_entry) {
             error!(job_id = %state.job.id, "Failed to insert history: {e}");
         }
+
+        // Capture and persist per-job logs from the ring buffer
+        if let Some(ref log_buffer) = self.log_buffer {
+            let logs = log_buffer.get_entries(Some(&state.job.id), None, None, 5000);
+            if !logs.is_empty() {
+                let logs_json = serde_json::to_string(&logs).unwrap_or_default();
+                if let Err(e) = db.history_store_logs(&state.job.id, &logs_json) {
+                    warn!(job_id = %state.job.id, "Failed to store logs in history: {e}");
+                }
+            }
+        }
+
         if let Err(e) = db.queue_remove(&state.job.id) {
             error!(job_id = %state.job.id, "Failed to remove from queue: {e}");
         }
@@ -733,6 +750,12 @@ impl QueueManager {
     pub fn history_clear(&self) -> nzb_core::Result<()> {
         let db = self.db.lock();
         db.history_clear().map_err(Into::into)
+    }
+
+    /// Get persisted logs for a history entry.
+    pub fn history_get_logs(&self, id: &str) -> nzb_core::Result<Option<String>> {
+        let db = self.db.lock();
+        db.history_get_logs(id).map_err(Into::into)
     }
 
     // -----------------------------------------------------------------------

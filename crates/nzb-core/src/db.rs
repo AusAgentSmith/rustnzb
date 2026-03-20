@@ -132,6 +132,18 @@ impl Database {
             )?;
         }
 
+        if version < 3 {
+            info!("Applying database migration v3");
+            self.conn.execute_batch(
+                "
+                -- Per-job log storage for history
+                ALTER TABLE history ADD COLUMN job_logs TEXT DEFAULT '[]';
+
+                UPDATE schema_version SET version = 3;
+                ",
+            )?;
+        }
+
         Ok(())
     }
 
@@ -421,6 +433,29 @@ impl Database {
     pub fn history_clear(&self) -> Result<(), NzbError> {
         self.conn.execute("DELETE FROM history", [])?;
         Ok(())
+    }
+
+    /// Store per-job logs for a history entry.
+    pub fn history_store_logs(&self, id: &str, logs_json: &str) -> Result<(), NzbError> {
+        self.conn.execute(
+            "UPDATE history SET job_logs = ?2 WHERE id = ?1",
+            params![id, logs_json],
+        )?;
+        Ok(())
+    }
+
+    /// Get per-job logs for a history entry.
+    pub fn history_get_logs(&self, id: &str) -> Result<Option<String>, NzbError> {
+        let result = self.conn.query_row(
+            "SELECT job_logs FROM history WHERE id = ?1",
+            params![id],
+            |row| row.get::<_, Option<String>>(0),
+        );
+        match result {
+            Ok(data) => Ok(data),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(NzbError::Database(e)),
+        }
     }
 }
 
