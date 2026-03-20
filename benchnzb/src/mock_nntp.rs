@@ -28,7 +28,7 @@ pub struct FileEntry {
 
 /// A memory-mapped data file. The mmap is kept alive by the Arc.
 struct MappedFile {
-    mmap: Mmap,
+    mmap: Option<Mmap>,
     filename: String,
     total_size: u64,
 }
@@ -67,18 +67,16 @@ impl ServerState {
             if file_path.exists() {
                 let file = std::fs::File::open(file_path)?;
                 let mmap = unsafe { Mmap::map(&file)? };
-                // Advise the OS we'll read sequentially (prefetch aggressively)
                 mmap.advise(memmap2::Advice::Sequential)?;
                 total_mapped += mmap.len() as u64;
                 mapped_files.push(Arc::new(MappedFile {
-                    mmap,
+                    mmap: Some(mmap),
                     filename: entry.filename.clone(),
                     total_size: entry.total_size,
                 }));
             } else {
-                // Placeholder — file not generated yet (pre-reload state)
                 mapped_files.push(Arc::new(MappedFile {
-                    mmap: Mmap::map(&std::fs::File::open("/dev/null")?)?,
+                    mmap: None,
                     filename: entry.filename.clone(),
                     total_size: 0,
                 }));
@@ -123,8 +121,8 @@ impl ServerState {
         let entry_idx = self.prefix_map.get(prefix)?;
         let mf = &self.mapped_files[*entry_idx];
 
-        if mf.total_size == 0 {
-            return None; // placeholder, file not available
+        if mf.mmap.is_none() {
+            return None; // file not available
         }
 
         let article_size = self.index.article_size;
@@ -205,7 +203,8 @@ async fn handle_connection_inner(
                 drop(st);
 
                 // Slice directly from mmap — no file open, seek, or read syscalls
-                let data = &mf.mmap[offset as usize..(offset + length) as usize];
+                let mmap = mf.mmap.as_ref().unwrap();
+                let data = &mmap[offset as usize..(offset + length) as usize];
 
                 let code = if is_article { "220" } else { "222" };
                 writer
