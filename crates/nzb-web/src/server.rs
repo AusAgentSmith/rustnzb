@@ -88,6 +88,15 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             post(handlers::h_server_test),
         )
         .route("/config/categories", get(handlers::h_categories_list))
+        .route("/config/categories", post(handlers::h_category_add))
+        .route(
+            "/config/categories/{name}",
+            put(handlers::h_category_update),
+        )
+        .route(
+            "/config/categories/{name}",
+            delete(handlers::h_category_delete),
+        )
         .route(
             "/config/history-retention",
             get(handlers::h_history_retention_get),
