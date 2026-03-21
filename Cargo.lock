@@ -1571,6 +1571,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "yenc-simd",
 ]
 
 [[package]]
@@ -3660,6 +3661,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388c44dc09d76f1536602ead6d325eb532f5c122f17782bd57fb47baeeb767e2"
 dependencies = [
  "lzma-sys",
+]
+
+[[package]]
+name = "yenc-simd"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9af469088d22edb5c63bd83b7d9f005441330721fbbc122ff393cbcdcaa16a52"
+dependencies = [
+ "crc32fast",
+ "thiserror",
 ]
 
 [[package]]

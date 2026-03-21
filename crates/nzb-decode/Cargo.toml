@@ -7,6 +7,7 @@ edition.workspace = true
 nzb-core = { workspace = true }
 bytes = { workspace = true }
 crc32fast = { workspace = true }
+yenc-simd = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }

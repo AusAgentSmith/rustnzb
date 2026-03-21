@@ -74,6 +74,7 @@ nzb-web = { path = "crates/nzb-web" }
 nzb-nntp = { path = "crates/nzb-nntp" }
 nzb-decode = { path = "crates/nzb-decode" }
 nzb-postproc = { path = "crates/nzb-postproc" }
+yenc-simd = "0.1"
 
 [package]
 name = "rustnzbd"
