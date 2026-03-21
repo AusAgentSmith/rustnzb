@@ -1,0 +1,3 @@
+scenario,test_type,client,total_bytes,total_sec,download_sec,par2_sec,unpack_sec,avg_speed_mbps,peak_speed_mbps,cpu_avg,cpu_peak,mem_avg_mb,mem_peak_mb,net_rx_avg_mbps,net_rx_peak_mbps,disk_write_avg_mbps,disk_write_peak_mbps,iowait_avg,iowait_peak
+sz5gb_raw,raw,sabnzbd,5368709120,9.07,8.00,0.00,0.00,4837.47,5457.01,162.26,181.08,191.06,255.89,4914.19,6348.82,568.20,724.81,0.0000,0.0000
+sz5gb_raw,raw,rustnzbd,5368709120,12.84,11.00,0.00,0.00,3632.00,6216.00,176.77,232.16,147.99,205.89,3680.14,4592.43,91.87,925.09,0.0000,0.0000

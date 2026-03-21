@@ -1,0 +1,379 @@
+ Image benchnzb-mock-nntp Building 
+ Image benchnzb-rustnzbd Building 
+ Image benchnzb-orchestrator Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.40kB done
+#1 DONE 0.0s
+
+#2 [mock-nntp internal] load build definition from Dockerfile
+#2 transferring dockerfile: 570B done
+#2 DONE 0.0s
+
+#3 [rustnzbd internal] load build definition from Dockerfile
+#3 transferring dockerfile: 847B done
+#3 DONE 0.0s
+
+#4 [rustnzbd internal] load metadata for docker.io/library/debian:bookworm-slim
+#4 ...
+
+#5 [rustnzbd internal] load metadata for docker.io/library/rust:1.88-bookworm
+#5 DONE 0.8s
+
+#6 [orchestrator internal] load metadata for docker.io/library/rust:1-bookworm
+#6 DONE 0.8s
+
+#4 [mock-nntp internal] load metadata for docker.io/library/debian:bookworm-slim
+#4 DONE 0.8s
+
+#7 [rustnzbd internal] load .dockerignore
+#7 transferring context: 116B done
+#7 DONE 0.0s
+
+#8 [mock-nntp internal] load .dockerignore
+#8 transferring context: 2B done
+#8 DONE 0.0s
+
+#9 [rustnzbd builder 1/6] FROM docker.io/library/rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
+#9 resolve docker.io/library/rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0 0.0s done
+#9 DONE 0.0s
+
+#10 [orchestrator builder 1/6] FROM docker.io/library/rust:1-bookworm@sha256:365468470075493dc4583f47387001854321c5a8583ea9604b297e67f01c5a4f
+#10 resolve docker.io/library/rust:1-bookworm@sha256:365468470075493dc4583f47387001854321c5a8583ea9604b297e67f01c5a4f 0.0s done
+#10 DONE 0.0s
+
+#11 [orchestrator stage-1 1/3] FROM docker.io/library/debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a
+#11 resolve docker.io/library/debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a 0.0s done
+#11 DONE 0.0s
+
+#12 [rustnzbd internal] load build context
+#12 transferring context: 2.51kB done
+#12 DONE 0.0s
+
+#13 [orchestrator internal] load build context
+#13 transferring context: 601B done
+#13 DONE 0.0s
+
+#14 [rustnzbd builder 6/6] RUN cargo build --release
+#14 CACHED
+
+#15 [rustnzbd stage-1 3/5] COPY --from=builder /build/target/release/rustnzbd /usr/local/bin/rustnzbd
+#15 CACHED
+
+#16 [rustnzbd builder 3/6] COPY Cargo.toml Cargo.lock ./
+#16 CACHED
+
+#17 [rustnzbd builder 5/6] COPY src src
+#17 CACHED
+
+#18 [rustnzbd stage-1 2/5] RUN apt-get update && apt-get install -y --no-install-recommends         ca-certificates         curl         par2         unrar-free         p7zip-full     && rm -rf /var/lib/apt/lists/*
+#18 CACHED
+
+#19 [rustnzbd builder 4/6] COPY crates crates
+#19 CACHED
+
+#20 [rustnzbd stage-1 4/5] RUN useradd -m -s /bin/bash rustnzbd     && mkdir -p /config /data /downloads/incomplete /downloads/complete     && chown -R rustnzbd:rustnzbd /config /data /downloads
+#20 CACHED
+
+#21 [rustnzbd builder 2/6] WORKDIR /build
+#21 CACHED
+
+#22 [rustnzbd stage-1 5/5] WORKDIR /app
+#22 CACHED
+
+#23 [orchestrator stage-1 2/3] RUN apt-get update && apt-get install -y --no-install-recommends         ca-certificates curl par2 p7zip-full     && rm -rf /var/lib/apt/lists/*
+#23 CACHED
+
+#24 [orchestrator builder 4/6] COPY Cargo.toml Cargo.lock ./
+#24 CACHED
+
+#25 [orchestrator builder 6/6] RUN cargo build --release &&     ./target/release/benchnzb --help > /dev/null
+#25 CACHED
+
+#26 [orchestrator builder 3/6] WORKDIR /app
+#26 CACHED
+
+#27 [orchestrator builder 5/6] COPY src/ src/
+#27 CACHED
+
+#28 [orchestrator builder 2/6] RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev
+#28 CACHED
+
+#29 [orchestrator stage-1 3/3] COPY --from=builder /app/target/release/benchnzb /usr/local/bin/benchnzb
+#29 CACHED
+
+#30 [rustnzbd] exporting to image
+#30 exporting layers done
+#30 exporting manifest sha256:22df221761a3d9f2951ca6abb86fa1b2593a7dc01a33919719245de389a4bd47 done
+#30 exporting config sha256:10552af8edcf42646dee29c09c2b9cc211e520834acf241d53d7e32abfe949cf 0.0s done
+#30 exporting attestation manifest sha256:06b3b74e4c5dc8fd7454d2e4429aa247ee5a98b408f501eaf064bda21cb3bebb 0.1s done
+#30 exporting manifest list sha256:02895b632d36de939f3c607ad0accac3117ad3aaee290091914d286fc603d9f9
+#30 exporting manifest list sha256:02895b632d36de939f3c607ad0accac3117ad3aaee290091914d286fc603d9f9 0.0s done
+#30 naming to docker.io/library/benchnzb-rustnzbd:latest done
+#30 unpacking to docker.io/library/benchnzb-rustnzbd:latest done
+#30 DONE 0.2s
+
+#31 [mock-nntp] exporting to image
+#31 exporting layers done
+#31 exporting manifest sha256:a309d44025859cc3a45f7897485935ddbe8e7c85d037311b2cea97e8b1f50b2c done
+#31 exporting config sha256:8c3ce07904b3a4e84cbd7272b1ec468cb76ce6eda0141b0cb74f496de1beeb2e done
+#31 exporting attestation manifest sha256:f2934145a1f4c1467b2a3f2aedc6cfed079c02d849a2526991e67ae6da789bf4 0.1s done
+#31 exporting manifest list sha256:d05a8ad176ec7ce3c6b834466ce19b2f5213f60fee971b344c8dba64f498eb8d 0.0s done
+#31 naming to docker.io/library/benchnzb-mock-nntp:latest 0.0s done
+#31 unpacking to docker.io/library/benchnzb-mock-nntp:latest done
+#31 DONE 0.2s
+
+#32 [orchestrator] exporting to image
+#32 exporting layers done
+#32 exporting manifest sha256:c52b31cb9cd4c334d5d85484a5ecd630a41f945b4a0c03cabefc587df5721376 done
+#32 exporting config sha256:234422a3b58cb544481602c41903749f939f5a102608bf9fc53ec8a38121a653 done
+#32 exporting attestation manifest sha256:df0e307903e7554e67fe7d9e6506bbe8fdcaf6627b48b751dc63339efed94e46 0.1s done
+#32 exporting manifest list sha256:9d29414831ce3e962614119c47b0734bc238a235ffedeccc878159159323cc10 0.0s done
+#32 naming to docker.io/library/benchnzb-orchestrator:latest done
+#32 unpacking to docker.io/library/benchnzb-orchestrator:latest done
+#32 DONE 0.2s
+
+#33 [mock-nntp] resolving provenance for metadata file
+#33 DONE 0.1s
+
+#34 [orchestrator] resolving provenance for metadata file
+#34 DONE 0.0s
+
+#35 [rustnzbd] resolving provenance for metadata file
+#35 DONE 0.0s
+ Image benchnzb-mock-nntp Built 
+ Image benchnzb-rustnzbd Built 
+ Image benchnzb-orchestrator Built 
+ Network benchnzb_bench Creating 
+ Network benchnzb_bench Created 
+ Volume benchnzb_downloads-rnzb Creating 
+ Volume benchnzb_downloads-rnzb Created 
+ Volume benchnzb_benchdata Creating 
+ Volume benchnzb_benchdata Created 
+ Volume benchnzb_downloads-sab Creating 
+ Volume benchnzb_downloads-sab Created 
+ Container benchnzb-mock-nntp-1 Creating 
+ Container benchnzb-mock-nntp-1 Created 
+ Container benchnzb-rustnzbd-1 Creating 
+ Container benchnzb-sabnzbd-1 Creating 
+ Container benchnzb-sabnzbd-1 Created 
+ Container benchnzb-rustnzbd-1 Created 
+ Container benchnzb-orchestrator-1 Creating 
+ Container benchnzb-orchestrator-1 Created 
+Attaching to mock-nntp-1, orchestrator-1, rustnzbd-1, sabnzbd-1
+ Container benchnzb-mock-nntp-1 Starting 
+mock-nntp-1  | [benchnzb] PID=1 args=["benchnzb", "mock-nntp", "--port", "119", "--data-dir", "/data", "--health-port", "8080"]
+mock-nntp-1  | [2m2026-03-20T21:00:01.300537Z[0m [32m INFO[0m Loaded 0 file entries, 0 missing articles
+mock-nntp-1  | [2m2026-03-20T21:00:01.300595Z[0m [32m INFO[0m Mock NNTP server listening on 0.0.0.0:119
+mock-nntp-1  | [2m2026-03-20T21:00:01.300693Z[0m [32m INFO[0m Control server on port 8080 (/health, /status, /reload)
+ Container benchnzb-mock-nntp-1 Started 
+ Container benchnzb-rustnzbd-1 Starting 
+ Container benchnzb-sabnzbd-1 Starting 
+ Container benchnzb-sabnzbd-1 Started 
+rustnzbd-1   | [2m2026-03-20T21:00:01.601926Z[0m [32m INFO[0m [2mrustnzbd[0m[2m:[0m rustnzbd v0.1.0
+ Container benchnzb-rustnzbd-1 Started 
+ Container benchnzb-orchestrator-1 Starting 
+rustnzbd-1   | [2m2026-03-20T21:00:01.615825Z[0m [32m INFO[0m [2mnzb_core::db[0m[2m:[0m Applying database migration v1
+rustnzbd-1   | [2m2026-03-20T21:00:01.631150Z[0m [32m INFO[0m [2mnzb_core::db[0m[2m:[0m Applying database migration v2
+rustnzbd-1   | [2m2026-03-20T21:00:01.643725Z[0m [32m INFO[0m [2mnzb_core::db[0m[2m:[0m Applying database migration v3
+rustnzbd-1   | [2m2026-03-20T21:00:01.651444Z[0m [32m INFO[0m [2mrustnzbd[0m[2m:[0m Database opened [3mpath[0m[2m=[0m/data/rustnzbd.db
+rustnzbd-1   | [2m2026-03-20T21:00:01.651625Z[0m [32m INFO[0m [2mrustnzbd[0m[2m:[0m Queue manager initialized [3mservers[0m[2m=[0m1
+rustnzbd-1   | [2m2026-03-20T21:00:01.651647Z[0m [32m INFO[0m [2mrustnzbd[0m[2m:[0m Starting HTTP API server
+rustnzbd-1   | [2m2026-03-20T21:00:01.652031Z[0m [32m INFO[0m [2mnzb_web::server[0m[2m:[0m HTTP server listening on http://0.0.0.0:9090
+rustnzbd-1   | [2m2026-03-20T21:00:01.652057Z[0m [32m INFO[0m [2mnzb_web::server[0m[2m:[0m Web GUI: http://0.0.0.0:9090/
+rustnzbd-1   | [2m2026-03-20T21:00:01.652062Z[0m [32m INFO[0m [2mnzb_web::server[0m[2m:[0m Arr API: http://0.0.0.0:9090/sabnzbd/api?mode=version
+sabnzbd-1    | [migrations] started
+sabnzbd-1    | [migrations] no migrations found
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | 
+sabnzbd-1    |       ██╗     ███████╗██╗ ██████╗
+sabnzbd-1    |       ██║     ██╔════╝██║██╔═══██╗
+sabnzbd-1    |       ██║     ███████╗██║██║   ██║
+sabnzbd-1    |       ██║     ╚════██║██║██║   ██║
+sabnzbd-1    |       ███████╗███████║██║╚██████╔╝
+sabnzbd-1    |       ╚══════╝╚══════╝╚═╝ ╚═════╝
+sabnzbd-1    | 
+sabnzbd-1    |    Brought to you by linuxserver.io
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | 
+sabnzbd-1    | To support the app dev(s) visit:
+sabnzbd-1    | SABnzbd: https://sabnzbd.org/donate
+sabnzbd-1    | 
+sabnzbd-1    | To support LSIO projects visit:
+sabnzbd-1    | https://www.linuxserver.io/donate/
+sabnzbd-1    | 
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | GID/UID
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | 
+sabnzbd-1    | User UID:    1000
+sabnzbd-1    | User GID:    1000
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | Linuxserver.io version: 4.5.5-ls246
+sabnzbd-1    | Build-date: 2026-03-19T03:25:27+00:00
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    |     
+sabnzbd-1    | [custom-init] No custom files found, skipping...
+orchestrator-1  | [benchnzb] PID=1 args=["benchnzb", "run", "--scenarios=quick"]
+orchestrator-1  | [2m2026-03-20T21:00:01.843312Z[0m [32m INFO[0m ============================================================
+orchestrator-1  | [2m2026-03-20T21:00:01.843340Z[0m [32m INFO[0m   Usenet Client Benchmark: SABnzbd vs rustnzbd
+orchestrator-1  | [2m2026-03-20T21:00:01.843344Z[0m [32m INFO[0m ============================================================
+orchestrator-1  | [2m2026-03-20T21:00:01.843372Z[0m [32m INFO[0m Waiting for services...
+orchestrator-1  | [2m2026-03-20T21:00:01.844967Z[0m [32m INFO[0m   mock-nntp: ready
+ Container benchnzb-orchestrator-1 Started 
+sabnzbd-1       | 2026-03-20 21:00:02,402::INFO::[SABnzbd:1134] --------------------------------
+sabnzbd-1       | 2026-03-20 21:00:02,402::INFO::[SABnzbd:1135] SABnzbd.py-4.5.5
+sabnzbd-1       | 2026-03-20 21:00:02,403::INFO::[SABnzbd:1136] Full executable path = /app/sabnzbd/SABnzbd.py
+sabnzbd-1       | 2026-03-20 21:00:02,403::INFO::[SABnzbd:1137] Arguments = "/app/sabnzbd/SABnzbd.py" "--config-file" "/config" "--server" "::"
+sabnzbd-1       | 2026-03-20 21:00:02,403::INFO::[SABnzbd:1146] Certifi version = 2025.10.05
+sabnzbd-1       | 2026-03-20 21:00:02,403::INFO::[SABnzbd:1147] Loaded additional certificates from /lsiopy/lib/python3.12/site-packages/certifi/cacert.pem
+sabnzbd-1       | 2026-03-20 21:00:02,404::INFO::[SABnzbd:1153] Using INI file /config/sabnzbd.ini
+sabnzbd-1       | 2026-03-20 21:00:02,404::INFO::[filesystem:725] Creating directories: /downloads/incomplete
+sabnzbd-1       | 2026-03-20 21:00:02,404::INFO::[filesystem:725] Creating directories: /downloads/complete
+sabnzbd-1       | 2026-03-20 21:00:02,405::INFO::[cfg:794] Config conversion set 1
+sabnzbd-1       | 2026-03-20 21:00:02,405::INFO::[cfg:830] Config conversion set 2
+sabnzbd-1       | 2026-03-20 21:00:02,405::INFO::[cfg:835] Config conversion set 3
+sabnzbd-1       | 2026-03-20 21:00:02,405::INFO::[cfg:846] Config conversion set 4
+sabnzbd-1       | 2026-03-20 21:00:02,406::INFO::[config:999] Writing settings to INI file /config/sabnzbd.ini
+sabnzbd-1       | 2026-03-20 21:00:02,407::INFO::[postproc:141] Loading postproc queue
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[scheduler:191] Scheduling RSS interval task every 60 min (delay=13)
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[scheduler:215] Setting schedule for midnight auto history-purge
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[scheduler:224] Setting schedule for midnight BPS reset
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[scheduler:233] Setting schedule for midnight server expiration check
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[scheduler:242] Setting schedule for server quota check
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[__init__:306] All processes started
+sabnzbd-1       | 2026-03-20 21:00:02,408::INFO::[SABnzbd:337] Template location for Glitter is /app/sabnzbd/interfaces/Glitter
+sabnzbd-1       | 2026-03-20 21:00:02,409::INFO::[SABnzbd:337] Template location for Config is /app/sabnzbd/interfaces/Config
+sabnzbd-1       | 2026-03-20 21:00:02,409::INFO::[misc:1324] [N/A] Running external command: ['/usr/bin/unrar']
+sabnzbd-1       | 2026-03-20 21:00:02,412::INFO::[misc:1324] [N/A] Running external command: ['/usr/bin/7zz']
+sabnzbd-1       | 2026-03-20 21:00:02,416::INFO::[misc:1324] [N/A] Running external command: ['/usr/local/bin/par2', '-V']
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:422] SABCTools module (v8.2.6)... found!
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:423] SABCTools module is using SIMD set: AVX512VL+VBMI2
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:424] SABCTools module is linked to OpenSSL: True
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:441] Cryptography module (v46.0.3)... found!
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:444] par2 binary... found (/usr/local/bin/par2)
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:451] UNRAR binary... found (/usr/bin/unrar)
+sabnzbd-1       | 2026-03-20 21:00:02,420::INFO::[SABnzbd:459] UNRAR binary version 7.20
+sabnzbd-1       | 2026-03-20 21:00:02,421::INFO::[SABnzbd:466] 7za binary... found (/usr/bin/7zz)
+sabnzbd-1       | 2026-03-20 21:00:02,421::INFO::[SABnzbd:468] 7za binary version 25.01
+sabnzbd-1       | 2026-03-20 21:00:02,421::INFO::[SABnzbd:474] nice binary... found (/bin/nice)
+sabnzbd-1       | 2026-03-20 21:00:02,421::INFO::[SABnzbd:478] ionice binary... found (/bin/ionice)
+sabnzbd-1       | 2026-03-20 21:00:02,422::INFO::[SABnzbd:1350] Starting web-interface on :::8080
+sabnzbd-1       | 2026-03-20 21:00:02,422::INFO::[_cplogging:213] [20/Mar/2026:21:00:02] ENGINE Bus STARTING
+sabnzbd-1       | 2026-03-20 21:00:02,524::INFO::[_cplogging:213] [20/Mar/2026:21:00:02] ENGINE Serving on http://:::8080
+sabnzbd-1       | 2026-03-20 21:00:02,525::INFO::[_cplogging:213] [20/Mar/2026:21:00:02] ENGINE Bus STARTED
+sabnzbd-1       | 2026-03-20 21:00:02,525::INFO::[SABnzbd:1389] Starting SABnzbd.py-4.5.5
+sabnzbd-1       | 2026-03-20 21:00:02,527::INFO::[dirscanner:112] Dirscanner starting up
+sabnzbd-1       | 2026-03-20 21:00:02,529::INFO::[notifier:166] Sending notification: SABnzbd - SABnzbd 4.5.5 started (type=startup, job_cat=None)
+sabnzbd-1       | 2026-03-20 21:00:02,529::INFO::[__init__:460] Commit = 11ba9ae12ade8c8f2abb42d44ea35efdd361fae5
+sabnzbd-1       | 2026-03-20 21:00:02,529::INFO::[__init__:461] Python-version = 3.12.12 (main, Oct 11 2025, 01:16:26) [GCC 15.2.0]
+sabnzbd-1       | 2026-03-20 21:00:02,530::INFO::[__init__:462] CPU architecture = x86_64
+sabnzbd-1       | 2026-03-20 21:00:02,530::INFO::[__init__:463] Platform = Docker
+sabnzbd-1       | 2026-03-20 21:00:02,530::INFO::[__init__:464] JSON-module = orjson 3.11.3
+sabnzbd-1       | 2026-03-20 21:00:02,530::INFO::[__init__:465] Preferred encoding = UTF-8
+sabnzbd-1       | 2026-03-20 21:00:02,530::INFO::[__init__:466] SSL version = OpenSSL 3.5.5 27 Jan 2026
+sabnzbd-1       | 2026-03-20 21:00:02,539::INFO::[zconfig:61] No bonjour/zeroconf support installed
+sabnzbd-1       | 2026-03-20 21:00:02,539::INFO::[ssdp:108] Serving SSDP on 172.24.0.3 as SABnzbd
+sabnzbd-1       | [ls.io-init] done.
+sabnzbd-1       | 2026-03-20 21:00:03,848::INFO::[notifier:166] Sending notification: Warning - Refused connection with hostname "sabnzbd" from: ::ffff:172.24.0.5 [None] (type=warning, job_cat=None)
+sabnzbd-1       | 2026-03-20 21:00:03,848::WARNING::[interface:414] Refused connection with hostname "sabnzbd" from: ::ffff:172.24.0.5 [None]
+orchestrator-1  | [2m2026-03-20T21:00:03.849327Z[0m [32m INFO[0m   sabnzbd: ready
+orchestrator-1  | [2m2026-03-20T21:00:03.850574Z[0m [32m INFO[0m   rustnzbd: ready
+orchestrator-1  | [2m2026-03-20T21:00:03.870671Z[0m [32m INFO[0m Resolved sabnzbd -> 4670e754ced2
+orchestrator-1  | [2m2026-03-20T21:00:03.894353Z[0m [32m INFO[0m Resolved rustnzbd -> 2fd220ab29f5
+orchestrator-1  | [2m2026-03-20T21:00:03.894391Z[0m [32m INFO[0m Running 1 scenario(s), 5.0 GB total raw data
+orchestrator-1  | [2m2026-03-20T21:00:03.894396Z[0m [32m INFO[0m   sz5gb_raw                     5 GB  raw  timeout=600s
+orchestrator-1  | [2m2026-03-20T21:00:03.894399Z[0m [32m INFO[0m Generating test data...
+orchestrator-1  | [2m2026-03-20T21:00:03.895529Z[0m [32m INFO[0m Preparing: sz5gb_raw — 5 GB raw download
+orchestrator-1  | [2m2026-03-20T21:00:03.895624Z[0m [32m INFO[0m   Generating /data/testdata/bench_5gb.bin (5120 MB)...
+orchestrator-1  |     10% (683 MB/s)    20% (679 MB/s)    30% (696 MB/s)    40% (705 MB/s)    50% (693 MB/s)    60% (695 MB/s)    70% (695 MB/s)    80% (693 MB/s)    90% (685 MB/s)    100% (669 MB/s)
+orchestrator-1  | [2m2026-03-20T21:00:11.545874Z[0m [32m INFO[0m Generated /data/testdata/bench_5gb.bin (5120 MB) in 7.7s
+orchestrator-1  | [2m2026-03-20T21:00:11.554170Z[0m [32m INFO[0m   NZB: /data/nzbs/sz5gb_raw.nzb
+orchestrator-1  | [2m2026-03-20T21:00:11.554486Z[0m [32m INFO[0m Article index: 1 entries, 0 missing
+mock-nntp-1     | [2m2026-03-20T21:00:11.556051Z[0m [32m INFO[0m Loaded 1 file entries, 0 missing articles
+orchestrator-1  | [2m2026-03-20T21:00:11.558349Z[0m [32m INFO[0m Mock NNTP reloaded: {"entries":1,"missing":0}
+orchestrator-1  | [2m2026-03-20T21:00:11.558401Z[0m [32m INFO[0m ============================================================
+orchestrator-1  | [2m2026-03-20T21:00:11.558405Z[0m [32m INFO[0m SCENARIO: sz5gb_raw — 5 GB raw download
+orchestrator-1  | [2m2026-03-20T21:00:11.558408Z[0m [32m INFO[0m ============================================================
+orchestrator-1  | [2m2026-03-20T21:00:11.710216Z[0m [32m INFO[0m   [sabnzbd] Cleaned /downloads
+orchestrator-1  | [2m2026-03-20T21:00:11.827894Z[0m [32m INFO[0m   [rustnzbd] Cleaned /downloads
+orchestrator-1  | [2m2026-03-20T21:00:13.829131Z[0m [32m INFO[0m   [sabnzbd] Adding NZB...
+sabnzbd-1       | 2026-03-20 21:00:13,861::WARNING::[interface:414] Refused connection with hostname "sabnzbd" from: ::ffff:172.24.0.5 [None]
+orchestrator-1  | [2m2026-03-20T21:00:13.862253Z[0m [31mERROR[0m   [sabnzbd] Failed to add NZB: error decoding response body
+sabnzbd-1       | 2026-03-20 21:00:13,863::WARNING::[interface:414] Refused connection with hostname "sabnzbd" from: ::ffff:172.24.0.5 [None]
+sabnzbd-1       | 2026-03-20 21:00:13,864::WARNING::[interface:414] Refused connection with hostname "sabnzbd" from: ::ffff:172.24.0.5 [None]
+orchestrator-1  | [2m2026-03-20T21:00:16.947107Z[0m [32m INFO[0m   [sabnzbd] Cleaned /downloads
+orchestrator-1  | [2m2026-03-20T21:00:17.051028Z[0m [32m INFO[0m   [rustnzbd] Cleaned /downloads
+orchestrator-1  | [2m2026-03-20T21:00:19.052339Z[0m [32m INFO[0m   [rustnzbd] Adding NZB...
+rustnzbd-1      | [2m2026-03-20T21:00:19.059301Z[0m [32m INFO[0m [2mnzb_web::handlers[0m[2m:[0m NZB added to queue [3mname[0m[2m=[0msz5gb_raw [3mid[0m[2m=[0m9115dfcf-ad14-4f3f-8396-443f307c5070 [3mfiles[0m[2m=[0m1 [3marticles[0m[2m=[0m7159
+rustnzbd-1      | [2m2026-03-20T21:00:19.072060Z[0m [32m INFO[0m [2mnzb_web::queue_manager[0m[2m:[0m Job added to queue [3mjob_id[0m[2m=[0m9115dfcf-ad14-4f3f-8396-443f307c5070 [3mname[0m[2m=[0msz5gb_raw [3mfiles[0m[2m=[0m1 [3marticles[0m[2m=[0m7159
+orchestrator-1  | [2m2026-03-20T21:00:19.073617Z[0m [32m INFO[0m   [rustnzbd] Downloading (timeout 600s)...
+rustnzbd-1      | [2m2026-03-20T21:00:19.075822Z[0m [32m INFO[0m [2mnzb_web::download_engine[0m[2m:[0m Starting download engine [3mjob_id[0m[2m=[0m9115dfcf-ad14-4f3f-8396-443f307c5070 [3marticles[0m[2m=[0m7159
+rustnzbd-1      | [2m2026-03-20T21:00:29.997286Z[0m [32m INFO[0m [2mnzb_decode::assembler[0m[2m:[0m File assembly complete [3mjob_id[0m[2m=[0m"9115dfcf-ad14-4f3f-8396-443f307c5070" [3mfile_id[0m[2m=[0m"da281136-dce9-4d4a-81a0-6d0516e4579d" [3mtotal_segments[0m[2m=[0m7159
+rustnzbd-1      | [2m2026-03-20T21:00:29.997364Z[0m [32m INFO[0m [2mnzb_web::queue_manager[0m[2m:[0m File assembly complete [3mjob_id[0m[2m=[0m9115dfcf-ad14-4f3f-8396-443f307c5070 [3mfile[0m[2m=[0mbench_5gb.bin (1/7159) - &quot;bench_5gb.bin&quot; yEnc [3mcompleted[0m[2m=[0m1 [3mtotal[0m[2m=[0m1
+rustnzbd-1      | [2m2026-03-20T21:00:29.997852Z[0m [32m INFO[0m [2mnzb_web::queue_manager[0m[2m:[0m Job download finished [3mjob_id[0m[2m=[0m9115dfcf-ad14-4f3f-8396-443f307c5070 [3msuccess[0m[2m=[0mtrue [3marticles_failed[0m[2m=[0m0
+rustnzbd-1      | [2m2026-03-20T21:00:29.997882Z[0m [32m INFO[0m [2mnzb_web::queue_manager[0m[2m:[0m Job moving to post-processing [3mjob_id[0m[2m=[0m9115dfcf-ad14-4f3f-8396-443f307c5070
+orchestrator-1  | [2m2026-03-20T21:00:30.326560Z[0m [32m INFO[0m   [rustnzbd] Complete!
+orchestrator-1  |   [rustnzbd] [------------------------------]   0.0% @ 0.0 MB/s  [rustnzbd] [##----------------------------]   9.3% @ 258.2 MB/s  [rustnzbd] [#####-------------------------]  18.0% @ 466.3 MB/s  [rustnzbd] [########----------------------]  27.5% @ 457.8 MB/s  [rustnzbd] [###########-------------------]  36.9% @ 482.8 MB/s  [rustnzbd] [#############-----------------]  45.9% @ 457.0 MB/s  [rustnzbd] [################--------------]  55.9% @ 502.1 MB/s  [rustnzbd] [###################-----------]  64.9% @ 472.8 MB/s  [rustnzbd] [######################--------]  74.8% @ 462.1 MB/s  [rustnzbd] [#########################-----]  84.1% @ 459.2 MB/s  [rustnzbd] [###########################---]  93.3% @ 474.2 MB/s
+orchestrator-1  | [2m2026-03-20T21:00:30.327113Z[0m [32m INFO[0m   [rustnzbd] Done: 11.3s total, 3784.9 Mbps avg
+orchestrator-1  | [2m2026-03-20T21:00:33.338109Z[0m [32m INFO[0m JSON: /results/benchmark_20260320_210033.json
+orchestrator-1  | [2m2026-03-20T21:00:33.338202Z[0m [32m INFO[0m CSV: /results/benchmark_20260320_210033.csv
+orchestrator-1  | 
+orchestrator-1  | 
+orchestrator-1  | ==================================================================================
+orchestrator-1  |   BENCHMARK RESULTS: SABnzbd vs rustnzbd
+orchestrator-1  | ==================================================================================
+orchestrator-1  | 
+orchestrator-1  |   Scenario: sz5gb_raw — 5 GB raw download [raw]
+orchestrator-1  | ----------------------------------------------------------------------------------
+orchestrator-1  |   Metric                           SABnzbd        rustnzbd        Delta
+orchestrator-1  | ----------------------------------------------------------------------------------
+orchestrator-1  |   Total Time                          0.0s           11.3s            —
+orchestrator-1  |   Download Time                       0.0s           10.0s            —
+orchestrator-1  |   Avg Speed                       0.0 Mbps     3784.9 Mbps            —
+orchestrator-1  |   Peak Speed                      0.0 Mbps     4212.0 Mbps            —
+orchestrator-1  |   CPU Avg                             0.0%          181.8%            —
+orchestrator-1  |   CPU Peak                            0.0%          203.3%            —
+orchestrator-1  |   Memory Avg                        0.0 MB        140.0 MB            —
+orchestrator-1  |   Memory Peak                       0.0 MB        203.0 MB            —
+orchestrator-1  |   Disk Write Avg                  0.0 MB/s      325.2 MB/s            —
+orchestrator-1  | ----------------------------------------------------------------------------------
+orchestrator-1  | 
+orchestrator-1  |   Lower-is-better: Time, CPU, Memory
+orchestrator-1  |   Higher-is-better: Speed, Disk Write
+orchestrator-1  |   Delta shows rustnzbd advantage: positive = rustnzbd wins
+orchestrator-1  | 
+orchestrator-1  | [2m2026-03-20T21:00:33.338322Z[0m [32m INFO[0m Summary: /results/summary_20260320_210033.txt
+orchestrator-1  | [2m2026-03-20T21:00:33.339051Z[0m [32m INFO[0m Generating charts...
+orchestrator-1  | [2m2026-03-20T21:00:33.339472Z[0m [32m INFO[0m   Generated 3 chart(s)
+orchestrator-1  | [2m2026-03-20T21:00:33.339500Z[0m [32m INFO[0m Results: /results
+[Korchestrator-1 exited with code 0
+ Compose Stopping Aborting on container exit...
+ Container benchnzb-orchestrator-1 Stopping 
+ Container benchnzb-orchestrator-1 Stopped 
+ Container benchnzb-sabnzbd-1 Stopping 
+ Container benchnzb-rustnzbd-1 Stopping 
+sabnzbd-1       | 2026-03-20 21:00:33,964::INFO::[notifier:166] Sending notification: Warning - Signal 15 caught, saving and exiting... (type=warning, job_cat=None)
+sabnzbd-1       | 2026-03-20 21:00:33,964::WARNING::[__init__:202] Signal 15 caught, saving and exiting...
+sabnzbd-1       | 2026-03-20 21:00:33,964::INFO::[__init__:419] [N/A] Performing SABnzbd shutdown
+sabnzbd-1       | 2026-03-20 21:00:33,964::INFO::[__init__:336] SABnzbd shutting down...
+sabnzbd-1       | 2026-03-20 21:00:33,964::INFO::[ssdp:102] Stopping SSDP
+sabnzbd-1       | 2026-03-20 21:00:33,965::INFO::[directunpacker:551] Aborting all DirectUnpackers
+sabnzbd-1       | 2026-03-20 21:00:33,965::INFO::[notifier:166] Sending notification: SABnzbd - Shutting down (type=startup, job_cat=None)
+sabnzbd-1       | 2026-03-20 21:00:33,966::INFO::[downloader:643] Shutting down
+sabnzbd-1       | 2026-03-20 21:00:33,966::INFO::[nzbqueue:230] Saving queue
+sabnzbd-1       | 2026-03-20 21:00:33,967::INFO::[postproc:136] Saving postproc queue
+sabnzbd-1       | 2026-03-20 21:00:33,967::INFO::[__init__:405] All processes stopped
+sabnzbd-1       | 2026-03-20 21:00:33,968::INFO::[_cplogging:213] [20/Mar/2026:21:00:33] ENGINE Bus STOPPING
+sabnzbd-1       | 2026-03-20 21:00:34,393::INFO::[_cplogging:213] [20/Mar/2026:21:00:34] ENGINE HTTP Server cherrypy._cpwsgi_server.CPWSGIServer(('::', 8080)) shut down
+sabnzbd-1       | 2026-03-20 21:00:34,393::INFO::[_cplogging:213] [20/Mar/2026:21:00:34] ENGINE Bus STOPPED
+sabnzbd-1       | 2026-03-20 21:00:34,393::INFO::[_cplogging:213] [20/Mar/2026:21:00:34] ENGINE Bus EXITING
+sabnzbd-1       | 2026-03-20 21:00:34,393::INFO::[_cplogging:213] [20/Mar/2026:21:00:34] ENGINE Bus EXITED
+sabnzbd-1       | 2026-03-20 21:00:34,393::INFO::[notifier:166] Sending notification: SABnzbd - SABnzbd shutdown finished (type=startup, job_cat=None)
+sabnzbd-1       | 2026-03-20 21:00:34,393::INFO::[SABnzbd:1485] Leaving SABnzbd
+ Container benchnzb-sabnzbd-1 Stopped 
+[Ksabnzbd-1 exited with code 137
+ Container benchnzb-rustnzbd-1 Stopped 
+ Container benchnzb-mock-nntp-1 Stopping 
+[Krustnzbd-1 exited with code 137
+ Container benchnzb-mock-nntp-1 Stopped 
+[Kmock-nntp-1 exited with code 137

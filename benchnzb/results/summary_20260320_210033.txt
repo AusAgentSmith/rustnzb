@@ -1,0 +1,23 @@
+
+==================================================================================
+  BENCHMARK RESULTS: SABnzbd vs rustnzbd
+==================================================================================
+
+  Scenario: sz5gb_raw — 5 GB raw download [raw]
+----------------------------------------------------------------------------------
+  Metric                           SABnzbd        rustnzbd        Delta
+----------------------------------------------------------------------------------
+  Total Time                          0.0s           11.3s            —
+  Download Time                       0.0s           10.0s            —
+  Avg Speed                       0.0 Mbps     3784.9 Mbps            —
+  Peak Speed                      0.0 Mbps     4212.0 Mbps            —
+  CPU Avg                             0.0%          181.8%            —
+  CPU Peak                            0.0%          203.3%            —
+  Memory Avg                        0.0 MB        140.0 MB            —
+  Memory Peak                       0.0 MB        203.0 MB            —
+  Disk Write Avg                  0.0 MB/s      325.2 MB/s            —
+----------------------------------------------------------------------------------
+
+  Lower-is-better: Time, CPU, Memory
+  Higher-is-better: Speed, Disk Write
+  Delta shows rustnzbd advantage: positive = rustnzbd wins

@@ -1,0 +1,552 @@
+2026-03-21T01:56:56.465937764Z 2026-03-21 01:56:56,465::INFO::[nzbparser:86] Attempting to add sz10gb_par2.nzb
+2026-03-21T01:56:56.469782150Z 2026-03-21 01:56:56,469::INFO::[filesystem:725] Creating directories: /downloads/incomplete
+2026-03-21T01:56:56.470533267Z 2026-03-21 01:56:56,470::INFO::[filesystem:725] Creating directories: /downloads/incomplete/sz10gb_par2
+2026-03-21T01:56:56.471079020Z 2026-03-21 01:56:56,470::INFO::[filesystem:725] Creating directories: /downloads/incomplete/sz10gb_par2/__ADMIN__
+2026-03-21T01:56:56.471771653Z 2026-03-21 01:56:56,471::INFO::[filesystem:1169] Saving /downloads/incomplete/sz10gb_par2/__ADMIN__/sz10gb_par2.nzb.gz
+2026-03-21T01:56:56.565169783Z 2026-03-21 01:56:56,564::INFO::[nzbstuff:978] File bench_10gb.bin added to queue
+2026-03-21T01:56:56.569362781Z 2026-03-21 01:56:56,568::INFO::[nzbstuff:978] File bench_10gb.bin.par2 added to queue
+2026-03-21T01:56:56.569992768Z 2026-03-21 01:56:56,569::INFO::[nzbstuff:978] File bench_10gb.bin.vol0000+001.par2 added to queue
+2026-03-21T01:56:56.570551197Z 2026-03-21 01:56:56,570::INFO::[nzbstuff:978] File bench_10gb.bin.vol0001+002.par2 added to queue
+2026-03-21T01:56:56.571131874Z 2026-03-21 01:56:56,570::INFO::[nzbstuff:978] File bench_10gb.bin.vol0003+004.par2 added to queue
+2026-03-21T01:56:56.571743591Z 2026-03-21 01:56:56,571::INFO::[nzbstuff:978] File bench_10gb.bin.vol0007+008.par2 added to queue
+2026-03-21T01:56:56.572407692Z 2026-03-21 01:56:56,572::INFO::[nzbstuff:978] File bench_10gb.bin.vol0015+016.par2 added to queue
+2026-03-21T01:56:56.573041879Z 2026-03-21 01:56:56,572::INFO::[nzbstuff:978] File bench_10gb.bin.vol0031+032.par2 added to queue
+2026-03-21T01:56:56.575566724Z 2026-03-21 01:56:56,574::INFO::[nzbstuff:978] File bench_10gb.bin.vol0063+064.par2 added to queue
+2026-03-21T01:56:56.576956377Z 2026-03-21 01:56:56,576::INFO::[nzbstuff:978] File bench_10gb.bin.vol0127+128.par2 added to queue
+2026-03-21T01:56:56.580074602Z 2026-03-21 01:56:56,579::INFO::[nzbstuff:978] File bench_10gb.bin.vol0255+256.par2 added to queue
+2026-03-21T01:56:56.581899565Z 2026-03-21 01:56:56,581::INFO::[nzbstuff:978] File bench_10gb.bin.vol0511+512.par2 added to queue
+2026-03-21T01:56:56.582912776Z 2026-03-21 01:56:56,582::INFO::[nzbstuff:978] File bench_10gb.bin.vol1023+122.par2 added to queue
+2026-03-21T01:56:56.583537709Z 2026-03-21 01:56:56,583::INFO::[nzbqueue:230] Saving queue
+2026-03-21T01:56:56.585026570Z 2026-03-21 01:56:56,584::INFO::[notifier:166] Sending notification: NZB added to queue - sz10gb_par2.nzb (type=download, job_cat=*)
+2026-03-21T01:56:56.588443344Z 2026-03-21 01:56:56,588::INFO::[filesystem:725] Creating directories: /downloads/complete
+2026-03-21T01:56:56.687466275Z 2026-03-21 01:56:56,686::INFO::[downloader:616] 17@mock-nntp: Initiating connection
+2026-03-21T01:56:56.688173341Z 2026-03-21 01:56:56,687::INFO::[downloader:616] 11@mock-nntp: Initiating connection
+2026-03-21T01:56:56.688728347Z 2026-03-21 01:56:56,688::INFO::[downloader:616] 5@mock-nntp: Initiating connection
+2026-03-21T01:56:56.689371396Z 2026-03-21 01:56:56,689::INFO::[downloader:616] 18@mock-nntp: Initiating connection
+2026-03-21T01:56:56.689948906Z 2026-03-21 01:56:56,689::INFO::[downloader:616] 12@mock-nntp: Initiating connection
+2026-03-21T01:56:56.690453982Z 2026-03-21 01:56:56,690::INFO::[downloader:616] 6@mock-nntp: Initiating connection
+2026-03-21T01:56:56.691015692Z 2026-03-21 01:56:56,690::INFO::[downloader:616] 19@mock-nntp: Initiating connection
+2026-03-21T01:56:56.691493861Z 2026-03-21 01:56:56,691::INFO::[downloader:616] 13@mock-nntp: Initiating connection
+2026-03-21T01:56:56.692042289Z 2026-03-21 01:56:56,691::INFO::[downloader:616] 7@mock-nntp: Initiating connection
+2026-03-21T01:56:56.692502668Z 2026-03-21 01:56:56,692::INFO::[downloader:616] 20@mock-nntp: Initiating connection
+2026-03-21T01:56:56.693083514Z 2026-03-21 01:56:56,692::INFO::[downloader:616] 1@mock-nntp: Initiating connection
+2026-03-21T01:56:56.693718894Z 2026-03-21 01:56:56,693::INFO::[downloader:616] 14@mock-nntp: Initiating connection
+2026-03-21T01:56:56.694230728Z 2026-03-21 01:56:56,693::INFO::[downloader:616] 8@mock-nntp: Initiating connection
+2026-03-21T01:56:56.715971264Z 2026-03-21 01:56:56,715::INFO::[downloader:616] 2@mock-nntp: Initiating connection
+2026-03-21T01:56:56.716492303Z 2026-03-21 01:56:56,716::INFO::[downloader:616] 15@mock-nntp: Initiating connection
+2026-03-21T01:56:56.718277677Z 2026-03-21 01:56:56,717::INFO::[downloader:616] 9@mock-nntp: Initiating connection
+2026-03-21T01:56:56.719363251Z 2026-03-21 01:56:56,719::INFO::[downloader:616] 3@mock-nntp: Initiating connection
+2026-03-21T01:56:56.720720405Z 2026-03-21 01:56:56,720::INFO::[downloader:616] 16@mock-nntp: Initiating connection
+2026-03-21T01:56:56.721679033Z 2026-03-21 01:56:56,721::INFO::[downloader:616] 10@mock-nntp: Initiating connection
+2026-03-21T01:56:56.724095939Z 2026-03-21 01:56:56,722::INFO::[downloader:616] 4@mock-nntp: Initiating connection
+2026-03-21T01:56:56.733631709Z 2026-03-21 01:56:56,732::INFO::[downloader:751] Connecting 17@mock-nntp finished
+2026-03-21T01:56:56.734250665Z 2026-03-21 01:56:56,733::INFO::[downloader:751] Connecting 11@mock-nntp finished
+2026-03-21T01:56:56.734634458Z 2026-03-21 01:56:56,734::INFO::[downloader:751] Connecting 5@mock-nntp finished
+2026-03-21T01:56:56.734836151Z 2026-03-21 01:56:56,734::INFO::[downloader:751] Connecting 18@mock-nntp finished
+2026-03-21T01:56:56.735170978Z 2026-03-21 01:56:56,734::INFO::[downloader:751] Connecting 12@mock-nntp finished
+2026-03-21T01:56:56.735744665Z 2026-03-21 01:56:56,735::INFO::[downloader:751] Connecting 6@mock-nntp finished
+2026-03-21T01:56:56.735919120Z 2026-03-21 01:56:56,735::INFO::[downloader:751] Connecting 19@mock-nntp finished
+2026-03-21T01:56:56.736611942Z 2026-03-21 01:56:56,735::INFO::[downloader:751] Connecting 13@mock-nntp finished
+2026-03-21T01:56:56.736769393Z 2026-03-21 01:56:56,736::INFO::[downloader:751] Connecting 7@mock-nntp finished
+2026-03-21T01:56:56.737010103Z 2026-03-21 01:56:56,736::INFO::[downloader:751] Connecting 20@mock-nntp finished
+2026-03-21T01:56:56.737452767Z 2026-03-21 01:56:56,737::INFO::[downloader:751] Connecting 1@mock-nntp finished
+2026-03-21T01:56:56.738570063Z 2026-03-21 01:56:56,737::INFO::[downloader:751] Connecting 14@mock-nntp finished
+2026-03-21T01:56:56.738792096Z 2026-03-21 01:56:56,737::INFO::[downloader:751] Connecting 8@mock-nntp finished
+2026-03-21T01:56:56.738799150Z 2026-03-21 01:56:56,737::INFO::[downloader:751] Connecting 2@mock-nntp finished
+2026-03-21T01:56:56.738802507Z 2026-03-21 01:56:56,737::INFO::[downloader:751] Connecting 15@mock-nntp finished
+2026-03-21T01:56:56.738816204Z 2026-03-21 01:56:56,738::INFO::[downloader:751] Connecting 9@mock-nntp finished
+2026-03-21T01:56:56.738820663Z 2026-03-21 01:56:56,738::INFO::[downloader:751] Connecting 3@mock-nntp finished
+2026-03-21T01:56:56.738823338Z 2026-03-21 01:56:56,738::INFO::[downloader:751] Connecting 16@mock-nntp finished
+2026-03-21T01:56:56.738826154Z 2026-03-21 01:56:56,738::INFO::[downloader:751] Connecting 10@mock-nntp finished
+2026-03-21T01:56:56.738828739Z 2026-03-21 01:56:56,738::INFO::[downloader:751] Connecting 4@mock-nntp finished
+2026-03-21T01:56:56.753039519Z 2026-03-21 01:56:56,749::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.par2
+2026-03-21T01:56:56.885836044Z 2026-03-21 01:56:56,885::INFO::[nzbstuff:1790] Checking all filenames for sz10gb_par2
+2026-03-21T01:56:56.885868338Z 2026-03-21 01:56:56,885::INFO::[nzbstuff:1793] Re-sorting sz10gb_par2 after getting filename information
+2026-03-21T01:56:56.926308806Z 2026-03-21 01:56:56,925::INFO::[nzbstuff:1790] Checking all filenames for sz10gb_par2
+2026-03-21T01:56:56.926410916Z 2026-03-21 01:56:56,926::INFO::[nzbstuff:1793] Re-sorting sz10gb_par2 after getting filename information
+2026-03-21T01:56:56.928867346Z 2026-03-21 01:56:56,928::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00017@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:56.929041490Z 2026-03-21 01:56:56,928::INFO::[nzbstuff:1508] Prospectively added 1 repair blocks to sz10gb_par2
+2026-03-21T01:56:56.953654390Z 2026-03-21 01:56:56,953::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00050@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:56.953678398Z 2026-03-21 01:56:56,953::INFO::[nzbstuff:1508] Prospectively added 2 repair blocks to sz10gb_par2
+2026-03-21T01:56:56.979254890Z 2026-03-21 01:56:56,978::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0001+002.par2
+2026-03-21T01:56:57.000077388Z 2026-03-21 01:56:56,999::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0000+001.par2
+2026-03-21T01:56:57.035811990Z 2026-03-21 01:56:57,035::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00083@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.036341852Z 2026-03-21 01:56:57,036::INFO::[nzbstuff:1508] Prospectively added 4 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.080765942Z 2026-03-21 01:56:57,080::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00116@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.081167325Z 2026-03-21 01:56:57,080::INFO::[nzbstuff:1508] Prospectively added 8 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.083291288Z 2026-03-21 01:56:57,082::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0003+004.par2
+2026-03-21T01:56:57.153194189Z 2026-03-21 01:56:57,152::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00149@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.153375567Z 2026-03-21 01:56:57,153::INFO::[nzbstuff:1508] Prospectively added 16 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.171787497Z 2026-03-21 01:56:57,171::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0007+008.par2
+2026-03-21T01:56:57.249865176Z 2026-03-21 01:56:57,249::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00182@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.250017176Z 2026-03-21 01:56:57,249::INFO::[nzbstuff:1508] Prospectively added 32 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.264191078Z 2026-03-21 01:56:57,263::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0015+016.par2
+2026-03-21T01:56:57.349784376Z 2026-03-21 01:56:57,349::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00215@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.349806429Z 2026-03-21 01:56:57,349::INFO::[nzbstuff:1508] Prospectively added 64 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.383603967Z 2026-03-21 01:56:57,383::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0031+032.par2
+2026-03-21T01:56:57.501281805Z 2026-03-21 01:56:57,500::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00248@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.501329294Z 2026-03-21 01:56:57,501::INFO::[nzbstuff:1508] Prospectively added 122 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.588371963Z 2026-03-21 01:56:57,587::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0063+064.par2
+2026-03-21T01:56:57.730881107Z 2026-03-21 01:56:57,730::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00281@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.730900967Z 2026-03-21 01:56:57,730::INFO::[nzbstuff:1508] Prospectively added 128 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.759409268Z 2026-03-21 01:56:57,759::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol1023+122.par2
+2026-03-21T01:56:57.939870322Z 2026-03-21 01:56:57,939::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00314@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:57.939889530Z 2026-03-21 01:56:57,939::INFO::[nzbstuff:1508] Prospectively added 256 repair blocks to sz10gb_par2
+2026-03-21T01:56:57.976980479Z 2026-03-21 01:56:57,976::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0127+128.par2
+2026-03-21T01:56:58.270777350Z 2026-03-21 01:56:58,270::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00347@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:58.270796107Z 2026-03-21 01:56:58,270::INFO::[nzbstuff:1508] Prospectively added 512 repair blocks to sz10gb_par2
+2026-03-21T01:56:58.293114698Z 2026-03-21 01:56:58,292::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0255+256.par2
+2026-03-21T01:56:58.821520572Z 2026-03-21 01:56:58,821::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00380@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:58.846617796Z 2026-03-21 01:56:58,846::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00413@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:58.858607278Z 2026-03-21 01:56:58,858::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin.vol0511+512.par2
+2026-03-21T01:56:58.956096986Z 2026-03-21 01:56:58,955::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00446@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:58.995728827Z 2026-03-21 01:56:58,995::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00479@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.039517669Z 2026-03-21 01:56:59,039::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00512@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.080406937Z 2026-03-21 01:56:59,080::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00545@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.108601633Z 2026-03-21 01:56:59,108::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00578@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.145750196Z 2026-03-21 01:56:59,145::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00611@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.185541467Z 2026-03-21 01:56:59,185::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00644@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.222416084Z 2026-03-21 01:56:59,222::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00677@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.263614548Z 2026-03-21 01:56:59,263::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00710@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.313695016Z 2026-03-21 01:56:59,313::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00743@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.351925676Z 2026-03-21 01:56:59,351::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00776@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.393564424Z 2026-03-21 01:56:59,393::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00809@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.421506261Z 2026-03-21 01:56:59,421::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00842@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.459075665Z 2026-03-21 01:56:59,458::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00875@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.487699018Z 2026-03-21 01:56:59,487::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00908@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.521857257Z 2026-03-21 01:56:59,521::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00941@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.554174689Z 2026-03-21 01:56:59,553::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p00974@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.585228190Z 2026-03-21 01:56:59,584::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01007@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.622343497Z 2026-03-21 01:56:59,622::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01040@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.656395097Z 2026-03-21 01:56:59,656::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01073@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.698694638Z 2026-03-21 01:56:59,698::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01106@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.722064931Z 2026-03-21 01:56:59,721::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01139@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.753437491Z 2026-03-21 01:56:59,753::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01172@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.790383049Z 2026-03-21 01:56:59,789::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01205@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.825947360Z 2026-03-21 01:56:59,825::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01238@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.854784999Z 2026-03-21 01:56:59,854::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01271@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.887515482Z 2026-03-21 01:56:59,887::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01304@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.918443144Z 2026-03-21 01:56:59,918::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01337@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.951846529Z 2026-03-21 01:56:59,951::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01370@benchnzb unavailable on all servers, discarding
+2026-03-21T01:56:59.981582001Z 2026-03-21 01:56:59,981::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01403@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.012661373Z 2026-03-21 01:57:00,012::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01436@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.072189031Z 2026-03-21 01:57:00,071::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01469@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.094813727Z 2026-03-21 01:57:00,094::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01502@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.153961239Z 2026-03-21 01:57:00,153::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01535@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.263055355Z 2026-03-21 01:57:00,262::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01568@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.304271314Z 2026-03-21 01:57:00,303::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01601@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.353240653Z 2026-03-21 01:57:00,351::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01634@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.428611465Z 2026-03-21 01:57:00,428::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01667@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.501929522Z 2026-03-21 01:57:00,501::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01700@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.600993151Z 2026-03-21 01:57:00,600::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01733@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.669173996Z 2026-03-21 01:57:00,668::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01766@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.735492106Z 2026-03-21 01:57:00,735::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01799@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.788633596Z 2026-03-21 01:57:00,788::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01832@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.863505477Z 2026-03-21 01:57:00,863::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01865@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:00.935860818Z 2026-03-21 01:57:00,935::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01898@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.001397005Z 2026-03-21 01:57:01,001::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01931@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.062449119Z 2026-03-21 01:57:01,062::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01964@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.131144600Z 2026-03-21 01:57:01,130::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p01997@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.205056295Z 2026-03-21 01:57:01,204::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02030@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.275499464Z 2026-03-21 01:57:01,275::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02063@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.356182683Z 2026-03-21 01:57:01,355::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02096@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.405989887Z 2026-03-21 01:57:01,405::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02129@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.492768226Z 2026-03-21 01:57:01,492::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02162@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.564775208Z 2026-03-21 01:57:01,564::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02195@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.642015869Z 2026-03-21 01:57:01,641::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02228@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.734942165Z 2026-03-21 01:57:01,734::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02261@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.782842332Z 2026-03-21 01:57:01,782::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02294@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.887872156Z 2026-03-21 01:57:01,887::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02327@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:01.978447910Z 2026-03-21 01:57:01,978::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02360@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.050886400Z 2026-03-21 01:57:02,050::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02393@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.121719669Z 2026-03-21 01:57:02,121::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02426@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.187343849Z 2026-03-21 01:57:02,187::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02459@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.262721835Z 2026-03-21 01:57:02,262::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02492@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.339546458Z 2026-03-21 01:57:02,339::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02525@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.397915338Z 2026-03-21 01:57:02,397::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02558@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.488776516Z 2026-03-21 01:57:02,488::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02591@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.543750941Z 2026-03-21 01:57:02,543::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02624@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.644512033Z 2026-03-21 01:57:02,644::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02657@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.714597374Z 2026-03-21 01:57:02,714::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02690@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.793758859Z 2026-03-21 01:57:02,793::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02723@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.872741119Z 2026-03-21 01:57:02,872::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02756@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:02.930955263Z 2026-03-21 01:57:02,930::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02789@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.015811721Z 2026-03-21 01:57:03,015::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02822@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.075141097Z 2026-03-21 01:57:03,074::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02855@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.146134783Z 2026-03-21 01:57:03,145::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02888@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.216434894Z 2026-03-21 01:57:03,216::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02921@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.286662322Z 2026-03-21 01:57:03,286::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02954@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.358292094Z 2026-03-21 01:57:03,357::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p02987@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.431294157Z 2026-03-21 01:57:03,430::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03020@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.501670904Z 2026-03-21 01:57:03,501::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03053@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.580737286Z 2026-03-21 01:57:03,580::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03086@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.657512085Z 2026-03-21 01:57:03,657::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03119@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.729664034Z 2026-03-21 01:57:03,729::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03152@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.797968818Z 2026-03-21 01:57:03,797::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03185@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.873446997Z 2026-03-21 01:57:03,873::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03218@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:03.941853889Z 2026-03-21 01:57:03,941::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03251@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.014123284Z 2026-03-21 01:57:04,013::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03284@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.089817314Z 2026-03-21 01:57:04,089::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03317@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.153320876Z 2026-03-21 01:57:04,152::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03350@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.228470641Z 2026-03-21 01:57:04,228::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03383@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.307591565Z 2026-03-21 01:57:04,307::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03416@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.366682957Z 2026-03-21 01:57:04,366::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03449@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.445737464Z 2026-03-21 01:57:04,445::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03482@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.514755909Z 2026-03-21 01:57:04,514::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03515@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.575860106Z 2026-03-21 01:57:04,575::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03548@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.658928005Z 2026-03-21 01:57:04,658::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03581@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.730919933Z 2026-03-21 01:57:04,730::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03614@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.794077481Z 2026-03-21 01:57:04,793::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03647@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.864251146Z 2026-03-21 01:57:04,863::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03680@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:04.944903877Z 2026-03-21 01:57:04,944::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03713@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.037472262Z 2026-03-21 01:57:05,037::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03746@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.107916083Z 2026-03-21 01:57:05,107::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03779@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.160762388Z 2026-03-21 01:57:05,160::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03812@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.244383221Z 2026-03-21 01:57:05,243::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03845@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.320282927Z 2026-03-21 01:57:05,319::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03878@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.368197558Z 2026-03-21 01:57:05,367::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03911@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.452618078Z 2026-03-21 01:57:05,452::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03944@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.520246783Z 2026-03-21 01:57:05,519::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p03977@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.582428464Z 2026-03-21 01:57:05,581::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04010@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.661474664Z 2026-03-21 01:57:05,661::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04043@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.731842394Z 2026-03-21 01:57:05,731::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04076@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.795821403Z 2026-03-21 01:57:05,795::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04109@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.871465055Z 2026-03-21 01:57:05,871::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04142@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:05.949801820Z 2026-03-21 01:57:05,949::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04175@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.027286722Z 2026-03-21 01:57:06,026::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04208@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.117711958Z 2026-03-21 01:57:06,117::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04241@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.208613497Z 2026-03-21 01:57:06,208::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04274@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.296732637Z 2026-03-21 01:57:06,296::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04307@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.366814137Z 2026-03-21 01:57:06,366::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04340@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.440333777Z 2026-03-21 01:57:06,439::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04373@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.505067319Z 2026-03-21 01:57:06,504::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04406@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.577742746Z 2026-03-21 01:57:06,577::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04439@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.668423226Z 2026-03-21 01:57:06,668::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04472@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.742802139Z 2026-03-21 01:57:06,742::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04505@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.824163443Z 2026-03-21 01:57:06,823::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04538@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.902306847Z 2026-03-21 01:57:06,901::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04571@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:06.957553795Z 2026-03-21 01:57:06,957::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04604@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.049555886Z 2026-03-21 01:57:07,049::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04637@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.120041098Z 2026-03-21 01:57:07,119::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04670@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.198947522Z 2026-03-21 01:57:07,198::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04703@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.275233952Z 2026-03-21 01:57:07,274::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04736@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.350964615Z 2026-03-21 01:57:07,350::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04769@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.399540637Z 2026-03-21 01:57:07,399::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04802@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.486872790Z 2026-03-21 01:57:07,486::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04835@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.559038641Z 2026-03-21 01:57:07,558::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04868@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.639761830Z 2026-03-21 01:57:07,639::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04901@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.718360632Z 2026-03-21 01:57:07,718::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04934@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.783525796Z 2026-03-21 01:57:07,783::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p04967@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.858759101Z 2026-03-21 01:57:07,858::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05000@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.917635854Z 2026-03-21 01:57:07,917::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05033@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:07.988194907Z 2026-03-21 01:57:07,987::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05066@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.066967833Z 2026-03-21 01:57:08,066::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05099@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.138769605Z 2026-03-21 01:57:08,138::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05132@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.206473819Z 2026-03-21 01:57:08,206::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05165@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.286463802Z 2026-03-21 01:57:08,286::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05198@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.359299537Z 2026-03-21 01:57:08,358::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05231@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.435195678Z 2026-03-21 01:57:08,434::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05264@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.489844411Z 2026-03-21 01:57:08,489::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05297@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.564619271Z 2026-03-21 01:57:08,564::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05330@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.633256645Z 2026-03-21 01:57:08,632::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05363@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.700931002Z 2026-03-21 01:57:08,700::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05396@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.774615364Z 2026-03-21 01:57:08,774::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05429@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.847950382Z 2026-03-21 01:57:08,847::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05462@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.899383263Z 2026-03-21 01:57:08,899::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05495@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:08.983084349Z 2026-03-21 01:57:08,982::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05528@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.053208850Z 2026-03-21 01:57:09,052::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05561@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.120815824Z 2026-03-21 01:57:09,120::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05594@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.194762980Z 2026-03-21 01:57:09,194::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05627@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.261184842Z 2026-03-21 01:57:09,260::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05660@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.337154438Z 2026-03-21 01:57:09,336::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05693@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.410370320Z 2026-03-21 01:57:09,410::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05726@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.487876471Z 2026-03-21 01:57:09,487::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05759@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.558353022Z 2026-03-21 01:57:09,558::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05792@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.636935830Z 2026-03-21 01:57:09,636::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05825@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.708954798Z 2026-03-21 01:57:09,708::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05858@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.790867623Z 2026-03-21 01:57:09,790::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05891@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.882369834Z 2026-03-21 01:57:09,881::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05924@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:09.959597300Z 2026-03-21 01:57:09,959::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05957@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.007068350Z 2026-03-21 01:57:10,006::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p05990@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.113923846Z 2026-03-21 01:57:10,113::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06023@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.186088452Z 2026-03-21 01:57:10,185::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06056@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.243077363Z 2026-03-21 01:57:10,242::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06089@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.315813803Z 2026-03-21 01:57:10,315::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06122@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.396894965Z 2026-03-21 01:57:10,396::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06155@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.496975275Z 2026-03-21 01:57:10,496::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06188@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.582786170Z 2026-03-21 01:57:10,582::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06221@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.671866962Z 2026-03-21 01:57:10,671::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06254@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.762430715Z 2026-03-21 01:57:10,762::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06287@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.831749796Z 2026-03-21 01:57:10,831::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06320@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.896346242Z 2026-03-21 01:57:10,896::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06353@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:10.954824304Z 2026-03-21 01:57:10,954::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06386@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.080967774Z 2026-03-21 01:57:11,080::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06419@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.169993754Z 2026-03-21 01:57:11,169::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06452@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.267597547Z 2026-03-21 01:57:11,267::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06485@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.358178885Z 2026-03-21 01:57:11,357::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06518@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.446822204Z 2026-03-21 01:57:11,446::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06551@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.526418489Z 2026-03-21 01:57:11,526::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06584@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.622701002Z 2026-03-21 01:57:11,622::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06617@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.715459239Z 2026-03-21 01:57:11,715::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06650@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.800520769Z 2026-03-21 01:57:11,800::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06683@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.886914494Z 2026-03-21 01:57:11,886::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06716@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:11.949026930Z 2026-03-21 01:57:11,948::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06749@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.026878617Z 2026-03-21 01:57:12,026::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06782@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.111963504Z 2026-03-21 01:57:12,111::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06815@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.199134810Z 2026-03-21 01:57:12,198::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06848@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.290432158Z 2026-03-21 01:57:12,290::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06881@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.369953709Z 2026-03-21 01:57:12,369::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06914@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.446193529Z 2026-03-21 01:57:12,445::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06947@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.515814259Z 2026-03-21 01:57:12,515::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p06980@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.580011588Z 2026-03-21 01:57:12,579::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07013@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.668266841Z 2026-03-21 01:57:12,667::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07046@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.748712538Z 2026-03-21 01:57:12,748::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07079@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.839817855Z 2026-03-21 01:57:12,839::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07112@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.918753065Z 2026-03-21 01:57:12,918::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07145@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:12.995991828Z 2026-03-21 01:57:12,995::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07178@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.081573719Z 2026-03-21 01:57:13,081::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07211@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.162504288Z 2026-03-21 01:57:13,162::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07244@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.250754027Z 2026-03-21 01:57:13,250::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07277@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.334431367Z 2026-03-21 01:57:13,334::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07310@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.439253042Z 2026-03-21 01:57:13,438::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07343@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.522807991Z 2026-03-21 01:57:13,522::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07376@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.607600398Z 2026-03-21 01:57:13,607::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07409@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.700979102Z 2026-03-21 01:57:13,700::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07442@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.784392922Z 2026-03-21 01:57:13,784::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07475@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.868130577Z 2026-03-21 01:57:13,867::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07508@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:13.931685405Z 2026-03-21 01:57:13,931::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07541@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.021538935Z 2026-03-21 01:57:14,021::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07574@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.085650665Z 2026-03-21 01:57:14,085::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07607@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.169849029Z 2026-03-21 01:57:14,169::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07640@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.249062011Z 2026-03-21 01:57:14,248::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07673@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.351892288Z 2026-03-21 01:57:14,351::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07706@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.407351536Z 2026-03-21 01:57:14,406::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07739@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.488167695Z 2026-03-21 01:57:14,487::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07772@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.540420606Z 2026-03-21 01:57:14,540::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07805@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.607952261Z 2026-03-21 01:57:14,607::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07838@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.680721040Z 2026-03-21 01:57:14,680::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07871@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.756197155Z 2026-03-21 01:57:14,755::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07904@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.834440417Z 2026-03-21 01:57:14,834::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07937@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.915450871Z 2026-03-21 01:57:14,915::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p07970@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:14.957223902Z 2026-03-21 01:57:14,956::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08003@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.036783448Z 2026-03-21 01:57:15,036::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08036@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.110799704Z 2026-03-21 01:57:15,110::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08069@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.181452289Z 2026-03-21 01:57:15,181::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08102@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.253569025Z 2026-03-21 01:57:15,253::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08135@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.333268523Z 2026-03-21 01:57:15,332::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08168@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.411531645Z 2026-03-21 01:57:15,411::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08201@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.489396360Z 2026-03-21 01:57:15,489::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08234@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.576986224Z 2026-03-21 01:57:15,576::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08267@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.672492227Z 2026-03-21 01:57:15,672::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08300@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.757780679Z 2026-03-21 01:57:15,757::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08333@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.854977665Z 2026-03-21 01:57:15,854::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08366@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:15.950040985Z 2026-03-21 01:57:15,949::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08399@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.021194949Z 2026-03-21 01:57:16,020::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08432@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.117428862Z 2026-03-21 01:57:16,117::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08465@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.193737822Z 2026-03-21 01:57:16,193::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08498@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.278482353Z 2026-03-21 01:57:16,278::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08531@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.355083886Z 2026-03-21 01:57:16,354::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08564@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.441641831Z 2026-03-21 01:57:16,441::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08597@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.514582051Z 2026-03-21 01:57:16,514::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08630@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.602534134Z 2026-03-21 01:57:16,602::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08663@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.690931454Z 2026-03-21 01:57:16,690::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08696@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.771325868Z 2026-03-21 01:57:16,770::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08729@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.875082923Z 2026-03-21 01:57:16,874::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08762@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:16.959644297Z 2026-03-21 01:57:16,959::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08795@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.077930439Z 2026-03-21 01:57:17,077::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08828@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.173513246Z 2026-03-21 01:57:17,173::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08861@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.273313356Z 2026-03-21 01:57:17,272::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08894@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.358647986Z 2026-03-21 01:57:17,358::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08927@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.448183027Z 2026-03-21 01:57:17,447::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08960@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.541428580Z 2026-03-21 01:57:17,541::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p08993@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.622950790Z 2026-03-21 01:57:17,622::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09026@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.716212617Z 2026-03-21 01:57:17,715::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09059@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.800558022Z 2026-03-21 01:57:17,800::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09092@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.884570390Z 2026-03-21 01:57:17,884::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09125@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:17.972431370Z 2026-03-21 01:57:17,972::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09158@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.074957405Z 2026-03-21 01:57:18,074::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09191@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.171097448Z 2026-03-21 01:57:18,170::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09224@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.260045335Z 2026-03-21 01:57:18,259::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09257@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.350806550Z 2026-03-21 01:57:18,350::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09290@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.433964639Z 2026-03-21 01:57:18,433::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09323@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.519096423Z 2026-03-21 01:57:18,518::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09356@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.605406163Z 2026-03-21 01:57:18,605::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09389@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.689136111Z 2026-03-21 01:57:18,688::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09422@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.774699798Z 2026-03-21 01:57:18,774::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09455@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.860205410Z 2026-03-21 01:57:18,859::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09488@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:18.951442726Z 2026-03-21 01:57:18,951::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09521@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.031324278Z 2026-03-21 01:57:19,031::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09554@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.113124488Z 2026-03-21 01:57:19,112::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09587@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.197244395Z 2026-03-21 01:57:19,196::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09620@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.294028337Z 2026-03-21 01:57:19,293::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09653@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.366567368Z 2026-03-21 01:57:19,366::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09686@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.442095818Z 2026-03-21 01:57:19,441::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09719@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.516049876Z 2026-03-21 01:57:19,515::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09752@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.612168851Z 2026-03-21 01:57:19,611::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09785@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.697969096Z 2026-03-21 01:57:19,697::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09818@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.777686799Z 2026-03-21 01:57:19,777::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09851@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:19.933142021Z 2026-03-21 01:57:19,932::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09884@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.025072149Z 2026-03-21 01:57:20,024::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09917@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.126149555Z 2026-03-21 01:57:20,125::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09950@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.229807520Z 2026-03-21 01:57:20,229::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p09983@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.331143973Z 2026-03-21 01:57:20,330::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10016@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.412778615Z 2026-03-21 01:57:20,412::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10049@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.482064770Z 2026-03-21 01:57:20,481::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10082@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.576402249Z 2026-03-21 01:57:20,576::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10115@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.674618082Z 2026-03-21 01:57:20,674::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10148@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.744976685Z 2026-03-21 01:57:20,744::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10181@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.818704531Z 2026-03-21 01:57:20,818::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10214@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.895482608Z 2026-03-21 01:57:20,895::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10247@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:20.979023261Z 2026-03-21 01:57:20,978::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10280@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.060087123Z 2026-03-21 01:57:21,059::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10313@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.139339357Z 2026-03-21 01:57:21,138::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10346@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.226653355Z 2026-03-21 01:57:21,226::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10379@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.307996999Z 2026-03-21 01:57:21,307::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10412@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.403808742Z 2026-03-21 01:57:21,403::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10445@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.463882930Z 2026-03-21 01:57:21,463::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10478@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.547372674Z 2026-03-21 01:57:21,547::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10511@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.617045297Z 2026-03-21 01:57:21,616::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10544@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.703136545Z 2026-03-21 01:57:21,702::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10577@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.790796220Z 2026-03-21 01:57:21,790::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10610@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.874431480Z 2026-03-21 01:57:21,874::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10643@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:21.960860906Z 2026-03-21 01:57:21,960::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10676@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.034472482Z 2026-03-21 01:57:22,034::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10709@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.118842690Z 2026-03-21 01:57:22,118::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10742@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.197434110Z 2026-03-21 01:57:22,197::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10775@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.290471203Z 2026-03-21 01:57:22,290::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10808@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.384612154Z 2026-03-21 01:57:22,384::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10841@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.480807686Z 2026-03-21 01:57:22,480::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10874@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.560844429Z 2026-03-21 01:57:22,560::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10907@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.644725380Z 2026-03-21 01:57:22,644::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10940@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.744733085Z 2026-03-21 01:57:22,744::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p10973@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.827284557Z 2026-03-21 01:57:22,826::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11006@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.913016697Z 2026-03-21 01:57:22,912::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11039@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:22.989692572Z 2026-03-21 01:57:22,989::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11072@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.068406129Z 2026-03-21 01:57:23,068::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11105@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.142448017Z 2026-03-21 01:57:23,142::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11138@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.205860679Z 2026-03-21 01:57:23,205::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11171@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.307646184Z 2026-03-21 01:57:23,307::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11204@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.387702034Z 2026-03-21 01:57:23,387::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11237@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.473498236Z 2026-03-21 01:57:23,473::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11270@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.575360436Z 2026-03-21 01:57:23,575::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11303@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.671437253Z 2026-03-21 01:57:23,671::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11336@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.762687924Z 2026-03-21 01:57:23,762::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11369@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.844791848Z 2026-03-21 01:57:23,844::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11402@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:23.939564756Z 2026-03-21 01:57:23,939::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11435@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.029714064Z 2026-03-21 01:57:24,029::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11468@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.117894326Z 2026-03-21 01:57:24,117::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11501@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.199675085Z 2026-03-21 01:57:24,199::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11534@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.283741765Z 2026-03-21 01:57:24,283::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11567@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.368092135Z 2026-03-21 01:57:24,367::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11600@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.453458175Z 2026-03-21 01:57:24,453::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11633@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.553114779Z 2026-03-21 01:57:24,552::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11666@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.643047403Z 2026-03-21 01:57:24,642::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11699@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.724082927Z 2026-03-21 01:57:24,723::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11732@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.814097798Z 2026-03-21 01:57:24,813::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11765@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.895887588Z 2026-03-21 01:57:24,895::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11798@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:24.981364069Z 2026-03-21 01:57:24,981::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11831@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.064711942Z 2026-03-21 01:57:25,064::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11864@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.158320317Z 2026-03-21 01:57:25,157::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11897@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.253360073Z 2026-03-21 01:57:25,253::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11930@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.339668628Z 2026-03-21 01:57:25,339::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11963@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.433468434Z 2026-03-21 01:57:25,433::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p11996@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.515868156Z 2026-03-21 01:57:25,515::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12029@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.601762702Z 2026-03-21 01:57:25,601::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12062@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.672404532Z 2026-03-21 01:57:25,672::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12095@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.743577524Z 2026-03-21 01:57:25,743::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12128@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.827877111Z 2026-03-21 01:57:25,827::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12161@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.905546671Z 2026-03-21 01:57:25,905::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12194@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:25.994590932Z 2026-03-21 01:57:25,994::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12227@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.081355633Z 2026-03-21 01:57:26,081::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12260@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.166372837Z 2026-03-21 01:57:26,166::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12293@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.243909286Z 2026-03-21 01:57:26,243::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12326@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.323262607Z 2026-03-21 01:57:26,322::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12359@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.409130853Z 2026-03-21 01:57:26,408::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12392@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.488969511Z 2026-03-21 01:57:26,488::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12425@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.550735346Z 2026-03-21 01:57:26,550::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12458@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.639871277Z 2026-03-21 01:57:26,639::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12491@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.723854582Z 2026-03-21 01:57:26,723::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12524@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.827474151Z 2026-03-21 01:57:26,827::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12557@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.904739828Z 2026-03-21 01:57:26,904::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12590@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:26.991070552Z 2026-03-21 01:57:26,990::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12623@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.060886670Z 2026-03-21 01:57:27,060::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12656@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.139666271Z 2026-03-21 01:57:27,139::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12689@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.242769565Z 2026-03-21 01:57:27,242::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12722@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.335725861Z 2026-03-21 01:57:27,335::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12755@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.419633362Z 2026-03-21 01:57:27,419::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12788@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.505616674Z 2026-03-21 01:57:27,505::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12821@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.554737340Z 2026-03-21 01:57:27,554::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12854@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.636580724Z 2026-03-21 01:57:27,636::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12887@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.739074833Z 2026-03-21 01:57:27,738::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12920@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.810869125Z 2026-03-21 01:57:27,810::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12953@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.903150841Z 2026-03-21 01:57:27,902::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p12986@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:27.986801383Z 2026-03-21 01:57:27,986::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13019@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.039818243Z 2026-03-21 01:57:28,039::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13052@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.129757731Z 2026-03-21 01:57:28,129::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13085@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.194490660Z 2026-03-21 01:57:28,194::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13118@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.278789885Z 2026-03-21 01:57:28,278::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13151@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.355425757Z 2026-03-21 01:57:28,355::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13184@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.439636733Z 2026-03-21 01:57:28,439::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13217@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.524788619Z 2026-03-21 01:57:28,524::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13250@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.600814112Z 2026-03-21 01:57:28,600::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13283@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.685461601Z 2026-03-21 01:57:28,685::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13316@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.771573119Z 2026-03-21 01:57:28,771::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13349@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.844517759Z 2026-03-21 01:57:28,844::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13382@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:28.935345796Z 2026-03-21 01:57:28,935::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13415@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.035673263Z 2026-03-21 01:57:29,035::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13448@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.119863919Z 2026-03-21 01:57:29,119::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13481@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.169869346Z 2026-03-21 01:57:29,169::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13514@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.260769396Z 2026-03-21 01:57:29,260::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13547@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.346409499Z 2026-03-21 01:57:29,346::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13580@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.409117408Z 2026-03-21 01:57:29,408::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13613@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.498830672Z 2026-03-21 01:57:29,498::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13646@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.574777014Z 2026-03-21 01:57:29,574::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13679@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.647151746Z 2026-03-21 01:57:29,646::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13712@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.740281722Z 2026-03-21 01:57:29,739::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13745@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.822905483Z 2026-03-21 01:57:29,822::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13778@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.905536274Z 2026-03-21 01:57:29,905::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13811@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:29.999743691Z 2026-03-21 01:57:29,999::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13844@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.081343471Z 2026-03-21 01:57:30,081::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13877@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.158219679Z 2026-03-21 01:57:30,157::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13910@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.231075746Z 2026-03-21 01:57:30,230::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13943@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.282582887Z 2026-03-21 01:57:30,282::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p13976@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.369924119Z 2026-03-21 01:57:30,369::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p14009@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.464283780Z 2026-03-21 01:57:30,463::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p14042@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.543999246Z 2026-03-21 01:57:30,543::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p14075@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.602094711Z 2026-03-21 01:57:30,601::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p14108@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:30.694404451Z 2026-03-21 01:57:30,694::INFO::[nzbstuff:268] Article d-10gb-par2-f000-p14141@benchnzb unavailable on all servers, discarding
+2026-03-21T01:57:31.075861637Z 2026-03-21 01:57:31,075::INFO::[nzbqueue:767] [N/A] Ending job sz10gb_par2
+2026-03-21T01:57:38.610969708Z 2026-03-21 01:57:38,610::INFO::[nzbqueue:884] Found idle job sz10gb_par2
+2026-03-21T01:57:38.611105942Z 2026-03-21 01:57:38,610::INFO::[nzbqueue:907] Resetting bad trylist for job sz10gb_par2
+2026-03-21T01:57:47.149487552Z 2026-03-21 01:57:47,149::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_par2/bench_10gb.bin
+2026-03-21T01:57:47.150153519Z 2026-03-21 01:57:47,149::INFO::[nzbqueue:378] [N/A] Removing job sz10gb_par2
+2026-03-21T01:57:47.150242616Z 2026-03-21 01:57:47,150::INFO::[nzbqueue:230] Saving queue
+2026-03-21T01:57:47.150995916Z 2026-03-21 01:57:47,150::INFO::[postproc:136] Saving postproc queue
+2026-03-21T01:57:47.153396056Z 2026-03-21 01:57:47,151::INFO::[postproc:396] Starting Post-Processing on sz10gb_par2 => Repair:True, Unpack:True, Delete:True, Script:Default, Cat:*
+2026-03-21T01:57:47.157077167Z 2026-03-21 01:57:47,154::INFO::[notifier:166] Sending notification: Post-processing - sz10gb_par2 (type=pp, job_cat=*)
+2026-03-21T01:57:47.161537129Z 2026-03-21 01:57:47,158::INFO::[postproc:762] Starting verification and repair of sz10gb_par2
+2026-03-21T01:57:47.165941795Z 2026-03-21 01:57:47,163::INFO::[filesystem:1089] [N/A] /downloads/incomplete/sz10gb_par2/__ADMIN__/__verified__ missing
+2026-03-21T01:57:47.171024197Z 2026-03-21 01:57:47,167::INFO::[postproc:785] Running verification and repair on set bench_10gb.bin
+2026-03-21T01:57:47.177181324Z 2026-03-21 01:57:47,173::INFO::[newsunpack:1545] Quick-check of file bench_10gb.bin failed!
+2026-03-21T01:57:47.181417966Z 2026-03-21 01:57:47,177::INFO::[newsunpack:1055] Scanning "/downloads/incomplete/sz10gb_par2/bench_10gb.bin.par2"
+2026-03-21T01:57:47.181937099Z 2026-03-21 01:57:47,181::INFO::[misc:1324] [N/A] Running external command: ['/usr/local/bin/par2', '-h']
+2026-03-21T01:57:47.198129947Z 2026-03-21 01:57:47,197::INFO::[newsunpack:1152] Detected par2cmdline version that needs basepath, adding -B<path> parameter
+2026-03-21T01:57:47.203171136Z 2026-03-21 01:57:47,200::INFO::[misc:1324] [N/A] Running external command: ['/usr/local/bin/par2', 'r', '-B', '/downloads/incomplete/sz10gb_par2', '/downloads/incomplete/sz10gb_par2/bench_10gb.bin.par2', '/downloads/incomplete/sz10gb_par2/*']
+2026-03-21T01:57:59.744273533Z 2026-03-21 01:57:59,743::INFO::[newsunpack:1206] Verified in 12 seconds, repair is required
+2026-03-21T01:58:57.101259654Z 2026-03-21 01:58:57,099::INFO::[newsunpack:1274] Repaired in 57 seconds
+2026-03-21T01:58:57.124778313Z 2026-03-21 01:58:57,124::INFO::[newsunpack:1063] Par verify finished ok on /downloads/incomplete/sz10gb_par2/bench_10gb.bin.par2!
+2026-03-21T01:58:59.071838585Z 2026-03-21 01:58:59,071::INFO::[postproc:843] Verification and repair finished for sz10gb_par2
+2026-03-21T01:58:59.071906348Z 2026-03-21 01:58:59,071::INFO::[downloader:417] Forcing disconnect
+2026-03-21T01:58:59.072178390Z 2026-03-21 01:58:59,071::INFO::[filesystem:319] Checking if any resulting filenames need to be sanitized
+2026-03-21T01:58:59.113134047Z 2026-03-21 01:58:59,112::INFO::[filesystem:725] Creating directories: /downloads/complete/sz10gb_par2
+2026-03-21T01:58:59.114082720Z 2026-03-21 01:58:59,113::INFO::[postproc:454] Running unpacker on sz10gb_par2
+2026-03-21T01:58:59.114326891Z 2026-03-21 01:58:59,114::INFO::[postproc:456] Unpacked files []
+2026-03-21T01:58:59.114453446Z 2026-03-21 01:58:59,114::INFO::[filesystem:319] Checking if any resulting filenames need to be sanitized
+2026-03-21T01:58:59.114570347Z 2026-03-21 01:58:59,114::INFO::[postproc:460] Finished unpack_magic on sz10gb_par2
+2026-03-21T01:58:59.115280713Z 2026-03-21 01:58:59,115::INFO::[postproc:554] Running deobfuscate
+2026-03-21T01:58:59.115527666Z 2026-03-21 01:58:59,115::INFO::[deobfuscate_filenames:295] Deobfuscate renaming /downloads/complete/sz10gb_par2/bench_10gb.bin to /downloads/complete/sz10gb_par2/sz10gb_par2.bin
+2026-03-21T01:58:59.115780649Z 2026-03-21 01:58:59,115::INFO::[nzbstuff:1831] [N/A] Purging data for job sz10gb_par2 (delete_all_data=True)
+2026-03-21T01:58:59.124253017Z 2026-03-21 01:58:59,124::INFO::[notifier:166] Sending notification: Download Completed - sz10gb_par2 (type=complete, job_cat=*)
+2026-03-21T01:58:59.156668278Z 2026-03-21 01:58:59,156::INFO::[database:310] Added job sz10gb_par2 to history
+2026-03-21T01:58:59.156859776Z 2026-03-21 01:58:59,156::INFO::[postproc:136] Saving postproc queue
+2026-03-21T01:58:59.157917994Z 2026-03-21 01:58:59,157::INFO::[downloader:412] Post-processing finished, resuming download

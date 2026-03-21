@@ -1,0 +1,315 @@
+ Image benchnzb-mock-nntp Building 
+ Image benchnzb-rustnzbd Building 
+ Image benchnzb-orchestrator Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.40kB done
+#1 DONE 0.0s
+
+#2 [mock-nntp internal] load build definition from Dockerfile
+#2 transferring dockerfile: 570B done
+#2 DONE 0.0s
+
+#3 [rustnzbd internal] load build definition from Dockerfile
+#3 transferring dockerfile: 847B done
+#3 DONE 0.0s
+
+#4 [auth] library/rust:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [auth] library/debian:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [rustnzbd internal] load metadata for docker.io/library/debian:bookworm-slim
+#6 DONE 1.4s
+
+#7 [rustnzbd internal] load metadata for docker.io/library/rust:1.88-bookworm
+#7 DONE 1.4s
+
+#8 [orchestrator internal] load metadata for docker.io/library/rust:1-bookworm
+#8 DONE 1.4s
+
+#9 [rustnzbd internal] load .dockerignore
+#9 transferring context: 116B 0.0s done
+#9 DONE 0.0s
+
+#10 [orchestrator internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#11 [rustnzbd internal] load build context
+#11 DONE 0.0s
+
+#12 [mock-nntp internal] load build context
+#12 DONE 0.0s
+
+#13 [mock-nntp stage-1 1/3] FROM docker.io/library/debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a
+#13 resolve docker.io/library/debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a 0.0s done
+#13 resolve docker.io/library/debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a 0.0s done
+#13 DONE 0.1s
+
+#14 [rustnzbd builder 1/6] FROM docker.io/library/rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
+#14 resolve docker.io/library/rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0 0.1s done
+#14 DONE 0.1s
+
+#15 [orchestrator builder 1/6] FROM docker.io/library/rust:1-bookworm@sha256:365468470075493dc4583f47387001854321c5a8583ea9604b297e67f01c5a4f
+#15 resolve docker.io/library/rust:1-bookworm@sha256:365468470075493dc4583f47387001854321c5a8583ea9604b297e67f01c5a4f 0.1s done
+#15 DONE 0.1s
+
+#11 [rustnzbd internal] load build context
+#11 transferring context: 2.51kB done
+#11 DONE 0.0s
+
+#12 [mock-nntp internal] load build context
+#12 transferring context: 601B done
+#12 DONE 0.0s
+
+#16 [rustnzbd stage-1 2/5] RUN apt-get update && apt-get install -y --no-install-recommends         ca-certificates         curl         par2         unrar-free         p7zip-full     && rm -rf /var/lib/apt/lists/*
+#16 CACHED
+
+#17 [rustnzbd stage-1 4/5] RUN useradd -m -s /bin/bash rustnzbd     && mkdir -p /config /data /downloads/incomplete /downloads/complete     && chown -R rustnzbd:rustnzbd /config /data /downloads
+#17 CACHED
+
+#18 [rustnzbd builder 6/6] RUN cargo build --release
+#18 CACHED
+
+#19 [rustnzbd builder 2/6] WORKDIR /build
+#19 CACHED
+
+#20 [rustnzbd stage-1 3/5] COPY --from=builder /build/target/release/rustnzbd /usr/local/bin/rustnzbd
+#20 CACHED
+
+#21 [rustnzbd builder 4/6] COPY crates crates
+#21 CACHED
+
+#22 [rustnzbd builder 5/6] COPY src src
+#22 CACHED
+
+#23 [rustnzbd builder 3/6] COPY Cargo.toml Cargo.lock ./
+#23 CACHED
+
+#24 [rustnzbd stage-1 5/5] WORKDIR /app
+#24 CACHED
+
+#25 [mock-nntp builder 5/6] COPY src/ src/
+#25 CACHED
+
+#26 [mock-nntp stage-1 2/3] RUN apt-get update && apt-get install -y --no-install-recommends         ca-certificates curl par2 p7zip-full     && rm -rf /var/lib/apt/lists/*
+#26 CACHED
+
+#27 [mock-nntp builder 4/6] COPY Cargo.toml Cargo.lock ./
+#27 CACHED
+
+#28 [mock-nntp builder 3/6] WORKDIR /app
+#28 CACHED
+
+#29 [mock-nntp builder 6/6] RUN cargo build --release &&     ./target/release/benchnzb --help > /dev/null
+#29 CACHED
+
+#30 [mock-nntp builder 2/6] RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev
+#30 CACHED
+
+#31 [mock-nntp stage-1 3/3] COPY --from=builder /app/target/release/benchnzb /usr/local/bin/benchnzb
+#31 CACHED
+
+#32 [mock-nntp] exporting to image
+#32 exporting layers done
+#32 exporting manifest sha256:a309d44025859cc3a45f7897485935ddbe8e7c85d037311b2cea97e8b1f50b2c done
+#32 exporting config sha256:8c3ce07904b3a4e84cbd7272b1ec468cb76ce6eda0141b0cb74f496de1beeb2e 0.0s done
+#32 exporting attestation manifest sha256:39f878aa2706858c11cda8f240e1e985f5b853ad5b1fd61006bb4fe3dd37b771
+#32 exporting attestation manifest sha256:39f878aa2706858c11cda8f240e1e985f5b853ad5b1fd61006bb4fe3dd37b771 0.1s done
+#32 exporting manifest list sha256:93578aaa866e5f5614f9ffab7857cbc53184437409a1520872d97d70961e936a
+#32 exporting manifest list sha256:93578aaa866e5f5614f9ffab7857cbc53184437409a1520872d97d70961e936a 0.1s done
+#32 naming to docker.io/library/benchnzb-mock-nntp:latest done
+#32 unpacking to docker.io/library/benchnzb-mock-nntp:latest 0.0s done
+#32 DONE 0.3s
+
+#33 [orchestrator] exporting to image
+#33 exporting layers done
+#33 exporting manifest sha256:c52b31cb9cd4c334d5d85484a5ecd630a41f945b4a0c03cabefc587df5721376 done
+#33 exporting config sha256:234422a3b58cb544481602c41903749f939f5a102608bf9fc53ec8a38121a653 done
+#33 exporting attestation manifest sha256:8f8449681a12dd17be659b8c8701abd1e1d956f9f2d8fc08011a9842d1fb6ed0 0.1s done
+#33 exporting manifest list sha256:bb8f15a46f75b567079c0a7c05f8bd41b5bdbc3f51cf479b27b8e390bd683a7c 0.0s done
+#33 naming to docker.io/library/benchnzb-orchestrator:latest 0.0s done
+#33 unpacking to docker.io/library/benchnzb-orchestrator:latest done
+#33 DONE 0.2s
+
+#34 [rustnzbd] exporting to image
+#34 exporting layers done
+#34 exporting manifest sha256:22df221761a3d9f2951ca6abb86fa1b2593a7dc01a33919719245de389a4bd47 0.0s done
+#34 exporting config sha256:10552af8edcf42646dee29c09c2b9cc211e520834acf241d53d7e32abfe949cf done
+#34 exporting attestation manifest sha256:1bde3a2507aeaafd3690532d55bd48580399b1743e13f9c86be2162aebd50be9 0.1s done
+#34 exporting manifest list sha256:69e81c0f8326ea4a2170c1c067dee174458c1d7e63b6b02b18b485112412e8ff 0.0s done
+#34 naming to docker.io/library/benchnzb-rustnzbd:latest done
+#34 unpacking to docker.io/library/benchnzb-rustnzbd:latest done
+#34 DONE 0.3s
+
+#35 [orchestrator] resolving provenance for metadata file
+#35 DONE 0.1s
+
+#36 [rustnzbd] resolving provenance for metadata file
+#36 DONE 0.0s
+
+#37 [mock-nntp] resolving provenance for metadata file
+#37 DONE 0.1s
+ Image benchnzb-mock-nntp Built 
+ Image benchnzb-rustnzbd Built 
+ Image benchnzb-orchestrator Built 
+ Network benchnzb_bench Creating 
+ Network benchnzb_bench Created 
+ Volume benchnzb_benchdata Creating 
+ Volume benchnzb_benchdata Created 
+ Volume benchnzb_downloads-sab Creating 
+ Volume benchnzb_downloads-sab Created 
+ Volume benchnzb_downloads-rnzb Creating 
+ Volume benchnzb_downloads-rnzb Created 
+ Container benchnzb-mock-nntp-1 Creating 
+ Container benchnzb-mock-nntp-1 Created 
+ Container benchnzb-sabnzbd-1 Creating 
+ Container benchnzb-rustnzbd-1 Creating 
+ Container benchnzb-rustnzbd-1 Created 
+ Container benchnzb-sabnzbd-1 Created 
+ Container benchnzb-orchestrator-1 Creating 
+ Container benchnzb-orchestrator-1 Created 
+Attaching to mock-nntp-1, orchestrator-1, rustnzbd-1, sabnzbd-1
+ Container benchnzb-mock-nntp-1 Starting 
+mock-nntp-1  | [benchnzb] PID=1 args=["benchnzb", "mock-nntp", "--port", "119", "--data-dir", "/data", "--health-port", "8080"]
+mock-nntp-1  | [2m2026-03-20T20:58:40.879819Z[0m [32m INFO[0m Loaded 0 file entries, 0 missing articles
+mock-nntp-1  | [2m2026-03-20T20:58:40.880615Z[0m [32m INFO[0m Mock NNTP server listening on 0.0.0.0:119
+mock-nntp-1  | [2m2026-03-20T20:58:40.880759Z[0m [32m INFO[0m Control server on port 8080 (/health, /status, /reload)
+ Container benchnzb-mock-nntp-1 Started 
+ Container benchnzb-rustnzbd-1 Starting 
+ Container benchnzb-sabnzbd-1 Starting 
+rustnzbd-1   | Error: TOML parse error at line 11, column 1
+rustnzbd-1   |    |
+rustnzbd-1   | 11 | [[servers]]
+rustnzbd-1   |    | ^^^^^^^^^^^
+rustnzbd-1   | missing field `ssl_verify`
+rustnzbd-1   | 
+ Container benchnzb-rustnzbd-1 Started 
+ Container benchnzb-sabnzbd-1 Started 
+ Container benchnzb-orchestrator-1 Starting 
+sabnzbd-1    | [migrations] started
+sabnzbd-1    | [migrations] no migrations found
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | 
+sabnzbd-1    |       ██╗     ███████╗██╗ ██████╗
+sabnzbd-1    |       ██║     ██╔════╝██║██╔═══██╗
+sabnzbd-1    |       ██║     ███████╗██║██║   ██║
+sabnzbd-1    |       ██║     ╚════██║██║██║   ██║
+sabnzbd-1    |       ███████╗███████║██║╚██████╔╝
+sabnzbd-1    |       ╚══════╝╚══════╝╚═╝ ╚═════╝
+sabnzbd-1    | 
+sabnzbd-1    |    Brought to you by linuxserver.io
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | 
+sabnzbd-1    | To support the app dev(s) visit:
+sabnzbd-1    | SABnzbd: https://sabnzbd.org/donate
+sabnzbd-1    | 
+sabnzbd-1    | To support LSIO projects visit:
+sabnzbd-1    | https://www.linuxserver.io/donate/
+sabnzbd-1    | 
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | GID/UID
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | 
+sabnzbd-1    | User UID:    1000
+sabnzbd-1    | User GID:    1000
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    | Linuxserver.io version: 4.5.5-ls246
+sabnzbd-1    | Build-date: 2026-03-19T03:25:27+00:00
+sabnzbd-1    | ───────────────────────────────────────
+sabnzbd-1    |     
+[Krustnzbd-1 exited with code 1
+ Compose Stopping Aborting on container exit...
+ Container benchnzb-orchestrator-1 Stopping 
+sabnzbd-1    | [custom-init] No custom files found, skipping...
+orchestrator-1  | [benchnzb] PID=1 args=["benchnzb", "run", "--scenarios=quick"]
+orchestrator-1  | [2m2026-03-20T20:58:41.543465Z[0m [32m INFO[0m ============================================================
+orchestrator-1  | [2m2026-03-20T20:58:41.543503Z[0m [32m INFO[0m   Usenet Client Benchmark: SABnzbd vs rustnzbd
+orchestrator-1  | [2m2026-03-20T20:58:41.543508Z[0m [32m INFO[0m ============================================================
+orchestrator-1  | [2m2026-03-20T20:58:41.543554Z[0m [32m INFO[0m Waiting for services...
+orchestrator-1  | [2m2026-03-20T20:58:41.551479Z[0m [32m INFO[0m   mock-nntp: ready
+ Container benchnzb-orchestrator-1 Started 
+sabnzbd-1       | 2026-03-20 20:58:42,339::INFO::[SABnzbd:1134] --------------------------------
+sabnzbd-1       | 2026-03-20 20:58:42,339::INFO::[SABnzbd:1135] SABnzbd.py-4.5.5
+sabnzbd-1       | 2026-03-20 20:58:42,339::INFO::[SABnzbd:1136] Full executable path = /app/sabnzbd/SABnzbd.py
+sabnzbd-1       | 2026-03-20 20:58:42,339::INFO::[SABnzbd:1137] Arguments = "/app/sabnzbd/SABnzbd.py" "--config-file" "/config" "--server" "::"
+sabnzbd-1       | 2026-03-20 20:58:42,340::INFO::[SABnzbd:1146] Certifi version = 2025.10.05
+sabnzbd-1       | 2026-03-20 20:58:42,340::INFO::[SABnzbd:1147] Loaded additional certificates from /lsiopy/lib/python3.12/site-packages/certifi/cacert.pem
+sabnzbd-1       | 2026-03-20 20:58:42,340::INFO::[SABnzbd:1153] Using INI file /config/sabnzbd.ini
+sabnzbd-1       | 2026-03-20 20:58:42,341::INFO::[filesystem:725] Creating directories: /downloads/incomplete
+sabnzbd-1       | 2026-03-20 20:58:42,342::INFO::[filesystem:725] Creating directories: /downloads/complete
+sabnzbd-1       | 2026-03-20 20:58:42,343::INFO::[cfg:794] Config conversion set 1
+sabnzbd-1       | 2026-03-20 20:58:42,343::INFO::[cfg:830] Config conversion set 2
+sabnzbd-1       | 2026-03-20 20:58:42,343::INFO::[cfg:835] Config conversion set 3
+sabnzbd-1       | 2026-03-20 20:58:42,343::INFO::[cfg:846] Config conversion set 4
+sabnzbd-1       | 2026-03-20 20:58:42,345::INFO::[config:999] Writing settings to INI file /config/sabnzbd.ini
+sabnzbd-1       | 2026-03-20 20:58:42,346::INFO::[postproc:141] Loading postproc queue
+sabnzbd-1       | 2026-03-20 20:58:42,347::INFO::[scheduler:191] Scheduling RSS interval task every 60 min (delay=29)
+sabnzbd-1       | 2026-03-20 20:58:42,347::INFO::[scheduler:215] Setting schedule for midnight auto history-purge
+sabnzbd-1       | 2026-03-20 20:58:42,348::INFO::[scheduler:224] Setting schedule for midnight BPS reset
+sabnzbd-1       | 2026-03-20 20:58:42,348::INFO::[scheduler:233] Setting schedule for midnight server expiration check
+sabnzbd-1       | 2026-03-20 20:58:42,348::INFO::[scheduler:242] Setting schedule for server quota check
+sabnzbd-1       | 2026-03-20 20:58:42,349::INFO::[__init__:306] All processes started
+sabnzbd-1       | 2026-03-20 20:58:42,350::INFO::[SABnzbd:337] Template location for Glitter is /app/sabnzbd/interfaces/Glitter
+sabnzbd-1       | 2026-03-20 20:58:42,350::INFO::[SABnzbd:337] Template location for Config is /app/sabnzbd/interfaces/Config
+sabnzbd-1       | 2026-03-20 20:58:42,352::INFO::[misc:1324] [N/A] Running external command: ['/usr/bin/unrar']
+sabnzbd-1       | 2026-03-20 20:58:42,356::INFO::[misc:1324] [N/A] Running external command: ['/usr/bin/7zz']
+sabnzbd-1       | 2026-03-20 20:58:42,360::INFO::[misc:1324] [N/A] Running external command: ['/usr/local/bin/par2', '-V']
+sabnzbd-1       | 2026-03-20 20:58:42,362::INFO::[SABnzbd:422] SABCTools module (v8.2.6)... found!
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:423] SABCTools module is using SIMD set: AVX512VL+VBMI2
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:424] SABCTools module is linked to OpenSSL: True
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:441] Cryptography module (v46.0.3)... found!
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:444] par2 binary... found (/usr/local/bin/par2)
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:451] UNRAR binary... found (/usr/bin/unrar)
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:459] UNRAR binary version 7.20
+sabnzbd-1       | 2026-03-20 20:58:42,363::INFO::[SABnzbd:466] 7za binary... found (/usr/bin/7zz)
+sabnzbd-1       | 2026-03-20 20:58:42,364::INFO::[SABnzbd:468] 7za binary version 25.01
+sabnzbd-1       | 2026-03-20 20:58:42,364::INFO::[SABnzbd:474] nice binary... found (/bin/nice)
+sabnzbd-1       | 2026-03-20 20:58:42,364::INFO::[SABnzbd:478] ionice binary... found (/bin/ionice)
+sabnzbd-1       | 2026-03-20 20:58:42,364::INFO::[SABnzbd:1350] Starting web-interface on :::8080
+sabnzbd-1       | 2026-03-20 20:58:42,365::INFO::[_cplogging:213] [20/Mar/2026:20:58:42] ENGINE Bus STARTING
+sabnzbd-1       | 2026-03-20 20:58:42,467::INFO::[_cplogging:213] [20/Mar/2026:20:58:42] ENGINE Serving on http://:::8080
+sabnzbd-1       | 2026-03-20 20:58:42,467::INFO::[_cplogging:213] [20/Mar/2026:20:58:42] ENGINE Bus STARTED
+sabnzbd-1       | 2026-03-20 20:58:42,468::INFO::[SABnzbd:1389] Starting SABnzbd.py-4.5.5
+sabnzbd-1       | 2026-03-20 20:58:42,470::INFO::[dirscanner:112] Dirscanner starting up
+sabnzbd-1       | 2026-03-20 20:58:42,472::INFO::[notifier:166] Sending notification: SABnzbd - SABnzbd 4.5.5 started (type=startup, job_cat=None)
+sabnzbd-1       | 2026-03-20 20:58:42,472::INFO::[__init__:460] Commit = 11ba9ae12ade8c8f2abb42d44ea35efdd361fae5
+sabnzbd-1       | 2026-03-20 20:58:42,473::INFO::[__init__:461] Python-version = 3.12.12 (main, Oct 11 2025, 01:16:26) [GCC 15.2.0]
+sabnzbd-1       | 2026-03-20 20:58:42,473::INFO::[__init__:462] CPU architecture = x86_64
+sabnzbd-1       | 2026-03-20 20:58:42,473::INFO::[__init__:463] Platform = Docker
+sabnzbd-1       | 2026-03-20 20:58:42,473::INFO::[__init__:464] JSON-module = orjson 3.11.3
+sabnzbd-1       | 2026-03-20 20:58:42,473::INFO::[__init__:465] Preferred encoding = UTF-8
+sabnzbd-1       | 2026-03-20 20:58:42,473::INFO::[__init__:466] SSL version = OpenSSL 3.5.5 27 Jan 2026
+sabnzbd-1       | 2026-03-20 20:58:42,486::INFO::[zconfig:61] No bonjour/zeroconf support installed
+sabnzbd-1       | 2026-03-20 20:58:42,487::INFO::[ssdp:108] Serving SSDP on 172.24.0.4 as SABnzbd
+sabnzbd-1       | [ls.io-init] done.
+ Container benchnzb-orchestrator-1 Stopped 
+ Container benchnzb-rustnzbd-1 Stopping 
+ Container benchnzb-sabnzbd-1 Stopping 
+ Container benchnzb-rustnzbd-1 Stopped 
+[Korchestrator-1 exited with code 137
+sabnzbd-1       | 2026-03-20 20:58:42,844::INFO::[notifier:166] Sending notification: Warning - Signal 15 caught, saving and exiting... (type=warning, job_cat=None)
+sabnzbd-1       | 2026-03-20 20:58:42,843::WARNING::[__init__:202] Signal 15 caught, saving and exiting...
+sabnzbd-1       | 2026-03-20 20:58:42,844::INFO::[__init__:419] [N/A] Performing SABnzbd shutdown
+sabnzbd-1       | 2026-03-20 20:58:42,844::INFO::[__init__:336] SABnzbd shutting down...
+sabnzbd-1       | 2026-03-20 20:58:42,845::INFO::[ssdp:102] Stopping SSDP
+sabnzbd-1       | 2026-03-20 20:58:42,845::INFO::[directunpacker:551] Aborting all DirectUnpackers
+sabnzbd-1       | 2026-03-20 20:58:42,846::INFO::[notifier:166] Sending notification: SABnzbd - Shutting down (type=startup, job_cat=None)
+sabnzbd-1       | 2026-03-20 20:58:42,847::INFO::[downloader:643] Shutting down
+sabnzbd-1       | 2026-03-20 20:58:42,848::INFO::[nzbqueue:230] Saving queue
+sabnzbd-1       | 2026-03-20 20:58:42,848::INFO::[postproc:136] Saving postproc queue
+sabnzbd-1       | 2026-03-20 20:58:42,849::INFO::[__init__:405] All processes stopped
+sabnzbd-1       | 2026-03-20 20:58:42,849::INFO::[_cplogging:213] [20/Mar/2026:20:58:42] ENGINE Bus STOPPING
+sabnzbd-1       | 2026-03-20 20:58:43,093::INFO::[_cplogging:213] [20/Mar/2026:20:58:43] ENGINE HTTP Server cherrypy._cpwsgi_server.CPWSGIServer(('::', 8080)) shut down
+sabnzbd-1       | 2026-03-20 20:58:43,093::INFO::[_cplogging:213] [20/Mar/2026:20:58:43] ENGINE Bus STOPPED
+sabnzbd-1       | 2026-03-20 20:58:43,093::INFO::[_cplogging:213] [20/Mar/2026:20:58:43] ENGINE Bus EXITING
+sabnzbd-1       | 2026-03-20 20:58:43,094::INFO::[_cplogging:213] [20/Mar/2026:20:58:43] ENGINE Bus EXITED
+sabnzbd-1       | 2026-03-20 20:58:43,094::INFO::[notifier:166] Sending notification: SABnzbd - SABnzbd shutdown finished (type=startup, job_cat=None)
+sabnzbd-1       | 2026-03-20 20:58:43,094::INFO::[SABnzbd:1485] Leaving SABnzbd
+ Container benchnzb-sabnzbd-1 Stopped 
+ Container benchnzb-mock-nntp-1 Stopping 
+[Ksabnzbd-1 exited with code 137
+ Container benchnzb-mock-nntp-1 Stopped 
+[Kmock-nntp-1 exited with code 137
+

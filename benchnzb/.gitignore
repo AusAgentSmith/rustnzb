@@ -1,8 +1,2 @@
 /target
 /state
-/results/*.log
-/results/*.json
-/results/*.csv
-/results/*.txt
-/results/charts_*
-/results/logs_*
