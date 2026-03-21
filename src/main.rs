@@ -203,6 +203,7 @@ async fn main() -> anyhow::Result<()> {
         log_buffer.clone(),
         config.general.max_active_downloads,
         config.categories.clone(),
+        config.general.speed_limit_bps,
     );
 
     // Set history retention

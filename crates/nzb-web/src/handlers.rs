@@ -126,6 +126,7 @@ pub struct StatusResponse {
     pub version: &'static str,
     pub paused: bool,
     pub speed_bps: u64,
+    pub speed_limit_bps: u64,
     pub queue_size: usize,
     pub disk_space_free: u64,
     pub pause_remaining_secs: Option<i64>,
@@ -412,6 +413,7 @@ pub async fn h_status(
         version: env!("CARGO_PKG_VERSION"),
         paused: qm.is_paused(),
         speed_bps: qm.get_speed(),
+        speed_limit_bps: qm.get_speed_limit(),
         queue_size: qm.queue_size(),
         disk_space_free: get_disk_space_free(&config.general.complete_dir),
         pause_remaining_secs: qm.pause_remaining_secs(),
@@ -674,6 +676,42 @@ pub async fn h_max_active_downloads_get(
     Ok(Json(MaxActiveDownloadsBody {
         max_active_downloads: config.general.max_active_downloads,
     }))
+}
+
+// ---------------------------------------------------------------------------
+// Speed limit handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+pub struct SpeedLimitResponse {
+    pub speed_limit_bps: u64,
+}
+
+/// GET /api/config/speed-limit -- Get current speed limit.
+pub async fn h_get_speed_limit(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<SpeedLimitResponse>, ApiError> {
+    Ok(Json(SpeedLimitResponse {
+        speed_limit_bps: state.queue_manager.get_speed_limit(),
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct SetSpeedLimitBody {
+    pub speed_limit_bps: u64,
+}
+
+/// PUT /api/config/speed-limit -- Set download speed limit.
+pub async fn h_set_speed_limit(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<SetSpeedLimitBody>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    state.queue_manager.set_speed_limit(body.speed_limit_bps);
+    // Also update config and persist
+    let mut config = (*state.config()).clone();
+    config.general.speed_limit_bps = body.speed_limit_bps;
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(serde_json::json!({"status": true})))
 }
 
 // ---------------------------------------------------------------------------

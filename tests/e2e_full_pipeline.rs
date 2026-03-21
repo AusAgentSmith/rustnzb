@@ -33,6 +33,7 @@ async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {
         log_buffer.clone(),
         config.general.max_active_downloads,
         config.categories.clone(),
+        config.general.speed_limit_bps,
     );
     let state = Arc::new(AppState::new(config, std::path::PathBuf::from("config.toml"), qm, log_buffer));
 

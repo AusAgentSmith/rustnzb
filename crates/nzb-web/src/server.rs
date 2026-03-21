@@ -103,6 +103,14 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route(
             "/config/max-active-downloads",
             put(handlers::h_max_active_downloads_set),
+        )
+        .route(
+            "/config/speed-limit",
+            get(handlers::h_get_speed_limit),
+        )
+        .route(
+            "/config/speed-limit",
+            put(handlers::h_set_speed_limit),
         );
 
     // Arr-compatible API (Sonarr/Radarr)
