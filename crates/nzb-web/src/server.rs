@@ -11,9 +11,16 @@ use tower_http::cors::{AllowHeaders, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
 use crate::handlers;
 use crate::sabnzbd_compat;
 use crate::state::AppState;
+
+#[derive(OpenApi)]
+#[openapi(info(title = "rustnzbd API", version = env!("CARGO_PKG_VERSION")))]
+struct ApiDoc;
 
 /// Embed the static/ directory at compile time.
 #[derive(Embed)]
@@ -118,6 +125,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", ApiDoc::openapi()),
+        )
 }
 
 /// Start the HTTP server.
