@@ -54,6 +54,8 @@ pub struct GeneralConfig {
     /// Minimum free disk space in bytes before pausing downloads (default 1 GB)
     #[serde(default = "default_min_free_space")]
     pub min_free_space_bytes: u64,
+    /// Directory to watch for new .nzb files to auto-enqueue
+    pub watch_dir: Option<PathBuf>,
 }
 
 fn default_min_free_space() -> u64 {
@@ -76,6 +78,7 @@ impl Default for GeneralConfig {
             history_retention: None, // keep all
             max_active_downloads: 1,
             min_free_space_bytes: default_min_free_space(),
+            watch_dir: None,
         }
     }
 }
