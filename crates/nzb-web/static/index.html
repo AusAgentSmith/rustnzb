@@ -323,6 +323,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   <button class="nav-tab active" data-tab="queue">Queue</button>
   <button class="nav-tab" data-tab="history">History</button>
   <button class="nav-tab" data-tab="servers">Servers</button>
+  <button class="nav-tab" data-tab="categories">Categories</button>
   <button class="nav-tab" data-tab="settings">Settings</button>
   <button class="nav-tab" data-tab="logs">Logs</button>
 </nav>
@@ -423,6 +424,21 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     </div>
     <div class="server-grid" id="servers-grid">
       <div class="table-empty" style="grid-column:1/-1;">No servers configured</div>
+    </div>
+  </div>
+
+  <!-- Categories Tab -->
+  <div class="tab-content" id="tab-categories">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <span style="font-size:0.9rem;color:var(--text-secondary)">Categories</span>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" id="btn-add-category">+ Add Category</button>
+      </div>
+    </div>
+    <div class="server-grid" id="categories-grid">
+      <div class="table-empty" style="grid-column:1/-1;">No categories configured</div>
     </div>
   </div>
 
@@ -611,6 +627,34 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   </div>
 </div>
 
+<!-- ===== Category Editor Modal ===== -->
+<div class="modal-overlay" id="modal-category">
+  <div class="modal" style="max-width:420px;">
+    <h2 id="cat-modal-title">Add Category</h2>
+    <div class="modal-field">
+      <label>Name</label>
+      <input type="text" id="cat-name" placeholder="movies">
+    </div>
+    <div class="modal-field">
+      <label>Output Directory (optional)</label>
+      <input type="text" id="cat-output-dir" placeholder="Leave empty for default">
+    </div>
+    <div class="modal-field">
+      <label>Post-Processing</label>
+      <select id="cat-post-processing">
+        <option value="0">None</option>
+        <option value="1">Repair (par2)</option>
+        <option value="2">Unpack</option>
+        <option value="3" selected>Repair + Unpack</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btn-cat-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-cat-save">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Page drag-and-drop overlay ===== -->
 <div class="page-drop-overlay" id="page-drop-overlay">
   <div class="page-drop-overlay-text">Drop NZB file to upload</div>
@@ -739,6 +783,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     if (tab === 'queue') fetchQueue();
     if (tab === 'history') fetchHistory();
     if (tab === 'servers') fetchServers();
+    if (tab === 'categories') fetchCategories();
     if (tab === 'settings') fetchSettings();
     if (tab === 'logs') fetchLogs();
   }
@@ -1223,6 +1268,73 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     }).catch(function(e){ notify('Error: '+e.message,'error'); });
   });
 
+  // ---- Categories ----
+  var ppLabels = {0:'None', 1:'Repair (par2)', 2:'Unpack', 3:'Repair + Unpack'};
+  function fetchCategories() {
+    api('GET','/api/config/categories').then(function(cats){ renderCategories(cats); }).catch(function(){});
+  }
+  function renderCategories(cats) {
+    var grid = document.getElementById('categories-grid');
+    if (!cats || cats.length === 0) { grid.innerHTML = '<div class="table-empty" style="grid-column:1/-1;">No categories configured. Click "+ Add Category" to get started.</div>'; return; }
+    var html = '';
+    for (var i=0;i<cats.length;i++) {
+      var c = cats[i];
+      html += '<div class="server-card"><div class="server-card-header">'+
+        '<span class="server-card-name">'+esc(c.name)+'</span></div>'+
+        '<div class="server-details">'+
+          '<div class="server-detail"><span class="server-detail-label">Post-Processing</span><span class="server-detail-value">'+(ppLabels[c.post_processing]||c.post_processing)+'</span></div>'+
+          '<div class="server-detail"><span class="server-detail-label">Output Directory</span><span class="server-detail-value">'+(c.output_dir?esc(String(c.output_dir)):'<span style="color:var(--text-muted);">Default</span>')+'</span></div>'+
+        '</div>'+
+        '<div class="server-card-actions">'+
+          '<button class="btn btn-sm" onclick="window._categoryEdit(\''+esc(c.name)+'\')">Edit</button>'+
+          '<button class="btn btn-sm btn-danger" onclick="window._categoryDelete(\''+esc(c.name)+'\')">Delete</button>'+
+        '</div></div>';
+    }
+    grid.innerHTML = html;
+  }
+
+  var _catEditName = null;
+  function openCategoryModal(cat) {
+    var isEdit = !!cat;
+    _catEditName = isEdit ? cat.name : null;
+    document.getElementById('cat-modal-title').textContent = isEdit ? 'Edit Category' : 'Add Category';
+    document.getElementById('cat-name').value = isEdit ? (cat.name||'') : '';
+    document.getElementById('cat-output-dir').value = isEdit ? (cat.output_dir||'') : '';
+    document.getElementById('cat-post-processing').value = isEdit ? String(cat.post_processing) : '3';
+    document.getElementById('modal-category').classList.add('active');
+  }
+
+  document.getElementById('btn-add-category').addEventListener('click', function() { openCategoryModal(null); });
+  document.getElementById('btn-cat-cancel').addEventListener('click', function() { document.getElementById('modal-category').classList.remove('active'); });
+  document.getElementById('modal-category').addEventListener('click', function(e) { if(e.target===this) this.classList.remove('active'); });
+
+  document.getElementById('btn-cat-save').addEventListener('click', function() {
+    var name = document.getElementById('cat-name').value.trim();
+    var outputDir = document.getElementById('cat-output-dir').value.trim() || null;
+    var pp = parseInt(document.getElementById('cat-post-processing').value) || 0;
+    if (!name) { notify('Name is required','error'); return; }
+    var body = { name: name, output_dir: outputDir, post_processing: pp };
+    var method = _catEditName ? 'PUT' : 'POST';
+    var url = _catEditName ? '/api/config/categories/' + encodeURIComponent(_catEditName) : '/api/config/categories';
+    api(method, url, body).then(function() {
+      notify(_catEditName ? 'Category updated' : 'Category added','success');
+      document.getElementById('modal-category').classList.remove('active');
+      fetchCategories();
+    }).catch(function(e) { notify('Error: '+e.message,'error'); });
+  });
+
+  window._categoryEdit = function(name) {
+    api('GET','/api/config/categories').then(function(cats) {
+      var cat = null;
+      for (var i=0;i<cats.length;i++) if(cats[i].name===name){cat=cats[i];break;}
+      if (cat) openCategoryModal(cat);
+    }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+  window._categoryDelete = function(name) {
+    if(!confirm('Delete category "'+name+'"?')) return;
+    api('DELETE','/api/config/categories/'+encodeURIComponent(name)).then(function(){ notify('Category deleted'); fetchCategories(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+
   // ---- Settings ----
   function fetchSettings() {
     api('GET','/api/config').then(function(c){ renderSettings(c); }).catch(function(){});
@@ -1435,7 +1547,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   // ---- Keyboard shortcuts ----
   document.addEventListener('keydown', function(e) {
-    if(e.key==='Escape'){modalEl.classList.remove('active');document.getElementById('modal-files').classList.remove('active');document.getElementById('modal-server').classList.remove('active');addUrlModal.classList.remove('active');}
+    if(e.key==='Escape'){modalEl.classList.remove('active');document.getElementById('modal-files').classList.remove('active');document.getElementById('modal-server').classList.remove('active');addUrlModal.classList.remove('active');document.getElementById('modal-category').classList.remove('active');}
     if(e.key===' '&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'&&e.target.tagName!=='SELECT'){e.preventDefault();if(globalPaused)document.getElementById('btn-resume-all').click();else{api('POST','/api/queue/pause').then(function(){globalPaused=true;notify('All paused');fetchQueue();}).catch(function(e){notify('Error: '+e.message,'error');});}}
   });
 
@@ -1443,6 +1555,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   fetchStatus(); setInterval(fetchStatus, 1000);
   fetchQueue(); setInterval(function(){ if(activeTab==='queue') fetchQueue(); }, 2000);
   setInterval(function(){ if(activeTab==='history') fetchHistory(); }, 10000);
+  setInterval(function(){ if(activeTab==='categories') fetchCategories(); }, 10000);
   setInterval(function(){ if(activeTab==='logs') fetchLogs(); }, 2000);
   drawSpeedGraph();
 

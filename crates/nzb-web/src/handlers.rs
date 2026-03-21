@@ -6,7 +6,7 @@ use axum::Json;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use nzb_core::config::ServerConfig;
+use nzb_core::config::{CategoryConfig, ServerConfig};
 use nzb_core::models::*;
 use nzb_core::nzb_parser;
 
@@ -785,6 +785,64 @@ pub async fn h_categories_list(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<nzb_core::config::CategoryConfig>>, ApiError> {
     Ok(Json(state.config().categories.clone()))
+}
+
+/// POST /api/config/categories -- Add a new category.
+pub async fn h_category_add(
+    State(state): State<Arc<AppState>>,
+    Json(cat): Json<CategoryConfig>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut config = (*state.config()).clone();
+    if config.categories.iter().any(|c| c.name == cat.name) {
+        return Err(ApiError::from(anyhow::anyhow!(
+            "Category '{}' already exists",
+            cat.name
+        )));
+    }
+    config.categories.push(cat);
+    state
+        .queue_manager
+        .set_categories(config.categories.clone());
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(serde_json::json!({"status": true})))
+}
+
+/// PUT /api/config/categories/{name} -- Update a category.
+pub async fn h_category_update(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(cat): Json<CategoryConfig>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let mut config = (*state.config()).clone();
+    let idx = config
+        .categories
+        .iter()
+        .position(|c| c.name == name)
+        .ok_or_else(|| ApiError::from(anyhow::anyhow!("Category not found")))?;
+    config.categories[idx] = cat;
+    state
+        .queue_manager
+        .set_categories(config.categories.clone());
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(serde_json::json!({"status": true})))
+}
+
+/// DELETE /api/config/categories/{name} -- Delete a category.
+pub async fn h_category_delete(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let mut config = (*state.config()).clone();
+    let initial_len = config.categories.len();
+    config.categories.retain(|c| c.name != name);
+    if config.categories.len() == initial_len {
+        return Err(ApiError::from(anyhow::anyhow!("Category not found")));
+    }
+    state
+        .queue_manager
+        .set_categories(config.categories.clone());
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(serde_json::json!({"status": true})))
 }
 
 /// PUT /api/config/history-retention -- Update history retention setting.
