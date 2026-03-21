@@ -19,6 +19,7 @@ use nzb_core::db::Database;
 use nzb_core::models::*;
 use nzb_postproc::{PostProcConfig, run_pipeline};
 
+use crate::bandwidth::BandwidthLimiter;
 use crate::download_engine::{DownloadEngine, ProgressUpdate};
 use crate::log_buffer::LogBuffer;
 
@@ -138,6 +139,8 @@ pub struct QueueManager {
     categories: Mutex<Vec<CategoryConfig>>,
     /// Minimum free disk space in bytes before pausing downloads.
     min_free_space: u64,
+    /// Bandwidth limiter for throttling downloads.
+    bandwidth: Arc<BandwidthLimiter>,
 }
 
 impl QueueManager {
@@ -151,7 +154,18 @@ impl QueueManager {
         max_active_downloads: usize,
         categories: Vec<CategoryConfig>,
         min_free_space: u64,
+        speed_limit_bps: u64,
     ) -> Arc<Self> {
+        use std::num::NonZeroU32;
+        use crate::bandwidth::BandwidthConfig;
+
+        let download_bps = if speed_limit_bps > 0 {
+            NonZeroU32::new(speed_limit_bps as u32)
+        } else {
+            None
+        };
+        let bandwidth = Arc::new(BandwidthLimiter::new(BandwidthConfig { download_bps }));
+
         Arc::new(Self {
             jobs: Mutex::new(HashMap::new()),
             job_order: Mutex::new(Vec::new()),
@@ -167,6 +181,7 @@ impl QueueManager {
             max_active_downloads: AtomicUsize::new(max_active_downloads),
             categories: Mutex::new(categories),
             min_free_space,
+            bandwidth,
         })
     }
 
@@ -189,6 +204,25 @@ impl QueueManager {
     /// Get max active downloads.
     pub fn get_max_active_downloads(&self) -> usize {
         self.max_active_downloads.load(Ordering::Relaxed)
+    }
+
+    /// Set the download speed limit in bytes per second (0 = unlimited).
+    pub fn set_speed_limit(&self, bps: u64) {
+        use std::num::NonZeroU32;
+        let limit = if bps > 0 {
+            NonZeroU32::new(bps as u32)
+        } else {
+            None
+        };
+        self.bandwidth.set_download_bps(limit);
+    }
+
+    /// Get the current download speed limit in bytes per second (0 = unlimited).
+    pub fn get_speed_limit(&self) -> u64 {
+        self.bandwidth
+            .get_download_bps()
+            .map(|v| v.get() as u64)
+            .unwrap_or(0)
     }
 
     /// Count currently downloading jobs.
@@ -359,10 +393,13 @@ impl QueueManager {
         let servers = self.servers.lock().clone();
         let engine_clone = Arc::clone(&engine);
         let job_clone = job.clone();
+        let bandwidth = Arc::clone(&self.bandwidth);
 
         // Spawn the download task
         let task_handle = tokio::spawn(async move {
-            engine_clone.run(&job_clone, &servers, progress_tx).await;
+            engine_clone
+                .run(&job_clone, &servers, progress_tx, bandwidth)
+                .await;
         });
 
         let state = JobState {

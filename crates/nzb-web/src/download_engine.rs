@@ -27,6 +27,8 @@ use nzb_nntp::connection::NntpConnection;
 use nzb_nntp::error::NntpError;
 use nzb_nntp::Pipeline;
 
+use crate::bandwidth::BandwidthLimiter;
+
 /// Max times to retry an article on the SAME server before trying the next.
 const MAX_TRIES_PER_SERVER: u32 = 3;
 /// Delay between reconnection attempts.
@@ -134,6 +136,7 @@ impl DownloadEngine {
         job: &NzbJob,
         servers: &[ServerConfig],
         progress_tx: mpsc::UnboundedSender<ProgressUpdate>,
+        bandwidth: Arc<BandwidthLimiter>,
     ) {
         let job_id = job.id.clone();
         let engine_start = Instant::now();
@@ -242,6 +245,7 @@ impl DownloadEngine {
                     let total_decode_us = Arc::clone(&self.total_decode_us);
                     let total_assemble_us = Arc::clone(&self.total_assemble_us);
                     let total_articles_decoded = Arc::clone(&self.total_articles_decoded);
+                    let bandwidth = Arc::clone(&bandwidth);
 
                     async move {
                         download_worker(
@@ -258,6 +262,7 @@ impl DownloadEngine {
                             total_decode_us,
                             total_assemble_us,
                             total_articles_decoded,
+                            bandwidth,
                         )
                         .await;
                     }
@@ -384,6 +389,7 @@ async fn download_worker(
     total_decode_us: Arc<AtomicU64>,
     total_assemble_us: Arc<AtomicU64>,
     total_articles_decoded: Arc<AtomicU64>,
+    bandwidth: Arc<BandwidthLimiter>,
 ) {
     let worker_id = format!("{}#{}", primary_server.id, conn_idx);
 
@@ -419,6 +425,7 @@ async fn download_worker(
             &total_decode_us,
             &total_assemble_us,
             &total_articles_decoded,
+            &bandwidth,
         )
         .await;
     } else {
@@ -438,6 +445,7 @@ async fn download_worker(
             &total_decode_us,
             &total_assemble_us,
             &total_articles_decoded,
+            &bandwidth,
         )
         .await;
     }
@@ -463,6 +471,7 @@ async fn download_worker_pipelined(
     total_decode_us: &Arc<AtomicU64>,
     total_assemble_us: &Arc<AtomicU64>,
     total_articles_decoded: &Arc<AtomicU64>,
+    bandwidth: &Arc<BandwidthLimiter>,
 ) {
     let mut pipeline = Pipeline::new(pipe_depth);
     // In-flight items indexed by pipeline tag
@@ -549,6 +558,10 @@ async fn download_worker_pipelined(
                                 if let Some(ref yname) = process_result.yenc_filename {
                                     yenc_names.lock().entry(item.file_id.clone())
                                         .or_insert_with(|| yname.clone());
+                                }
+                                // Throttle via bandwidth limiter
+                                if let Some(n) = std::num::NonZeroU32::new(process_result.decoded_bytes as u32) {
+                                    let _ = bandwidth.acquire_download(n).await;
                                 }
                                 let _ = progress_tx.send(ProgressUpdate::ArticleComplete {
                                     job_id: item.job_id.clone(),
@@ -712,6 +725,7 @@ async fn download_worker_serial(
     total_decode_us: &Arc<AtomicU64>,
     total_assemble_us: &Arc<AtomicU64>,
     total_articles_decoded: &Arc<AtomicU64>,
+    bandwidth: &Arc<BandwidthLimiter>,
 ) {
     let mut consecutive_errors: u32 = 0;
     let mut consecutive_skips: usize = 0;
@@ -778,6 +792,10 @@ async fn download_worker_serial(
                 if let Some(ref yname) = process_result.yenc_filename {
                     yenc_names.lock().entry(item.file_id.clone())
                         .or_insert_with(|| yname.clone());
+                }
+                // Throttle via bandwidth limiter
+                if let Some(n) = std::num::NonZeroU32::new(process_result.decoded_bytes as u32) {
+                    let _ = bandwidth.acquire_download(n).await;
                 }
                 let _ = progress_tx.send(ProgressUpdate::ArticleComplete {
                     job_id: item.job_id.clone(),

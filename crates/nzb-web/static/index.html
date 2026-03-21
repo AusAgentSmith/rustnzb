@@ -748,7 +748,11 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   function fetchStatus() {
     api('GET', '/api/status').then(function(d) {
       document.getElementById('app-version').textContent = 'v' + (d.version || '0.0.0');
-      document.getElementById('stat-speed').textContent = formatSpeed(d.speed_bps);
+      var speedText = formatSpeed(d.speed_bps);
+      if (d.speed_limit_bps && d.speed_limit_bps > 0) {
+        speedText += ' / ' + formatBytes(d.speed_limit_bps) + '/s';
+      }
+      document.getElementById('stat-speed').textContent = speedText;
       document.getElementById('stat-queue').textContent = d.queue_size || 0;
       document.getElementById('stat-disk').textContent = d.disk_space_free ? formatBytes(d.disk_space_free) : '--';
       var diskEl = document.getElementById('stat-disk');
@@ -1226,7 +1230,13 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   function renderSettings(config) {
     var grid = document.getElementById('settings-grid');
     var g = config.general || {};
-    var speedLimit = g.speed_limit_bps ? formatBytes(g.speed_limit_bps)+'/s' : 'Unlimited';
+    var slVal = g.speed_limit_bps || 0;
+    var slOptions = '<select id="setting-speed-limit" onchange="window._setSpeedLimit(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">';
+    [['0','Unlimited'],['1048576','1 MB/s'],['5242880','5 MB/s'],['10485760','10 MB/s'],['26214400','25 MB/s'],['52428800','50 MB/s'],['104857600','100 MB/s']].forEach(function(o) {
+      var sel = String(slVal) === o[0] ? ' selected' : '';
+      slOptions += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
+    });
+    slOptions += '</select>';
     var cacheSize = g.cache_size ? formatBytes(g.cache_size) : '--';
 
     var retVal = g.history_retention;
@@ -1256,7 +1266,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         '<div class="setting-row"><span class="setting-label">Data Dir</span><span class="setting-value">'+esc(g.data_dir||'--')+'</span></div></div>'+
       '<div class="settings-section"><div class="settings-section-title">Performance</div>'+
         '<div class="setting-row"><span class="setting-label">Concurrent Downloads</span><span class="setting-value">'+madOptions+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Speed Limit</span><span class="setting-value">'+speedLimit+'</span></div>'+
+        '<div class="setting-row"><span class="setting-label">Speed Limit</span><span class="setting-value">'+slOptions+'</span></div>'+
         '<div class="setting-row"><span class="setting-label">Cache Size</span><span class="setting-value">'+cacheSize+'</span></div></div>'+
       '<div class="settings-section"><div class="settings-section-title">Logging</div>'+
         '<div class="setting-row"><span class="setting-label">Log Level</span><span class="setting-value">'+esc(g.log_level||'--')+'</span></div>'+
@@ -1286,6 +1296,12 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   window._setMaxDownloads = function(val) {
     var body = { max_active_downloads: parseInt(val) };
     api('PUT','/api/config/max-active-downloads', body).then(function(){ notify('Concurrent downloads updated'); }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+
+  window._setSpeedLimit = function(val) {
+    api('PUT', '/api/config/speed-limit', { speed_limit_bps: parseInt(val) })
+      .then(function() { notify('Speed limit updated'); })
+      .catch(function(e) { notify('Error: ' + e.message, 'error'); });
   };
 
   // ---- Logs ----
