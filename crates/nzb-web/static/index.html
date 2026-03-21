@@ -748,10 +748,11 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     </div>
     <div class="modal-field">
       <label for="rss-filter" style="display:flex;align-items:center;gap:4px;">Filter Regex (optional) <span title="Filters which items are shown in the feed items list. All items are still stored &mdash; this controls what's displayed and what download rules can match against." style="cursor:help;font-size:0.7rem;background:var(--bg-tertiary);border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);">?</span></label>
-      <input type="text" id="rss-filter" placeholder="e.g. .*1080p.*">
+      <input type="text" id="rss-filter" placeholder="e.g. .*1080p.*" oninput="window._rssFilterChanged()">
     </div>
-    <div class="modal-field">
+    <div class="modal-field" style="display:flex;gap:16px;">
       <label class="checkbox-label"><input type="checkbox" id="rss-enabled" checked> Enabled</label>
+      <label class="checkbox-label" id="rss-auto-download-label" title="Auto-download all items from this feed without needing download rules. Disabled when a filter regex is set."><input type="checkbox" id="rss-auto-download"> Auto-download all</label>
     </div>
     <div class="modal-actions">
       <button class="btn" id="btn-rss-cancel">Cancel</button>
@@ -1772,6 +1773,15 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     sel.style.display = cachedRssFeeds.length > 1 ? '' : 'none';
   }
 
+  window._rssFilterChanged = function() {
+    var hasRegex = document.getElementById('rss-filter').value.trim().length > 0;
+    var cb = document.getElementById('rss-auto-download');
+    var label = document.getElementById('rss-auto-download-label');
+    cb.disabled = hasRegex;
+    label.style.opacity = hasRegex ? '0.4' : '1';
+    if (hasRegex) cb.checked = false;
+  };
+
   window.openRssFeedModal = function(feed) {
     var isEdit = !!feed;
     document.getElementById('rss-modal-title').textContent = isEdit ? 'Edit RSS Feed' : 'Add RSS Feed';
@@ -1781,6 +1791,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     document.getElementById('rss-interval').value = isEdit ? Math.round((feed.poll_interval_secs||900)/60) : 15;
     document.getElementById('rss-filter').value = isEdit ? (feed.filter_regex||'') : '';
     document.getElementById('rss-enabled').checked = isEdit ? feed.enabled : true;
+    document.getElementById('rss-auto-download').checked = isEdit ? (feed.auto_download||false) : false;
+    window._rssFilterChanged();
     api('GET','/api/config/categories').then(function(cats) {
       var sel = document.getElementById('rss-category');
       sel.innerHTML = '<option value="">Default</option>';
@@ -1801,7 +1813,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       poll_interval_secs: (parseInt(document.getElementById('rss-interval').value) || 15) * 60,
       category: document.getElementById('rss-category').value || null,
       filter_regex: document.getElementById('rss-filter').value.trim() || null,
-      enabled: document.getElementById('rss-enabled').checked
+      enabled: document.getElementById('rss-enabled').checked,
+      auto_download: document.getElementById('rss-auto-download').checked
     };
     if (!feed.name) { notify('Name is required','error'); return; }
     if (!feed.url) { notify('URL is required','error'); return; }

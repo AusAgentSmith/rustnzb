@@ -210,6 +210,10 @@ pub struct RssFeedConfig {
     /// Whether this feed is active
     #[serde(default = "default_true")]
     pub enabled: bool,
+    /// Auto-download all items from this feed (no rules needed).
+    /// Ignored when filter_regex is set (use download rules instead).
+    #[serde(default)]
+    pub auto_download: bool,
 }
 
 fn default_poll_interval() -> u64 {
