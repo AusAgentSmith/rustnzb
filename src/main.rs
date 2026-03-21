@@ -237,6 +237,16 @@ async fn main() -> anyhow::Result<()> {
         info!("OpenTelemetry metrics reporter started");
     }
 
+    // Start directory watcher if configured
+    if let Some(ref watch_dir) = config.general.watch_dir {
+        let watcher = nzb_web::dir_watcher::DirWatcher::new(
+            watch_dir.clone(),
+            Arc::clone(&queue_manager),
+        );
+        tokio::spawn(async move { watcher.run().await });
+        info!(dir = %watch_dir.display(), "Directory watcher started");
+    }
+
     info!(servers = config.servers.len(), "Queue manager initialized");
 
     // Build shared application state

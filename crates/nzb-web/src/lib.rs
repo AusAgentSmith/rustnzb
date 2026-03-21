@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod dir_watcher;
 pub mod bandwidth;
 pub mod download_engine;
 pub mod error;

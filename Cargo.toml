@@ -67,6 +67,7 @@ rustls-pki-types = "1"
 quick-xml = "0.37"
 regex = "1"
 walkdir = "2"
+notify = "7"
 
 # Internal crates
 nzb-core = { path = "crates/nzb-core" }
