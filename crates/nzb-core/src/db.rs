@@ -400,6 +400,24 @@ impl Database {
         }
     }
 
+    /// Store serialized job file/article state for resume support.
+    pub fn queue_store_job_data(&self, id: &str, data: &[u8]) -> Result<(), NzbError> {
+        self.conn.execute(
+            "UPDATE queue SET job_data = ?2 WHERE id = ?1",
+            params![id, data],
+        )?;
+        Ok(())
+    }
+
+    /// Load serialized job file/article state for resume.
+    pub fn queue_load_job_data(&self, id: &str) -> Result<Option<Vec<u8>>, NzbError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT job_data FROM queue WHERE id = ?1")?;
+        let result = stmt.query_row(params![id], |row| row.get::<_, Option<Vec<u8>>>(0))?;
+        Ok(result)
+    }
+
     /// Store raw NZB data for a queue job.
     pub fn queue_store_nzb_data(&self, id: &str, nzb_data: &[u8]) -> Result<(), NzbError> {
         self.conn.execute(
