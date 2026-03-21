@@ -1,11 +1,18 @@
 FROM rust:1.88-bookworm AS builder
 
 WORKDIR /build
+
+# Install build tools so par2-sys compiles par2cmdline-turbo from source
+# (produces an optimized binary with OpenMP threading).
+# If these are missing, par2-sys falls back to a pre-built generic binary.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git automake autoconf g++ make \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY src src
 
-# par2cmdline-turbo is downloaded and bundled by the par2-sys crate at build time
 RUN cargo build --release
 
 
