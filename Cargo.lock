@@ -1740,6 +1740,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "nzb-core",
+ "par2-sys",
  "regex",
  "tempfile",
  "thiserror",
@@ -1935,6 +1936,14 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+]
+
+[[package]]
+name = "par2-sys"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "zip 2.4.2",
 ]
 
 [[package]]
@@ -2491,6 +2500,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "reqwest",
+ "rustls",
  "serde_json",
  "tempfile",
  "tokio",

@@ -98,6 +98,11 @@ fn init_otel_metrics(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install the rustls crypto provider before any TLS operations.
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls CryptoProvider");
+
     let args = Args::parse();
 
     // Create the log buffer for the GUI

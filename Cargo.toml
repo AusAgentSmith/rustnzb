@@ -30,7 +30,7 @@ serde_json = "1"
 toml = "0.8"
 bincode = "1"
 # TLS
-rustls = "0.23"
+rustls = { version = "0.23", features = ["ring"] }
 tokio-rustls = "0.26"
 # HTTP
 http = "1"
@@ -89,6 +89,7 @@ edition.workspace = true
 nzb-core = { workspace = true }
 nzb-web = { workspace = true }
 nzb-nntp = { workspace = true }
+rustls = { workspace = true }
 nzb-decode = { workspace = true }
 nzb-postproc = { workspace = true }
 tokio = { workspace = true }

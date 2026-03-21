@@ -580,6 +580,23 @@ impl QueueManager {
                     self.on_job_finished(&job_id, success, articles_failed).await;
                     break;
                 }
+                ProgressUpdate::NoServersAvailable { reason, .. } => {
+                    warn!(
+                        job_id = %job_id,
+                        reason = %reason,
+                        "No servers available — pausing job for retry"
+                    );
+                    {
+                        let mut jobs = self.jobs.lock();
+                        if let Some(state) = jobs.get_mut(&job_id) {
+                            state.job.status = JobStatus::Paused;
+                            state.job.error_message = Some(reason);
+                            state.engine.pause();
+                        }
+                    }
+                    self.persist_job_progress(&job_id);
+                    break;
+                }
             }
         }
     }

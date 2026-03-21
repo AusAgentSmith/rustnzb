@@ -148,7 +148,7 @@ select.priority-high { background: rgba(255,152,0,0.15); color: var(--orange); b
 select.priority-normal { background: rgba(160,160,184,0.1); color: var(--text-muted); border-color: var(--border); }
 select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-muted); border-color: var(--border); }
 
-/* ===== Server Cards ===== */
+/* ===== Server Cards (used by categories/RSS) ===== */
 .server-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
 .server-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color var(--transition); }
 .server-card:hover { border-color: var(--accent); }
@@ -158,6 +158,9 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 .status-dot { width: 8px; height: 8px; border-radius: 50%; }
 .status-dot.enabled { background: var(--green); }
 .status-dot.disabled { background: var(--red); }
+.status-dot.checking { background: var(--yellow); animation: pulse 1s infinite; }
+.status-dot.error { background: var(--red); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 .server-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .server-detail { display: flex; flex-direction: column; gap: 2px; }
 .server-detail-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -166,13 +169,19 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 .ssl-on { background: rgba(76,175,80,0.2); color: var(--green); }
 .ssl-off { background: rgba(244,67,54,0.15); color: var(--red); }
 .server-card-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+/* Server list table */
+.server-health-msg { font-size: 0.7rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Settings ===== */
-.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-.settings-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.settings-form { max-width: 720px; }
+.settings-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
 .settings-section-title { font-size: 0.95rem; font-weight: 600; color: var(--accent); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-.setting-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; }
-.setting-label { font-size: 0.85rem; color: var(--text-secondary); }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; gap: 16px; }
+.setting-row + .setting-row { border-top: 1px solid rgba(42,58,94,0.3); }
+.setting-label { font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; min-width: 160px; }
+.setting-input { flex: 1; max-width: 320px; }
+.setting-input input, .setting-input select { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem; }
+.setting-input input:focus, .setting-input select:focus { outline: none; border-color: var(--accent); }
 .setting-value { font-size: 0.85rem; color: var(--text-primary); font-weight: 500; text-align: right; word-break: break-all; max-width: 60%; }
 
 /* ===== Actions column ===== */
@@ -271,7 +280,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   .toolbar { flex-direction: column; align-items: stretch; }
   .toolbar-left, .toolbar-right { justify-content: center; }
   .server-grid { grid-template-columns: 1fr; }
-  .settings-grid { grid-template-columns: 1fr; }
+  .settings-form { max-width: 100%; }
   table { font-size: 0.8rem; }
   thead th, tbody td { padding: 8px 8px; }
   .col-hide-mobile { display: none; }
@@ -302,6 +311,17 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     <div class="stat-item">
       <span>Speed:</span>
       <span class="stat-value speed-value" id="stat-speed">0 B/s</span>
+    </div>
+    <div class="stat-item">
+      <select id="header-speed-limit" title="Speed Limit" style="padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text-secondary);font-size:0.75rem;cursor:pointer;">
+        <option value="0">No Limit</option>
+        <option value="1048576">1 MB/s</option>
+        <option value="5242880">5 MB/s</option>
+        <option value="10485760">10 MB/s</option>
+        <option value="26214400">25 MB/s</option>
+        <option value="52428800">50 MB/s</option>
+        <option value="104857600">100 MB/s</option>
+      </select>
     </div>
     <div class="stat-item">
       <span>Queue:</span>
@@ -423,8 +443,25 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         <button class="btn btn-primary" id="btn-add-server">+ Add Server</button>
       </div>
     </div>
-    <div class="server-grid" id="servers-grid">
-      <div class="table-empty" style="grid-column:1/-1;">No servers configured</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px;">Status</th>
+            <th>Name</th>
+            <th>Host</th>
+            <th>Port</th>
+            <th>SSL</th>
+            <th>Conn.</th>
+            <th>Priority</th>
+            <th class="col-hide-mobile">Retention</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="servers-tbody">
+          <tr><td colspan="9" class="table-empty">No servers configured</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -464,8 +501,11 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       <div class="toolbar-left">
         <span style="font-size:0.9rem;color:var(--text-secondary)">Configuration</span>
       </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" id="btn-save-settings">Save Settings</button>
+      </div>
     </div>
-    <div class="settings-grid" id="settings-grid"></div>
+    <div id="settings-grid"></div>
   </div>
 
   <!-- Logs Tab -->
@@ -674,6 +714,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     </div>
     <div class="modal-actions">
       <button class="btn" id="btn-server-cancel">Cancel</button>
+      <button class="btn" id="btn-server-clone-modal" style="display:none;">Clone</button>
       <button class="btn btn-success" id="btn-server-test-modal">Test</button>
       <button class="btn btn-primary" id="btn-server-save">Save</button>
     </div>
@@ -843,15 +884,29 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   }
   document.querySelectorAll('.nav-tab').forEach(function(el) { el.addEventListener('click', function() { switchTab(this.dataset.tab); }); });
 
+  // ---- Header speed limit control ----
+  document.getElementById('header-speed-limit').addEventListener('change', function() {
+    var val = parseInt(this.value);
+    api('PUT', '/api/config/speed-limit', { speed_limit_bps: val })
+      .then(function() { notify(val ? 'Speed limit: ' + formatBytes(val) + '/s' : 'Speed limit removed'); })
+      .catch(function(e) { notify('Error: ' + e.message, 'error'); });
+  });
+
   // ---- Status ----
   function fetchStatus() {
     api('GET', '/api/status').then(function(d) {
       document.getElementById('app-version').textContent = 'v' + (d.version || '0.0.0');
       var speedText = formatSpeed(d.speed_bps);
-      if (d.speed_limit_bps && d.speed_limit_bps > 0) {
-        speedText += ' / ' + formatBytes(d.speed_limit_bps) + '/s';
-      }
       document.getElementById('stat-speed').textContent = speedText;
+      // Sync header speed limit dropdown
+      var hsl = document.getElementById('header-speed-limit');
+      var curLimit = String(d.speed_limit_bps || 0);
+      if (hsl.value !== curLimit) {
+        // Check if exact value exists as option, else select closest
+        var found = false;
+        for (var oi = 0; oi < hsl.options.length; oi++) { if (hsl.options[oi].value === curLimit) { hsl.value = curLimit; found = true; break; } }
+        if (!found) hsl.value = '0';
+      }
       document.getElementById('stat-queue').textContent = d.queue_size || 0;
       document.getElementById('stat-disk').textContent = d.disk_space_free ? formatBytes(d.disk_space_free) : '--';
       var diskEl = document.getElementById('stat-disk');
@@ -1164,31 +1219,51 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   function fetchServers() {
     api('GET','/api/config/servers').then(function(s){ renderServers(s); }).catch(function(){});
   }
+  // Server health state: { serverId: { success: bool, message: string } }
+  var serverHealth = {};
   function renderServers(servers) {
-    var grid = document.getElementById('servers-grid');
-    if (!servers || servers.length === 0) { grid.innerHTML = '<div class="table-empty" style="grid-column:1/-1;">No servers configured. Click "Add Server" to get started.</div>'; return; }
+    var tbody = document.getElementById('servers-tbody');
+    if (!servers || servers.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No servers configured. Click "Add Server" to get started.</td></tr>'; return; }
     var html = '';
     for (var i=0;i<servers.length;i++) {
       var s = servers[i];
-      html += '<div class="server-card"><div class="server-card-header">'+
-        '<span class="server-card-name">'+esc(s.name||s.host)+'</span>'+
-        '<span class="server-card-status"><span class="status-dot '+(s.enabled?'enabled':'disabled')+'"></span>'+(s.enabled?'Enabled':'Disabled')+'</span></div>'+
-        '<div class="server-details">'+
-          '<div class="server-detail"><span class="server-detail-label">Host</span><span class="server-detail-value">'+esc(s.host)+'</span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">Port</span><span class="server-detail-value">'+s.port+'</span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">Connections</span><span class="server-detail-value">'+s.connections+'</span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">Priority</span><span class="server-detail-value">'+s.priority+'</span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">SSL</span><span class="server-detail-value"><span class="ssl-badge '+(s.ssl?'ssl-on':'ssl-off')+'">'+(s.ssl?'SSL'+(s.ssl_verify?' (verified)':''):'Off')+'</span></span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">Retention</span><span class="server-detail-value">'+(s.retention?s.retention+' days':'Unlimited')+'</span></div>'+
-        '</div>'+
-        '<div class="server-card-actions">'+
+      var h = serverHealth[s.id];
+      var dotClass = 'status-dot ';
+      var statusText = '';
+      if (!s.enabled) { dotClass += 'disabled'; statusText = 'Disabled'; }
+      else if (!h) { dotClass += 'checking'; statusText = 'Checking...'; }
+      else if (h.success) { dotClass += 'enabled'; statusText = 'OK'; }
+      else { dotClass += 'error'; statusText = 'ERROR'; }
+      html += '<tr>'+
+        '<td><span class="server-card-status"><span class="'+dotClass+'"></span>'+statusText+'</span>'+
+          (h && !h.success && s.enabled ? '<div class="server-health-msg" title="'+esc(h.message)+'">'+esc(h.message)+'</div>' : '')+
+        '</td>'+
+        '<td style="font-weight:600;">'+esc(s.name||s.host)+'</td>'+
+        '<td>'+esc(s.host)+'</td>'+
+        '<td>'+s.port+'</td>'+
+        '<td><span class="ssl-badge '+(s.ssl?'ssl-on':'ssl-off')+'">'+(s.ssl?'SSL':'Off')+'</span></td>'+
+        '<td>'+s.connections+'</td>'+
+        '<td>'+s.priority+'</td>'+
+        '<td class="col-hide-mobile">'+(s.retention?s.retention+'d':'--')+'</td>'+
+        '<td><div class="actions">'+
           '<button class="btn btn-sm" onclick="window._serverTest(\''+esc(s.id)+'\')">Test</button>'+
-          '<button class="btn btn-sm" onclick="window._serverClone(\''+esc(s.id)+'\')">Clone</button>'+
           '<button class="btn btn-sm" onclick="window._serverEdit(\''+esc(s.id)+'\')">Edit</button>'+
           '<button class="btn btn-sm btn-danger" onclick="window._serverDelete(\''+esc(s.id)+'\')">Delete</button>'+
-        '</div></div>';
+        '</div></td></tr>';
     }
-    grid.innerHTML = html;
+    tbody.innerHTML = html;
+  }
+
+  // Auto health-check on load
+  var _serversHealthChecked = false;
+  function checkServersHealth() {
+    api('GET', '/api/config/servers/health').then(function(results) {
+      for (var i = 0; i < results.length; i++) {
+        serverHealth[results[i].id] = { success: results[i].success, message: results[i].message };
+      }
+      // Re-render if servers tab is visible
+      api('GET', '/api/config/servers').then(function(s) { renderServers(s); }).catch(function(){});
+    }).catch(function(){});
   }
 
   // Server modal
@@ -1209,12 +1284,21 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     document.getElementById('srv-ssl-verify').checked = isEdit ? server.ssl_verify : true;
     document.getElementById('srv-enabled').checked = isEdit ? server.enabled : true;
     document.getElementById('srv-optional').checked = isEdit ? server.optional : false;
+    document.getElementById('btn-server-clone-modal').style.display = isEdit ? '' : 'none';
     document.getElementById('modal-server').classList.add('active');
   }
 
   document.getElementById('btn-add-server').addEventListener('click', function() { openServerModal(null); });
   document.getElementById('btn-server-cancel').addEventListener('click', function() { document.getElementById('modal-server').classList.remove('active'); });
   document.getElementById('modal-server').addEventListener('click', function(e) { if(e.target===this) this.classList.remove('active'); });
+  document.getElementById('btn-server-clone-modal').addEventListener('click', function() {
+    // Clear the ID so save creates a new server, update the name
+    document.getElementById('srv-edit-id').value = '';
+    document.getElementById('srv-name').value = 'Copy of ' + document.getElementById('srv-name').value;
+    document.getElementById('server-modal-title').textContent = 'Add Server (Clone)';
+    this.style.display = 'none';
+    notify('Cloned — edit and click Save to create', 'info');
+  });
 
   document.getElementById('btn-server-save').addEventListener('click', function() {
     var id = document.getElementById('srv-edit-id').value;
@@ -1260,24 +1344,12 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   window._serverTest = function(id) {
     notify('Testing connection...','info');
     api('POST','/api/config/servers/'+id+'/test').then(function(r) {
+      serverHealth[id] = { success: r.success, message: r.message };
       if(r.success) notify(r.message,'success'); else notify(r.message,'error');
+      fetchServers();
     }).catch(function(e){ notify('Test failed: '+e.message,'error'); });
   };
 
-  window._serverClone = function(id) {
-    api('GET','/api/config/servers').then(function(servers) {
-      var srv = null;
-      for (var i=0;i<servers.length;i++) if(servers[i].id===id){srv=servers[i];break;}
-      if (!srv) return;
-      var clone = JSON.parse(JSON.stringify(srv));
-      clone.id = '';
-      clone.name = 'Copy of ' + (clone.name || clone.host);
-      api('POST','/api/config/servers', clone).then(function() {
-        notify('Server cloned','success');
-        fetchServers();
-      }).catch(function(e){ notify('Clone failed: '+e.message,'error'); });
-    }).catch(function(e){ notify('Error: '+e.message,'error'); });
-  };
 
   // Test button inside server editor modal
   document.getElementById('btn-server-test-modal').addEventListener('click', function() {
@@ -1306,20 +1378,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   // Test All servers button
   document.getElementById('btn-test-all-servers').addEventListener('click', function() {
-    api('GET','/api/config/servers').then(function(servers) {
-      if (!servers || servers.length === 0) { notify('No servers to test','info'); return; }
-      notify('Testing '+servers.length+' server(s)...','info');
-      var done = 0, pass = 0, fail = 0;
-      for (var i=0;i<servers.length;i++) {
-        (function(s) {
-          api('POST','/api/config/servers/'+s.id+'/test').then(function(r) {
-            done++;
-            if(r.success) { pass++; } else { fail++; notify((s.name||s.host)+': '+r.message,'error'); }
-            if(done===servers.length) notify('Test complete: '+pass+' passed, '+fail+' failed', fail>0?'error':'success');
-          }).catch(function(e) { done++; fail++; notify((s.name||s.host)+': '+e.message,'error'); if(done===servers.length) notify('Test complete: '+pass+' passed, '+fail+' failed','error'); });
-        })(servers[i]);
-      }
-    }).catch(function(e){ notify('Error: '+e.message,'error'); });
+    notify('Testing all servers...','info');
+    checkServersHealth();
   });
 
   // ---- Categories ----
@@ -1480,80 +1540,64 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   function renderSettings(config) {
     var grid = document.getElementById('settings-grid');
     var g = config.general || {};
-    var slVal = g.speed_limit_bps || 0;
-    var slOptions = '<select id="setting-speed-limit" onchange="window._setSpeedLimit(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">';
-    [['0','Unlimited'],['1048576','1 MB/s'],['5242880','5 MB/s'],['10485760','10 MB/s'],['26214400','25 MB/s'],['52428800','50 MB/s'],['104857600','100 MB/s']].forEach(function(o) {
-      var sel = String(slVal) === o[0] ? ' selected' : '';
-      slOptions += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
-    });
-    slOptions += '</select>';
-    var cacheSize = g.cache_size ? formatBytes(g.cache_size) : '--';
 
-    var retVal = g.history_retention;
-    var retOptions = '<select id="setting-retention" onchange="window._setRetention(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">';
-    [['','Keep All'],['10','10'],['20','20'],['50','50'],['100','100']].forEach(function(o) {
-      var sel = (retVal == null && o[0]==='') || (retVal !== null && String(retVal) === o[0]) ? ' selected' : '';
-      retOptions += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
-    });
-    retOptions += '</select>';
-
-    var madVal = g.max_active_downloads || 1;
-    var madOptions = '<select id="setting-max-downloads" onchange="window._setMaxDownloads(this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;">';
-    [['1','1'],['2','2'],['3','3'],['5','5'],['10','10'],['0','Unlimited']].forEach(function(o) {
-      var sel = String(madVal) === o[0] ? ' selected' : '';
-      madOptions += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
-    });
-    madOptions += '</select>';
-
-    var html =
-      '<div class="settings-section"><div class="settings-section-title">Network</div>'+
-        '<div class="setting-row"><span class="setting-label">Listen Address</span><span class="setting-value">'+esc(g.listen_addr||'--')+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Port</span><span class="setting-value">'+(g.port||'--')+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">API Key</span><span class="setting-value">'+(g.api_key?'***configured***':'Not set')+'</span></div></div>'+
-      '<div class="settings-section"><div class="settings-section-title">Directories</div>'+
-        '<div class="setting-row"><span class="setting-label">Incomplete Dir</span><span class="setting-value">'+esc(g.incomplete_dir||'--')+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Complete Dir</span><span class="setting-value">'+esc(g.complete_dir||'--')+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Data Dir</span><span class="setting-value">'+esc(g.data_dir||'--')+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Watch Directory</span><span class="setting-value">'+esc(g.watch_dir||'Not configured')+'</span></div></div>'+
-      '<div class="settings-section"><div class="settings-section-title">Performance</div>'+
-        '<div class="setting-row"><span class="setting-label">Concurrent Downloads</span><span class="setting-value">'+madOptions+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Speed Limit</span><span class="setting-value">'+slOptions+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Cache Size</span><span class="setting-value">'+cacheSize+'</span></div></div>'+
-      '<div class="settings-section"><div class="settings-section-title">Logging</div>'+
-        '<div class="setting-row"><span class="setting-label">Log Level</span><span class="setting-value">'+esc(g.log_level||'--')+'</span></div>'+
-        '<div class="setting-row"><span class="setting-label">Log File</span><span class="setting-value">'+esc(g.log_file||'stdout')+'</span></div></div>'+
-      '<div class="settings-section"><div class="settings-section-title">History</div>'+
-        '<div class="setting-row"><span class="setting-label">Retention (NZBs to keep)</span><span class="setting-value">'+retOptions+'</span></div></div>';
-
-    var cats = config.categories || [];
-    if (cats.length > 0) {
-      html += '<div class="settings-section"><div class="settings-section-title">Categories</div>';
-      for (var i=0;i<cats.length;i++) { var c=cats[i]; html += '<div class="setting-row"><span class="setting-label">'+esc(c.name)+'</span><span class="setting-value">PP: '+c.post_processing+(c.output_dir?' | Dir: '+esc(String(c.output_dir)):'')+'</span></div>'; }
-      html += '</div>';
+    function inp(id, val, placeholder) {
+      return '<div class="setting-input"><input type="text" id="'+id+'" value="'+esc(val||'')+'" placeholder="'+(placeholder||'')+'"></div>';
     }
-    var srvs = config.servers || [];
-    html += '<div class="settings-section"><div class="settings-section-title">Servers</div>'+
-      '<div class="setting-row"><span class="setting-label">Total Servers</span><span class="setting-value">'+srvs.length+'</span></div>';
-    var tc = 0; for (var j=0;j<srvs.length;j++) tc += srvs[j].connections || 0;
-    html += '<div class="setting-row"><span class="setting-label">Total Connections</span><span class="setting-value">'+tc+'</span></div></div>';
+    function sel(id, options, curVal) {
+      var h = '<div class="setting-input"><select id="'+id+'">';
+      for (var i = 0; i < options.length; i++) {
+        var o = options[i];
+        var s = String(curVal) === o[0] ? ' selected' : '';
+        h += '<option value="'+o[0]+'"'+s+'>'+o[1]+'</option>';
+      }
+      h += '</select></div>';
+      return h;
+    }
+
+    var retVal = g.history_retention == null ? '' : String(g.history_retention);
+    var cacheMB = Math.round((g.cache_size || 0) / 1048576);
+
+    var html = '<div class="settings-form">' +
+      '<div class="settings-section"><div class="settings-section-title">Directories</div>'+
+        '<div class="setting-row"><span class="setting-label">Incomplete Dir</span>'+inp('set-incomplete-dir', g.incomplete_dir, '/path/to/incomplete')+'</div>'+
+        '<div class="setting-row"><span class="setting-label">Complete Dir</span>'+inp('set-complete-dir', g.complete_dir, '/path/to/complete')+'</div>'+
+        '<div class="setting-row"><span class="setting-label">Data Dir</span>'+inp('set-data-dir', g.data_dir, '/path/to/data')+'</div>'+
+        '<div class="setting-row"><span class="setting-label">Watch Directory</span>'+inp('set-watch-dir', g.watch_dir || '', '/path/to/watch (optional)')+'</div>'+
+      '</div>'+
+      '<div class="settings-section"><div class="settings-section-title">Performance</div>'+
+        '<div class="setting-row"><span class="setting-label">Concurrent Downloads</span>'+
+          sel('set-max-downloads', [['1','1'],['2','2'],['3','3'],['5','5'],['10','10'],['0','Unlimited']], g.max_active_downloads || 1)+'</div>'+
+        '<div class="setting-row"><span class="setting-label">Cache Size (MB)</span>'+
+          '<div class="setting-input"><input type="number" id="set-cache-size" value="'+cacheMB+'" min="0" step="50"></div></div>'+
+      '</div>'+
+      '<div class="settings-section"><div class="settings-section-title">History</div>'+
+        '<div class="setting-row"><span class="setting-label">Retention (NZBs to keep)</span>'+
+          sel('set-retention', [['','Keep All'],['10','10'],['20','20'],['50','50'],['100','100'],['200','200'],['500','500']], retVal)+'</div>'+
+      '</div>'+
+    '</div>';
+
     grid.innerHTML = html;
   }
 
-  window._setRetention = function(val) {
-    var body = { retention: val === '' ? null : parseInt(val) };
-    api('PUT','/api/config/history-retention', body).then(function(){ notify('History retention updated'); }).catch(function(e){ notify('Error: '+e.message,'error'); });
-  };
-
-  window._setMaxDownloads = function(val) {
-    var body = { max_active_downloads: parseInt(val) };
-    api('PUT','/api/config/max-active-downloads', body).then(function(){ notify('Concurrent downloads updated'); }).catch(function(e){ notify('Error: '+e.message,'error'); });
-  };
-
-  window._setSpeedLimit = function(val) {
-    api('PUT', '/api/config/speed-limit', { speed_limit_bps: parseInt(val) })
-      .then(function() { notify('Speed limit updated'); })
-      .catch(function(e) { notify('Error: ' + e.message, 'error'); });
-  };
+  // Save settings button
+  document.getElementById('btn-save-settings').addEventListener('click', function() {
+    var cacheMB = parseInt(document.getElementById('set-cache-size').value) || 0;
+    var retVal = document.getElementById('set-retention').value;
+    var body = {
+      incomplete_dir: document.getElementById('set-incomplete-dir').value.trim(),
+      complete_dir: document.getElementById('set-complete-dir').value.trim(),
+      data_dir: document.getElementById('set-data-dir').value.trim(),
+      watch_dir: document.getElementById('set-watch-dir').value.trim(),
+      cache_size: cacheMB * 1048576,
+      max_active_downloads: parseInt(document.getElementById('set-max-downloads').value),
+      history_retention: retVal === '' ? null : parseInt(retVal)
+    };
+    api('PUT', '/api/config/general', body).then(function() {
+      notify('Settings saved', 'success');
+      fetchSettings();
+    }).catch(function(e) { notify('Error: ' + e.message, 'error'); });
+  });
 
   // ---- Logs ----
   function renderLogLine(e) {
@@ -1561,10 +1605,11 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     return '<div class="log-line"><span class="log-ts">'+ts+'</span><span class="log-lvl '+(e.level||'')+'">'+esc(e.level)+'</span><span class="log-target">'+esc(e.target)+'</span><span class="log-msg">'+esc(e.message)+'</span>'+(e.job_id?'<span class="log-job">'+esc(e.job_id).substring(0,8)+'</span>':'')+'</div>';
   }
 
+  var logInitialLoad = true;
   function fetchLogs() {
     var level = document.getElementById('log-level-filter').value;
     var url = '/api/logs?limit=500';
-    if (logLastSeq > 0) url += '&after_seq=' + logLastSeq;
+    if (!logInitialLoad) url += '&after_seq=' + logLastSeq;
     if (level) url += '&level=' + level;
     api('GET', url).then(function(d) {
       var entries = d.entries || [];
@@ -1572,13 +1617,13 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       var search = document.getElementById('log-search').value.toLowerCase();
       var autoScroll = document.getElementById('log-autoscroll').checked;
 
-      if (logLastSeq === 0) viewer.innerHTML = '';
+      if (logInitialLoad) { viewer.innerHTML = ''; logInitialLoad = false; }
       for (var i = 0; i < entries.length; i++) {
         var e = entries[i];
         if (search && e.message.toLowerCase().indexOf(search) === -1 && (e.target||'').toLowerCase().indexOf(search) === -1) continue;
         viewer.innerHTML += renderLogLine(e);
       }
-      if (d.latest_seq) logLastSeq = d.latest_seq;
+      if (d.latest_seq != null) logLastSeq = d.latest_seq;
 
       // Trim old entries
       while (viewer.children.length > 1000) viewer.removeChild(viewer.firstChild);
@@ -1586,8 +1631,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     }).catch(function(){});
   }
 
-  document.getElementById('log-level-filter').addEventListener('change', function() { logLastSeq = 0; document.getElementById('log-viewer').innerHTML = ''; fetchLogs(); });
-  document.getElementById('log-search').addEventListener('input', function() { logLastSeq = 0; document.getElementById('log-viewer').innerHTML = ''; fetchLogs(); });
+  document.getElementById('log-level-filter').addEventListener('change', function() { logLastSeq = 0; logInitialLoad = true; document.getElementById('log-viewer').innerHTML = ''; fetchLogs(); });
+  document.getElementById('log-search').addEventListener('input', function() { logLastSeq = 0; logInitialLoad = true; document.getElementById('log-viewer').innerHTML = ''; fetchLogs(); });
 
   // ---- Upload Modal ----
   var modalEl = document.getElementById('modal-upload');
@@ -1698,6 +1743,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   setInterval(function(){ if(activeTab==='rss') fetchRssFeeds(); }, 30000);
   setInterval(function(){ if(activeTab==='logs') fetchLogs(); }, 2000);
   drawSpeedGraph();
+  // Auto-check server health on load
+  checkServersHealth();
 
 })();
 </script>

@@ -65,6 +65,11 @@ pub enum ProgressUpdate {
         success: bool,
         articles_failed: usize,
     },
+    /// No servers could be reached — job should be paused, not moved to history.
+    NoServersAvailable {
+        job_id: String,
+        reason: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -217,13 +222,78 @@ impl DownloadEngine {
         sorted_servers.sort_by_key(|s| s.priority);
 
         if sorted_servers.is_empty() {
-            error!("No enabled servers configured");
-            let _ = progress_tx.send(ProgressUpdate::JobFinished {
+            error!(job_id = %job_id, "No enabled servers configured");
+            let _ = progress_tx.send(ProgressUpdate::NoServersAvailable {
                 job_id,
-                success: false,
-                articles_failed: 0,
+                reason: "No enabled servers configured".into(),
             });
             return;
+        }
+
+        // Pre-flight: verify at least one server is reachable before spawning
+        // workers.  This prevents the scenario where all workers instantly fail
+        // and every article is marked as failed.
+        {
+            let mut any_ok = false;
+            for server in &sorted_servers {
+                info!(
+                    job_id = %job_id,
+                    server = %server.name,
+                    host = %server.host,
+                    port = server.port,
+                    ssl = server.ssl,
+                    "Pre-flight: testing server connectivity"
+                );
+                let mut conn = NntpConnection::new(format!("preflight-{}", server.id));
+                match tokio::time::timeout(
+                    Duration::from_secs(15),
+                    conn.connect(server),
+                )
+                .await
+                {
+                    Ok(Ok(())) => {
+                        info!(
+                            job_id = %job_id,
+                            server = %server.name,
+                            "Pre-flight: server OK"
+                        );
+                        let _ = conn.quit().await;
+                        any_ok = true;
+                        break;
+                    }
+                    Ok(Err(e)) => {
+                        warn!(
+                            job_id = %job_id,
+                            server = %server.name,
+                            error = %e,
+                            "Pre-flight: server connection failed"
+                        );
+                    }
+                    Err(_) => {
+                        warn!(
+                            job_id = %job_id,
+                            server = %server.name,
+                            "Pre-flight: server connection timed out (15s)"
+                        );
+                    }
+                }
+            }
+
+            if !any_ok {
+                error!(
+                    job_id = %job_id,
+                    servers_tested = sorted_servers.len(),
+                    "All servers failed pre-flight connectivity check — pausing job"
+                );
+                let _ = progress_tx.send(ProgressUpdate::NoServersAvailable {
+                    job_id,
+                    reason: format!(
+                        "All {} server(s) failed connectivity check",
+                        sorted_servers.len()
+                    ),
+                });
+                return;
+            }
         }
 
         // Spawn worker tasks: one per connection slot per server

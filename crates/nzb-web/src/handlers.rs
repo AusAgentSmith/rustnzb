@@ -989,6 +989,123 @@ pub async fn h_rss_feed_delete(
 }
 
 // ---------------------------------------------------------------------------
+// General settings handler
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+pub struct UpdateGeneralBody {
+    pub incomplete_dir: Option<String>,
+    pub complete_dir: Option<String>,
+    pub data_dir: Option<String>,
+    pub watch_dir: Option<String>,
+    pub cache_size: Option<u64>,
+    pub max_active_downloads: Option<usize>,
+    pub history_retention: Option<Option<usize>>,
+}
+
+/// PUT /api/config/general -- Update general settings.
+pub async fn h_general_update(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateGeneralBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    let mut config = (*state.config()).clone();
+
+    if let Some(dir) = body.incomplete_dir {
+        config.general.incomplete_dir = dir.into();
+    }
+    if let Some(dir) = body.complete_dir {
+        config.general.complete_dir = dir.into();
+    }
+    if let Some(dir) = body.data_dir {
+        config.general.data_dir = dir.into();
+    }
+    // watch_dir: empty string means unset
+    if let Some(dir) = body.watch_dir {
+        config.general.watch_dir = if dir.is_empty() {
+            None
+        } else {
+            Some(dir.into())
+        };
+    }
+    if let Some(cs) = body.cache_size {
+        config.general.cache_size = cs;
+    }
+    if let Some(mad) = body.max_active_downloads {
+        state.queue_manager.set_max_active_downloads(mad);
+        config.general.max_active_downloads = mad;
+    }
+    if let Some(ret) = body.history_retention {
+        state.queue_manager.set_history_retention(ret);
+        config.general.history_retention = ret;
+    }
+
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+// ---------------------------------------------------------------------------
+// Server health check handler
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+pub struct ServerHealthResult {
+    pub id: String,
+    pub name: String,
+    pub success: bool,
+    pub message: String,
+}
+
+/// GET /api/config/servers/health -- Test all servers and return health status.
+pub async fn h_servers_health(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<ServerHealthResult>>, ApiError> {
+    let servers = state.config().servers.clone();
+    let mut results = Vec::new();
+
+    for server in &servers {
+        if !server.enabled {
+            results.push(ServerHealthResult {
+                id: server.id.clone(),
+                name: server.name.clone(),
+                success: false,
+                message: "Disabled".into(),
+            });
+            continue;
+        }
+
+        let srv = server.clone();
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(15),
+            test_server_connection(srv),
+        )
+        .await;
+
+        match result {
+            Ok(Ok(msg)) => results.push(ServerHealthResult {
+                id: server.id.clone(),
+                name: server.name.clone(),
+                success: true,
+                message: msg,
+            }),
+            Ok(Err(msg)) => results.push(ServerHealthResult {
+                id: server.id.clone(),
+                name: server.name.clone(),
+                success: false,
+                message: msg,
+            }),
+            Err(_) => results.push(ServerHealthResult {
+                id: server.id.clone(),
+                name: server.name.clone(),
+                success: false,
+                message: "Connection timed out (15s)".into(),
+            }),
+        }
+    }
+
+    Ok(Json(results))
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

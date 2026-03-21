@@ -87,6 +87,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/history", delete(handlers::h_history_clear))
         // Config
         .route("/config", get(handlers::h_config_get))
+        .route("/config/general", put(handlers::h_general_update))
+        .route(
+            "/config/servers/health",
+            get(handlers::h_servers_health),
+        )
         .route("/config/servers", get(handlers::h_servers_list))
         .route("/config/servers", post(handlers::h_server_add))
         .route("/config/servers/{id}", put(handlers::h_server_update))
