@@ -128,6 +128,7 @@ pub struct StatusResponse {
     pub speed_bps: u64,
     pub queue_size: usize,
     pub disk_space_free: u64,
+    pub min_free_space_bytes: u64,
     pub pause_remaining_secs: Option<i64>,
 }
 
@@ -414,6 +415,7 @@ pub async fn h_status(
         speed_bps: qm.get_speed(),
         queue_size: qm.queue_size(),
         disk_space_free: get_disk_space_free(&config.general.complete_dir),
+        min_free_space_bytes: qm.min_free_space(),
         pause_remaining_secs: qm.pause_remaining_secs(),
     }))
 }

@@ -713,6 +713,12 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       document.getElementById('stat-speed').textContent = formatSpeed(d.speed_bps);
       document.getElementById('stat-queue').textContent = d.queue_size || 0;
       document.getElementById('stat-disk').textContent = d.disk_space_free ? formatBytes(d.disk_space_free) : '--';
+      var diskEl = document.getElementById('stat-disk');
+      if (d.min_free_space_bytes && d.disk_space_free < d.min_free_space_bytes) {
+        diskEl.style.color = 'var(--red)';
+      } else {
+        diskEl.style.color = '';
+      }
       globalPaused = !!d.paused;
       pushSpeedSample(d.speed_bps || 0);
       var dot = document.getElementById('conn-dot'), label = document.getElementById('conn-label');

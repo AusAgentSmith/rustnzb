@@ -22,6 +22,32 @@ use nzb_postproc::{PostProcConfig, run_pipeline};
 use crate::download_engine::{DownloadEngine, ProgressUpdate};
 use crate::log_buffer::LogBuffer;
 
+/// Get free disk space for a path (returns 0 on error).
+fn get_disk_free(path: &std::path::Path) -> u64 {
+    #[cfg(unix)]
+    {
+        use std::ffi::CString;
+        use std::mem::MaybeUninit;
+        let c_path = match CString::new(path.to_string_lossy().as_bytes()) {
+            Ok(p) => p,
+            Err(_) => return 0,
+        };
+        unsafe {
+            let mut stat = MaybeUninit::<libc::statvfs>::uninit();
+            if libc::statvfs(c_path.as_ptr(), stat.as_mut_ptr()) == 0 {
+                let stat = stat.assume_init();
+                return stat.f_bavail as u64 * stat.f_frsize as u64;
+            }
+        }
+        0
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        0
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Speed tracker (simple rolling window)
 // ---------------------------------------------------------------------------
@@ -110,6 +136,8 @@ pub struct QueueManager {
     max_active_downloads: AtomicUsize,
     /// Category configs for post-processing decisions.
     categories: Mutex<Vec<CategoryConfig>>,
+    /// Minimum free disk space in bytes before pausing downloads.
+    min_free_space: u64,
 }
 
 impl QueueManager {
@@ -122,6 +150,7 @@ impl QueueManager {
         log_buffer: LogBuffer,
         max_active_downloads: usize,
         categories: Vec<CategoryConfig>,
+        min_free_space: u64,
     ) -> Arc<Self> {
         Arc::new(Self {
             jobs: Mutex::new(HashMap::new()),
@@ -137,6 +166,7 @@ impl QueueManager {
             log_buffer: Some(log_buffer),
             max_active_downloads: AtomicUsize::new(max_active_downloads),
             categories: Mutex::new(categories),
+            min_free_space,
         })
     }
 
@@ -281,8 +311,39 @@ impl QueueManager {
     }
 
     /// Start the download for a job.
-    fn start_download(self: &Arc<Self>, job: NzbJob, nzb_data: Option<Vec<u8>>) {
+    fn start_download(self: &Arc<Self>, mut job: NzbJob, nzb_data: Option<Vec<u8>>) {
         let job_id = job.id.clone();
+
+        // Pre-flight disk space check
+        let free = get_disk_free(&self.incomplete_dir);
+        if self.min_free_space > 0 && free > 0 && free < self.min_free_space {
+            warn!(
+                job_id = %job_id,
+                free_bytes = free,
+                min_free_space = self.min_free_space,
+                "Paused job due to low disk space"
+            );
+            job.status = JobStatus::Paused;
+            job.error_message = Some("Paused: low disk space".to_string());
+            let engine = Arc::new(DownloadEngine::new());
+            engine.pause();
+            let state = JobState {
+                job,
+                engine,
+                task_handle: None,
+                speed: Arc::new(SpeedTracker::new()),
+                nzb_data,
+            };
+            self.jobs.lock().insert(job_id.clone(), state);
+            {
+                let mut order = self.job_order.lock();
+                if !order.contains(&job_id) {
+                    order.push(job_id);
+                }
+            }
+            return;
+        }
+
         info!(
             job_id = %job_id,
             name = %job.name,
@@ -962,6 +1023,11 @@ impl QueueManager {
         &self.complete_dir
     }
 
+    /// Get the minimum free disk space threshold.
+    pub fn min_free_space(&self) -> u64 {
+        self.min_free_space
+    }
+
     // -----------------------------------------------------------------------
     // History query methods (delegate to DB)
     // -----------------------------------------------------------------------
@@ -1062,13 +1128,39 @@ impl QueueManager {
         let qm = Arc::clone(self);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut tick_count: u64 = 0;
             loop {
                 interval.tick().await;
                 qm.speed.tick(1.0);
                 // Tick per-job speed trackers
-                let jobs = qm.jobs.lock();
-                for (_id, state) in jobs.iter() {
-                    state.speed.tick(1.0);
+                {
+                    let jobs = qm.jobs.lock();
+                    for (_id, state) in jobs.iter() {
+                        state.speed.tick(1.0);
+                    }
+                }
+
+                // Periodic disk space check (every 30 seconds)
+                tick_count += 1;
+                if tick_count % 30 == 0 && qm.min_free_space > 0 {
+                    let free = get_disk_free(&qm.incomplete_dir);
+                    if free > 0
+                        && free < qm.min_free_space
+                        && !qm.globally_paused.load(Ordering::Relaxed)
+                    {
+                        warn!(
+                            free_bytes = free,
+                            min_free_space = qm.min_free_space,
+                            "Low disk space, auto-pausing downloads"
+                        );
+                        qm.globally_paused.store(true, Ordering::Relaxed);
+                        let jobs = qm.jobs.lock();
+                        for (_id, state) in jobs.iter() {
+                            if state.job.status == JobStatus::Downloading {
+                                state.engine.pause();
+                            }
+                        }
+                    }
                 }
             }
         });
