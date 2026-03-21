@@ -41,21 +41,20 @@ body {
 }
 
 /* ===== Header ===== */
+.header-outer { background: var(--bg-secondary); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
 .header {
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 56px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  max-width: 1140px;
+  margin: 0 auto;
 }
+.nav-outer { background: var(--bg-secondary); border-bottom: 1px solid var(--border); }
 .header-brand { display: flex; align-items: center; gap: 12px; }
 .header-brand h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
-.header-version { font-size: 0.75rem; color: var(--text-muted); background: var(--bg-tertiary); padding: 2px 8px; border-radius: 10px; }
+.header-version { font-size: 0.75rem; color: var(--text-muted); background: var(--bg-tertiary); padding: 2px 8px; border-radius: 10px; line-height: 1.4; align-self: center; }
 .header-center { display: flex; align-items: center; gap: 16px; }
 .speed-graph-container { width: 200px; height: 36px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
 .speed-graph-container canvas { display: block; width: 100%; height: 100%; }
@@ -69,13 +68,13 @@ body {
 .conn-dot.error { background: var(--red); }
 
 /* ===== Navigation ===== */
-.nav { background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; padding: 0 24px; gap: 0; }
+.nav { display: flex; justify-content: center; padding: 0 24px; gap: 0; max-width: 1140px; margin: 0 auto; }
 .nav-tab { padding: 12px 20px; cursor: pointer; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; border: none; background: none; border-bottom: 2px solid transparent; transition: color var(--transition), border-color var(--transition); user-select: none; }
 .nav-tab:hover { color: var(--text-primary); }
 .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* ===== Main Content ===== */
-.main { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+.main { max-width: 1140px; margin: 0 auto; padding: 20px 24px; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
@@ -173,7 +172,7 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 .server-health-msg { font-size: 0.7rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Settings ===== */
-.settings-form { max-width: 720px; }
+.settings-form { max-width: 720px; margin: 0 auto; }
 .settings-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
 .settings-section-title { font-size: 0.95rem; font-weight: 600; color: var(--accent); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; gap: 16px; }
@@ -185,7 +184,9 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 .setting-value { font-size: 0.85rem; color: var(--text-primary); font-weight: 500; text-align: right; word-break: break-all; max-width: 60%; }
 
 /* ===== Actions column ===== */
-.actions { display: flex; gap: 4px; justify-content: flex-end; }
+.actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.col-order { text-align: center; width: 30px; }
+.col-actions { text-align: right; }
 
 /* ===== Modal ===== */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
@@ -267,6 +268,13 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 .kbd-hint { position: fixed; bottom: 8px; left: 24px; font-size: 0.7rem; color: var(--text-muted); z-index: 50; }
 kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); border-radius: 3px; background: var(--bg-secondary); font-size: 0.7rem; font-family: inherit; }
 
+/* ===== Detail grid (history/job info) ===== */
+.detail-grid { display: flex; flex-direction: column; gap: 0; }
+.detail-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid rgba(42,58,94,0.3); gap: 16px; }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); min-width: 110px; }
+.detail-value { font-size: 0.9rem; font-weight: 500; color: var(--text-primary); text-align: right; flex: 1; }
+
 /* ===== Directory browser ===== */
 .dir-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(42,58,94,0.3); font-size: 0.85rem; color: var(--text-primary); }
 .dir-item:last-child { border-bottom: none; }
@@ -306,6 +314,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 <body>
 
 <!-- ===== Header ===== -->
+<div class="header-outer">
 <header class="header">
   <div class="header-brand">
     <h1>rustnzb</h1>
@@ -330,6 +339,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         <option value="26214400">25 MB/s</option>
         <option value="52428800">50 MB/s</option>
         <option value="104857600">100 MB/s</option>
+        <option value="custom">Custom...</option>
       </select>
     </div>
     <div class="stat-item">
@@ -346,8 +356,10 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     </div>
   </div>
 </header>
+</div>
 
 <!-- ===== Navigation ===== -->
+<div class="nav-outer">
 <nav class="nav">
   <button class="nav-tab active" data-tab="queue">Queue</button>
   <button class="nav-tab" data-tab="history">History</button>
@@ -357,6 +369,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   <button class="nav-tab" data-tab="settings">Settings</button>
   <button class="nav-tab" data-tab="logs">Logs</button>
 </nav>
+</div>
 
 <!-- ===== Main Content ===== -->
 <main class="main">
@@ -409,7 +422,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         <thead>
           <tr>
             <th style="width:30px;"><input type="checkbox" id="queue-select-all" title="Select all"></th>
-            <th style="width:30px;"></th>
+            <th class="col-order" style="width:30px;"></th>
             <th>Name</th>
             <th>Status</th>
             <th class="progress-cell">Progress</th>
@@ -417,7 +430,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
             <th>Size</th>
             <th class="col-hide-mobile">Category</th>
             <th class="col-hide-mobile">Priority</th>
-            <th>Actions</th>
+            <th class="col-actions">Actions</th>
           </tr>
         </thead>
         <tbody id="queue-body">
@@ -929,10 +942,29 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   // ---- Header speed limit control ----
   document.getElementById('header-speed-limit').addEventListener('change', function() {
-    var val = parseInt(this.value);
-    api('PUT', '/api/config/speed-limit', { speed_limit_bps: val })
-      .then(function() { notify(val ? 'Speed limit: ' + formatBytes(val) + '/s' : 'Speed limit removed'); })
-      .catch(function(e) { notify('Error: ' + e.message, 'error'); });
+    var sel = this;
+    if (sel.value === 'custom') {
+      var mbps = prompt('Enter speed limit in MB/s (0 for no limit):');
+      if (mbps === null) { sel.value = '0'; return; }
+      var val = Math.round(parseFloat(mbps) * 1048576);
+      if (isNaN(val) || val < 0) { notify('Invalid number', 'error'); sel.value = '0'; return; }
+      // Check if option exists, else add it
+      var found = false;
+      for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === String(val)) { found = true; break; } }
+      if (!found && val > 0) {
+        var opt = document.createElement('option'); opt.value = String(val); opt.textContent = mbps + ' MB/s';
+        sel.insertBefore(opt, sel.querySelector('[value="custom"]'));
+      }
+      sel.value = String(val);
+      api('PUT', '/api/config/speed-limit', { speed_limit_bps: val })
+        .then(function() { notify(val ? 'Speed limit: ' + formatBytes(val) + '/s' : 'Speed limit removed'); })
+        .catch(function(e) { notify('Error: ' + e.message, 'error'); });
+    } else {
+      var val = parseInt(sel.value);
+      api('PUT', '/api/config/speed-limit', { speed_limit_bps: val })
+        .then(function() { notify(val ? 'Speed limit: ' + formatBytes(val) + '/s' : 'Speed limit removed'); })
+        .catch(function(e) { notify('Error: ' + e.message, 'error'); });
+    }
   });
 
   // ---- Status ----
@@ -945,10 +977,14 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       var hsl = document.getElementById('header-speed-limit');
       var curLimit = String(d.speed_limit_bps || 0);
       if (hsl.value !== curLimit) {
-        // Check if exact value exists as option, else select closest
+        // Check if exact value exists as option, else add as custom
         var found = false;
         for (var oi = 0; oi < hsl.options.length; oi++) { if (hsl.options[oi].value === curLimit) { hsl.value = curLimit; found = true; break; } }
-        if (!found) hsl.value = '0';
+        if (!found && parseInt(curLimit) > 0) {
+          var opt = document.createElement('option'); opt.value = curLimit; opt.textContent = (parseInt(curLimit)/1048576).toFixed(1) + ' MB/s';
+          hsl.insertBefore(opt, hsl.querySelector('[value="custom"]'));
+          hsl.value = curLimit;
+        } else if (!found) { hsl.value = '0'; }
       }
       document.getElementById('stat-queue').textContent = d.queue_size || 0;
       document.getElementById('stat-disk').textContent = d.disk_space_free ? formatBytes(d.disk_space_free) : '--';
@@ -1195,7 +1231,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     var html = '';
     for (var i=0;i<entries.length;i++) {
       var e = entries[i], s = sc(e.status);
-      html += '<tr><td title="'+esc(e.name)+'" style="cursor:pointer;" onclick="window._showHistoryDetail(\''+e.id+'\')"><div style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.name)+'</div>'+
+      html += '<tr><td title="'+esc(e.name)+'" style="cursor:pointer;" onclick="window._showHistoryDetail(\''+e.id+'\')"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.name)+'</div>'+
         (e.error_message?'<div style="font-size:0.75rem;color:var(--red);margin-top:2px;">'+esc(e.error_message)+'</div>':'')+'</td>'+
         '<td><span class="badge badge-'+s+'">'+sl(e.status)+'</span></td>'+
         '<td>'+formatBytes(e.total_bytes)+'</td>'+
@@ -1225,13 +1261,17 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       document.getElementById('files-modal-title').textContent = entry.name;
       // Files tab: show summary
       var list = document.getElementById('files-list');
-      list.innerHTML = '<div style="padding:16px;color:var(--text-secondary);">'+
-        '<div><strong>Status:</strong> '+sl(entry.status)+'</div>'+
-        '<div><strong>Size:</strong> '+formatBytes(entry.downloaded_bytes)+' / '+formatBytes(entry.total_bytes)+'</div>'+
-        '<div><strong>Category:</strong> '+esc(entry.category||'Default')+'</div>'+
-        '<div><strong>Completed:</strong> '+formatDateFull(entry.completed_at)+'</div>'+
-        (entry.output_dir?'<div><strong>Output:</strong> '+esc(entry.output_dir)+'</div>':'')+
-        (entry.error_message?'<div style="color:var(--red);margin-top:8px;"><strong>Error:</strong> '+esc(entry.error_message)+'</div>':'')+
+      var dlTimeSecs = entry.added_at && entry.completed_at ? Math.round((new Date(entry.completed_at) - new Date(entry.added_at)) / 1000) : 0;
+      var avgSpeedBps = dlTimeSecs > 0 ? entry.downloaded_bytes / dlTimeSecs : 0;
+      list.innerHTML = '<div style="padding:16px;" class="detail-grid">'+
+        '<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">'+sl(entry.status)+'</span></div>'+
+        '<div class="detail-row"><span class="detail-label">Size</span><span class="detail-value">'+formatBytes(entry.downloaded_bytes)+' / '+formatBytes(entry.total_bytes)+'</span></div>'+
+        '<div class="detail-row"><span class="detail-label">Category</span><span class="detail-value">'+esc(entry.category||'Default')+'</span></div>'+
+        '<div class="detail-row"><span class="detail-label">Completed</span><span class="detail-value">'+formatDateFull(entry.completed_at)+'</span></div>'+
+        (dlTimeSecs > 0 ? '<div class="detail-row"><span class="detail-label">Download Time</span><span class="detail-value">'+formatDuration(dlTimeSecs)+'</span></div>' : '')+
+        (avgSpeedBps > 0 ? '<div class="detail-row"><span class="detail-label">Avg Speed</span><span class="detail-value speed-value">'+formatSpeed(avgSpeedBps)+'</span></div>' : '')+
+        (entry.output_dir?'<div class="detail-row"><span class="detail-label">Output</span><span class="detail-value" style="word-break:break-all;">'+esc(entry.output_dir)+'</span></div>':'')+
+        (entry.error_message?'<div class="detail-row"><span class="detail-label" style="color:var(--red);">Error</span><span class="detail-value" style="color:var(--red);">'+esc(entry.error_message)+'</span></div>':'')+
         '</div>';
       // Stats tab
       var statsDiv = document.getElementById('job-stats-content');
