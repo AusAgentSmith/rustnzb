@@ -4,11 +4,17 @@ use crate::nzb::{self, NzbFile};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
+/// Maximum time to wait for a single par2 create subprocess (30 minutes).
+const PAR2_TIMEOUT_SECS: u64 = 30 * 60;
+
 pub async fn prepare_data(scenarios: &[Scenario], data_dir: &Path) -> Result<()> {
     let testdata_dir = data_dir.join("testdata");
     let nzb_dir = data_dir.join("nzbs");
     tokio::fs::create_dir_all(&testdata_dir).await?;
     tokio::fs::create_dir_all(&nzb_dir).await?;
+
+    // Pre-flight: check disk space and memory before generating data
+    preflight_check(scenarios, data_dir).await?;
 
     let mut all_entries: Vec<FileEntry> = Vec::new();
     let mut all_missing: Vec<String> = Vec::new();
@@ -227,34 +233,81 @@ async fn generate_random_file(path: &Path, size: u64) -> Result<()> {
 async fn generate_par2(data_file: &Path, redundancy_pct: f64) -> Result<Vec<PathBuf>> {
     let par2_index = PathBuf::from(format!("{}.par2", data_file.display()));
     if par2_index.exists() {
-        tracing::info!("  Par2 exists for {}", data_file.display());
-        return collect_par2_files(data_file).await;
+        let files = collect_par2_files(data_file).await?;
+        tracing::info!(
+            "  Par2 cached for {} ({} file(s))",
+            data_file.display(),
+            files.len()
+        );
+        return Ok(files);
     }
 
     let redundancy = redundancy_pct as u32;
+    let file_size_mb = tokio::fs::metadata(data_file).await?.len() / MB;
     tracing::info!(
-        "  Creating par2 ({}% redundancy) for {}...",
+        "  Creating par2 ({}% redundancy) for {} ({} MB, timeout {}s)...",
         redundancy,
-        data_file.display()
+        data_file.display(),
+        file_size_mb,
+        PAR2_TIMEOUT_SECS
     );
 
-    let output = tokio::process::Command::new("par2")
-        .args([
-            "create",
-            "-q",
-            &format!("-r{redundancy}"),
-            "-n4",
-        ])
+    // Spawn par2 with inherited stderr so progress is visible in logs
+    use tokio::process::Command;
+    let mut child = Command::new("par2")
+        .args(["create", &format!("-r{redundancy}"), "-n4"])
         .arg(data_file)
-        .output()
-        .await?;
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+        .map_err(|e| anyhow::anyhow!("Failed to spawn par2: {e}"))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("par2 create failed: {stderr}");
+    let timeout = std::time::Duration::from_secs(PAR2_TIMEOUT_SECS);
+    match tokio::time::timeout(timeout, child.wait()).await {
+        Ok(Ok(status)) => {
+            if !status.success() {
+                anyhow::bail!(
+                    "par2 create failed with exit code {:?}",
+                    status.code()
+                );
+            }
+        }
+        Ok(Err(e)) => {
+            anyhow::bail!("par2 process error: {e}");
+        }
+        Err(_) => {
+            tracing::error!(
+                "  par2 create TIMED OUT after {}s for {} — killing process",
+                PAR2_TIMEOUT_SECS,
+                data_file.display()
+            );
+            let _ = child.kill().await;
+            // Clean up partial par2 files
+            let _ = cleanup_partial_par2(data_file).await;
+            anyhow::bail!(
+                "par2 create timed out after {}s for {}",
+                PAR2_TIMEOUT_SECS,
+                data_file.display()
+            );
+        }
     }
 
     collect_par2_files(data_file).await
+}
+
+/// Remove partial par2 files left behind by a timed-out or failed par2 create.
+async fn cleanup_partial_par2(data_file: &Path) -> Result<()> {
+    let dir = data_file.parent().unwrap_or(Path::new("."));
+    let stem = data_file.file_name().unwrap().to_string_lossy().to_string();
+    let mut entries = tokio::fs::read_dir(dir).await?;
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.starts_with(&stem) && name.ends_with(".par2") {
+            tracing::warn!("  Removing partial par2 file: {name}");
+            let _ = tokio::fs::remove_file(entry.path()).await;
+        }
+    }
+    Ok(())
 }
 
 async fn collect_par2_files(data_file: &Path) -> Result<Vec<PathBuf>> {
@@ -304,4 +357,127 @@ async fn create_7z_archive(data_file: &Path, output_dir: &Path) -> Result<PathBu
 /// Get NZB file path for a scenario.
 pub fn nzb_path(sc: &Scenario, data_dir: &Path) -> PathBuf {
     data_dir.join("nzbs").join(format!("{}.nzb", sc.name))
+}
+
+/// Pre-flight check: verify sufficient disk space and memory before data generation.
+async fn preflight_check(scenarios: &[Scenario], data_dir: &Path) -> Result<()> {
+    // Estimate required disk: each size needs raw + 7z (same size) + par2 (~30%)
+    // Unique sizes to avoid double-counting shared raw files
+    let mut unique_sizes: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut needs_par2 = false;
+    let mut needs_7z = false;
+    for sc in scenarios {
+        unique_sizes.insert(sc.total_size);
+        if matches!(sc.test_type, TestType::Par2) {
+            needs_par2 = true;
+        }
+        if matches!(sc.test_type, TestType::Unpack) {
+            needs_7z = true;
+        }
+    }
+
+    let raw_total: u64 = unique_sizes.iter().sum();
+    let mut estimated_bytes = raw_total; // raw bin files
+    if needs_7z {
+        estimated_bytes += raw_total; // 7z archives (store mode ≈ same size)
+    }
+    if needs_par2 || needs_7z {
+        // par2 at 30% redundancy for raw and/or 7z
+        let par2_sources = if needs_7z { raw_total * 2 } else { raw_total };
+        estimated_bytes += (par2_sources as f64 * 0.35) as u64; // ~35% for par2 overhead
+    }
+
+    let estimated_gb = estimated_bytes as f64 / GB as f64;
+    tracing::info!(
+        "Pre-flight: estimated {:.1} GB disk needed for test data",
+        estimated_gb
+    );
+
+    // Check available disk space
+    let disk_available = get_available_disk_bytes(data_dir).await;
+    if let Some(avail) = disk_available {
+        let avail_gb = avail as f64 / GB as f64;
+        tracing::info!("Pre-flight: {:.1} GB disk available at {}", avail_gb, data_dir.display());
+        if avail < estimated_bytes {
+            anyhow::bail!(
+                "Insufficient disk space: need ~{:.1} GB but only {:.1} GB available at {}",
+                estimated_gb,
+                avail_gb,
+                data_dir.display()
+            );
+        }
+        if avail < estimated_bytes * 12 / 10 {
+            tracing::warn!(
+                "Pre-flight: disk space is tight — {:.1} GB available, ~{:.1} GB needed",
+                avail_gb,
+                estimated_gb
+            );
+        }
+    }
+
+    // Check available memory — par2 is memory-intensive
+    let mem_available = get_available_memory_bytes().await;
+    if let Some(avail) = mem_available {
+        let avail_mb = avail / MB;
+        tracing::info!("Pre-flight: {} MB memory available", avail_mb);
+
+        // par2 for large files needs roughly 1 GB per 5 GB of input
+        let max_file_size = unique_sizes.iter().max().copied().unwrap_or(0);
+        let estimated_par2_mem = max_file_size / 5;
+        if needs_par2 || needs_7z {
+            if avail < estimated_par2_mem {
+                tracing::warn!(
+                    "Pre-flight: LOW MEMORY — par2 for {:.1} GB files may need ~{} MB, only {} MB available. \
+                     par2 may be OOM-killed.",
+                    max_file_size as f64 / GB as f64,
+                    estimated_par2_mem / MB,
+                    avail_mb
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn get_available_disk_bytes(path: &Path) -> Option<u64> {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        // Use statvfs via nix or fallback to df
+        let output = std::process::Command::new("df")
+            .args(["--output=avail", "-B1"])
+            .arg(&path)
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // Second line has the value
+        stdout
+            .lines()
+            .nth(1)?
+            .trim()
+            .parse::<u64>()
+            .ok()
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
+async fn get_available_memory_bytes() -> Option<u64> {
+    // Read MemAvailable from /proc/meminfo
+    let content = tokio::fs::read_to_string("/proc/meminfo").await.ok()?;
+    for line in content.lines() {
+        if line.starts_with("MemAvailable:") {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                // Value is in kB
+                let kb = parts[1].parse::<u64>().ok()?;
+                return Some(kb * 1024);
+            }
+        }
+    }
+    None
 }
