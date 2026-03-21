@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 crc32fast = { workspace = true }
-md-5 = "0.10"
+md-5 = { version = "0.10", features = ["asm"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 

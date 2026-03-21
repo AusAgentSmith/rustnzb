@@ -141,18 +141,41 @@ pub fn verify(file_set: &Par2FileSet, dir: &Path) -> VerifyResult {
     }
 }
 
-/// Compute the MD5 hash of a file.
+/// Read buffer size for hashing. 2 MiB gives good kernel readahead and
+/// amortizes syscall overhead on large files.
+const HASH_BUF_SIZE: usize = 2 * 1024 * 1024;
+
+/// Compute the MD5 hash of a file using double-buffered I/O.
+/// One buffer is being hashed while the other is being filled by the OS,
+/// overlapping CPU and I/O work.
 fn compute_file_md5(path: &Path) -> std::io::Result<[u8; 16]> {
     let mut file = std::fs::File::open(path)?;
     let mut hasher = Md5::new();
-    let mut buf = [0u8; 64 * 1024]; // 64 KiB buffer
+
+    let mut buf_a = vec![0u8; HASH_BUF_SIZE];
+    let mut buf_b = vec![0u8; HASH_BUF_SIZE];
+
+    // Fill first buffer
+    let mut n_a = file.read(&mut buf_a)?;
 
     loop {
-        let n = file.read(&mut buf)?;
-        if n == 0 {
+        if n_a == 0 {
             break;
         }
-        hasher.update(&buf[..n]);
+
+        // Start reading into buf_b while we hash buf_a.
+        // On Linux, the kernel's readahead will prefetch data for the next
+        // read while we're busy with MD5 computation.
+        let n_b = file.read(&mut buf_b)?;
+        hasher.update(&buf_a[..n_a]);
+
+        if n_b == 0 {
+            break;
+        }
+
+        // Now hash buf_b while reading into buf_a
+        n_a = file.read(&mut buf_a)?;
+        hasher.update(&buf_b[..n_b]);
     }
 
     Ok(hasher.finalize().into())
