@@ -86,26 +86,20 @@ fn parse_blocks_available(stdout: &str) -> u32 {
         .unwrap_or(0)
 }
 
-/// Thread flag for par2 operations.
-/// par2cmdline-turbo requires `-tN` (no space), e.g. `-t4`.
-fn thread_arg() -> String {
-    let n = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(0);
-    format!("-t{n}")
-}
-
 /// Verify par2 integrity of files in a directory.
 pub async fn par2_verify(par2_file: &Path) -> anyhow::Result<Par2Result> {
     let par2_bin = par2_sys::par2_bin_path();
-    let t_arg = thread_arg();
+    let basepath = par2_file.parent().unwrap_or(Path::new("."));
+    let wildcard = format!("{}/*", basepath.display());
 
-    info!(file = %par2_file.display(), threads = %t_arg, "Running par2 verify");
+    info!(file = %par2_file.display(), "Running par2 verify");
 
     let output = Command::new(par2_bin)
         .arg("verify")
-        .arg(&t_arg)
+        .arg("-B")
+        .arg(basepath)
         .arg(par2_file)
+        .arg(&wildcard)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -143,14 +137,17 @@ pub async fn par2_verify(par2_file: &Path) -> anyhow::Result<Par2Result> {
 /// is a single-pass alternative to calling verify + repair separately.
 pub async fn par2_repair(par2_file: &Path) -> anyhow::Result<Par2Result> {
     let par2_bin = par2_sys::par2_bin_path();
-    let t_arg = thread_arg();
+    let basepath = par2_file.parent().unwrap_or(Path::new("."));
+    let wildcard = format!("{}/*", basepath.display());
 
-    info!(file = %par2_file.display(), threads = %t_arg, "Running par2 repair");
+    info!(file = %par2_file.display(), "Running par2 repair");
 
     let output = Command::new(par2_bin)
         .arg("repair")
-        .arg(&t_arg)
+        .arg("-B")
+        .arg(basepath)
         .arg(par2_file)
+        .arg(&wildcard)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
