@@ -132,6 +132,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/config/rss-feeds/{name}",
             delete(handlers::h_rss_feed_delete),
         )
+        // RSS items and rules
+        .route("/rss/items", get(handlers::h_rss_items_list))
+        .route(
+            "/rss/items/{id}/download",
+            post(handlers::h_rss_item_download),
+        )
+        .route("/rss/rules", get(handlers::h_rss_rules_list))
+        .route("/rss/rules", post(handlers::h_rss_rule_add))
+        .route("/rss/rules/{id}", put(handlers::h_rss_rule_update))
+        .route("/rss/rules/{id}", delete(handlers::h_rss_rule_delete))
         .route(
             "/config/history-retention",
             get(handlers::h_history_retention_get),

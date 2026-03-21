@@ -171,6 +171,22 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 /* Server list table */
 .server-health-msg { font-size: 0.7rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ===== Collapsible sections ===== */
+.collapsible-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; user-select: none; transition: border-color var(--transition); }
+.collapsible-header:hover { border-color: var(--accent); }
+.collapsible-header .section-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+.collapsible-header .chevron { font-size: 0.7rem; color: var(--text-muted); transition: transform 0.2s ease; }
+.collapsible-header.expanded .chevron { transform: rotate(90deg); }
+.collapsible-body { display: none; margin-bottom: 16px; }
+.collapsible-body.expanded { display: block; }
+
+/* ===== RSS feed items table ===== */
+.rss-items-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+.rss-filter-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem; }
+.rss-download-btn { padding: 3px 8px; font-size: 0.75rem; }
+.rss-item-downloaded { color: var(--green); }
+.rss-item-pending { color: var(--text-muted); }
+
 /* ===== Settings ===== */
 .settings-form { max-width: 720px; margin: 0 auto; }
 .settings-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
@@ -187,6 +203,8 @@ select.priority-low { background: rgba(160,160,184,0.08); color: var(--text-mute
 .actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
 .col-order { text-align: center; width: 30px; }
 .col-actions { text-align: right; }
+.col-center { text-align: center; }
+.col-center select { text-align: center; text-align-last: center; }
 
 /* ===== Modal ===== */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
@@ -424,12 +442,12 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
             <th style="width:30px;"><input type="checkbox" id="queue-select-all" title="Select all"></th>
             <th class="col-order" style="width:30px;"></th>
             <th>Name</th>
-            <th>Status</th>
+            <th class="col-center">Status</th>
             <th class="progress-cell">Progress</th>
-            <th>Speed</th>
-            <th>Size</th>
-            <th class="col-hide-mobile">Category</th>
-            <th class="col-hide-mobile">Priority</th>
+            <th class="col-center">Speed</th>
+            <th class="col-center">Size</th>
+            <th class="col-hide-mobile col-center">Category</th>
+            <th class="col-hide-mobile col-center">Priority</th>
             <th class="col-actions">Actions</th>
           </tr>
         </thead>
@@ -521,16 +539,71 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   <!-- RSS Tab -->
   <div class="tab-content" id="tab-rss">
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <span style="font-size:0.9rem;color:var(--text-secondary)">RSS Feeds</span>
-      </div>
-      <div class="toolbar-right">
-        <button class="btn btn-primary" id="btn-add-rss">+ Add Feed</button>
+    <!-- Feed Management (collapsible, collapsed by default) -->
+    <div class="collapsible-header" id="rss-feeds-header" onclick="toggleCollapsible('rss-feeds')">
+      <span class="section-title"><span class="chevron">&#9654;</span> RSS Feeds</span>
+      <button class="btn btn-primary btn-sm" id="btn-add-rss" onclick="event.stopPropagation(); openRssFeedModal(null);">+ Add Feed</button>
+    </div>
+    <div class="collapsible-body" id="rss-feeds-body">
+      <div class="server-grid" id="rss-grid">
+        <div class="table-empty" style="grid-column:1/-1;">No RSS feeds configured. Click "Add Feed" to get started.</div>
       </div>
     </div>
-    <div class="server-grid" id="rss-grid">
-      <div class="table-empty" style="grid-column:1/-1;">No RSS feeds configured</div>
+
+    <!-- Feed Items -->
+    <div style="margin-top:8px;">
+      <div class="rss-items-toolbar">
+        <span style="font-size:0.95rem;font-weight:600;color:var(--text-primary);">Feed Items</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select class="rss-filter-select" id="rss-feed-filter" onchange="fetchRssItems()">
+            <option value="">All Feeds</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th class="col-center" style="width:120px;">Feed</th>
+              <th class="col-center" style="width:100px;">Date</th>
+              <th class="col-center" style="width:80px;">Status</th>
+              <th class="col-center" style="width:80px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rss-items-body">
+            <tr><td colspan="5" class="table-empty">No feed items yet. Add a feed to get started.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Download Rules (collapsible) -->
+    <div style="margin-top:16px;">
+      <div class="collapsible-header" id="rss-rules-header" onclick="toggleCollapsible('rss-rules')">
+        <span class="section-title"><span class="chevron">&#9654;</span> Download Rules</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-rule" onclick="event.stopPropagation(); openRssRuleModal(null);">+ Add Rule</button>
+      </div>
+      <div class="collapsible-body" id="rss-rules-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th class="col-center">Feed</th>
+                <th class="col-center">Category</th>
+                <th class="col-center">Priority</th>
+                <th>Regex</th>
+                <th class="col-center" style="width:60px;">Enabled</th>
+                <th class="col-actions" style="width:100px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rss-rules-body-table">
+              <tr><td colspan="7" class="table-empty">No download rules configured.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -659,7 +732,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       </div>
     </div>
     <div class="modal-field">
-      <label for="rss-filter">Filter Regex (optional)</label>
+      <label for="rss-filter" style="display:flex;align-items:center;gap:4px;">Filter Regex (optional) <span title="Filters which items are shown in the feed items list. All items are still stored &mdash; this controls what's displayed and what download rules can match against." style="cursor:help;font-size:0.7rem;background:var(--bg-tertiary);border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);">?</span></label>
       <input type="text" id="rss-filter" placeholder="e.g. .*1080p.*">
     </div>
     <div class="modal-field">
@@ -668,6 +741,48 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     <div class="modal-actions">
       <button class="btn" id="btn-rss-cancel">Cancel</button>
       <button class="btn btn-primary" id="btn-rss-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RSS Rule Modal ===== -->
+<div class="modal-overlay" id="modal-rss-rule">
+  <div class="modal">
+    <h2 id="rss-rule-modal-title">Add Download Rule</h2>
+    <input type="hidden" id="rule-edit-id" value="">
+    <div class="modal-field">
+      <label for="rule-name">Rule Name</label>
+      <input type="text" id="rule-name" placeholder="e.g. HD Movies">
+    </div>
+    <div class="modal-field">
+      <label for="rule-feed">Linked Feed</label>
+      <select id="rule-feed"><option value="">Select a feed...</option></select>
+    </div>
+    <div class="modal-field-row">
+      <div class="modal-field">
+        <label for="rule-category">Target Category</label>
+        <select id="rule-category"><option value="">Default</option></select>
+      </div>
+      <div class="modal-field">
+        <label for="rule-priority">Download Priority</label>
+        <select id="rule-priority">
+          <option value="0">Low</option>
+          <option value="1" selected>Normal</option>
+          <option value="2">High</option>
+          <option value="3">Force</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label for="rule-regex" style="display:flex;align-items:center;gap:4px;">Matching Regex <span title="This regex is matched against item titles that have already passed the feed's filter regex (if set)." style="cursor:help;font-size:0.7rem;background:var(--bg-tertiary);border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);">?</span></label>
+      <input type="text" id="rule-regex" placeholder="e.g. .*1080p.*|.*720p.*">
+    </div>
+    <div class="modal-field">
+      <label class="checkbox-label"><input type="checkbox" id="rule-enabled" checked> Enabled</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btn-rule-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-rule-save">Save</button>
     </div>
   </div>
 </div>
@@ -1043,6 +1158,9 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     var jobs = d.jobs || [], speed = d.speed_bps || 0;
     currentQueueSpeed = speed;
     document.getElementById('queue-speed').textContent = formatSpeed(speed);
+    // Preserve checkbox state across re-renders
+    var checkedIds = {};
+    document.querySelectorAll('.queue-row-cb:checked').forEach(function(cb) { checkedIds[cb.value] = true; });
     if (jobs.length === 0) { tbody.innerHTML = '<tr><td colspan="10" class="table-empty">Queue is empty</td></tr>'; updateBulkBar(); return; }
     var html = '';
     for (var i = 0; i < jobs.length; i++) {
@@ -1063,7 +1181,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
           '<div style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(j.name)+'</div>' +
           (j.error_message?'<div style="font-size:0.75rem;color:var(--red);margin-top:2px;">'+esc(j.error_message)+'</div>':'') +
         '</td>' +
-        '<td><span class="badge badge-'+s+'">'+sl(j.status)+'</span></td>' +
+        '<td class="col-center"><span class="badge badge-'+s+'">'+sl(j.status)+'</span></td>' +
         '<td class="progress-cell"><div class="progress-wrap">' +
           '<div class="progress-bar-outer"><div class="progress-bar-inner '+s+'" style="width:'+pct+'%;"></div></div>' +
           '<div class="progress-text"><span>'+pct+'%</span><span>'+formatBytes(j.downloaded_bytes)+' / '+formatBytes(j.total_bytes)+'</span></div>' +
@@ -1072,13 +1190,13 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
             (isActive && eta !== '--' ? '<span class="progress-eta">ETA: '+eta+'</span>' : '') +
           '</div>' +
         '</div></td>' +
-        '<td><span class="speed-value" style="font-size:0.85rem;">'+(isActive && jobSpd > 0 ? formatSpeed(jobSpd) : '--')+'</span></td>' +
-        '<td>'+formatBytes(j.total_bytes)+'</td>' +
-        '<td class="col-hide-mobile"><select class="priority-select priority-normal" onchange="window._changeCategory(\''+j.id+'\', this.value)" style="min-width:80px;">' +
+        '<td class="col-center"><span class="speed-value" style="font-size:0.85rem;">'+(isActive && jobSpd > 0 ? formatSpeed(jobSpd) : '--')+'</span></td>' +
+        '<td class="col-center">'+formatBytes(j.total_bytes)+'</td>' +
+        '<td class="col-hide-mobile col-center"><select class="priority-select priority-normal" onchange="window._changeCategory(\''+j.id+'\', this.value)" style="min-width:80px;">' +
           '<option value=""'+(!(j.category)?' selected':'')+'>Default</option>' +
           (function(){ var co=''; for(var ci=0;ci<cachedCategories.length;ci++){co+='<option value="'+esc(cachedCategories[ci].name)+'"'+((j.category||'')===cachedCategories[ci].name?' selected':'')+'>'+esc(cachedCategories[ci].name)+'</option>';} return co; })() +
         '</select></td>' +
-        '<td class="col-hide-mobile"><select class="priority-select priority-'+(j.priority||'normal')+'" onchange="window._changePriority(\''+j.id+'\', this.value, this)">' +
+        '<td class="col-hide-mobile col-center"><select class="priority-select priority-'+(j.priority||'normal')+'" onchange="window._changePriority(\''+j.id+'\', this.value, this)">' +
           '<option value="0"'+((j.priority||'normal')==='low'?' selected':'')+'>Low</option>' +
           '<option value="1"'+((j.priority||'normal')==='normal'?' selected':'')+'>Normal</option>' +
           '<option value="2"'+((j.priority||'normal')==='high'?' selected':'')+'>High</option>' +
@@ -1091,6 +1209,12 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
         '</div></td></tr>';
     }
     tbody.innerHTML = html;
+    // Restore checkbox state
+    var hasChecked = false;
+    document.querySelectorAll('.queue-row-cb').forEach(function(cb) {
+      if (checkedIds[cb.value]) { cb.checked = true; hasChecked = true; }
+    });
+    if (hasChecked) updateBulkBar();
   }
 
   window._queuePause = function(id) { api('POST','/api/queue/'+id+'/pause').then(function(){ notify('Job paused'); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); }); };
@@ -1581,9 +1705,22 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     api('DELETE','/api/config/categories/'+encodeURIComponent(name)).then(function(){ notify('Category deleted'); fetchCategories(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
   };
 
+  // ---- Collapsible sections ----
+  window.toggleCollapsible = function(id) {
+    var header = document.getElementById(id + '-header');
+    var body = document.getElementById(id + '-body');
+    var expanded = header.classList.toggle('expanded');
+    body.classList.toggle('expanded', expanded);
+  };
+
   // ---- RSS Feeds ----
+  var cachedRssFeeds = [];
   function fetchRssFeeds() {
-    api('GET','/api/config/rss-feeds').then(function(feeds){ renderRssFeeds(feeds); }).catch(function(){});
+    api('GET','/api/config/rss-feeds').then(function(feeds){
+      cachedRssFeeds = feeds || [];
+      renderRssFeeds(feeds);
+      updateRssFeedFilter();
+    }).catch(function(){});
   }
   function renderRssFeeds(feeds) {
     var grid = document.getElementById('rss-grid');
@@ -1609,7 +1746,19 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     grid.innerHTML = html;
   }
 
-  function openRssFeedModal(feed) {
+  function updateRssFeedFilter() {
+    var sel = document.getElementById('rss-feed-filter');
+    var curVal = sel.value;
+    sel.innerHTML = '<option value="">All Feeds</option>';
+    for (var i = 0; i < cachedRssFeeds.length; i++) {
+      sel.innerHTML += '<option value="'+esc(cachedRssFeeds[i].name)+'">'+esc(cachedRssFeeds[i].name)+'</option>';
+    }
+    sel.value = curVal;
+    // Hide dropdown if only 1 or 0 feeds
+    sel.style.display = cachedRssFeeds.length > 1 ? '' : 'none';
+  }
+
+  window.openRssFeedModal = function(feed) {
     var isEdit = !!feed;
     document.getElementById('rss-modal-title').textContent = isEdit ? 'Edit RSS Feed' : 'Add RSS Feed';
     document.getElementById('rss-edit-name').value = isEdit ? feed.name : '';
@@ -1625,9 +1774,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       if (isEdit && feed.category) sel.value = feed.category;
     }).catch(function(){});
     document.getElementById('modal-rss').classList.add('active');
-  }
+  };
 
-  document.getElementById('btn-add-rss').addEventListener('click', function() { openRssFeedModal(null); });
   document.getElementById('btn-rss-cancel').addEventListener('click', function() { document.getElementById('modal-rss').classList.remove('active'); });
   document.getElementById('modal-rss').addEventListener('click', function(e) { if(e.target===this) this.classList.remove('active'); });
 
@@ -1650,6 +1798,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       notify(editName ? 'Feed updated' : 'Feed added','success');
       document.getElementById('modal-rss').classList.remove('active');
       fetchRssFeeds();
+      fetchRssItems();
     }).catch(function(e) { notify('Error: '+e.message,'error'); });
   });
 
@@ -1662,7 +1811,143 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   };
   window._rssFeedDelete = function(name) {
     if(!confirm('Delete this RSS feed?')) return;
-    api('DELETE','/api/config/rss-feeds/'+encodeURIComponent(name)).then(function(){ notify('Feed deleted'); fetchRssFeeds(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
+    api('DELETE','/api/config/rss-feeds/'+encodeURIComponent(name)).then(function(){ notify('Feed deleted'); fetchRssFeeds(); fetchRssItems(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+
+  // ---- RSS Feed Items ----
+  window.fetchRssItems = function() {
+    var feedFilter = document.getElementById('rss-feed-filter').value;
+    var url = '/api/rss/items?limit=500';
+    if (feedFilter) url += '&feed=' + encodeURIComponent(feedFilter);
+    api('GET', url).then(function(items) { renderRssItems(items); }).catch(function(){});
+  };
+
+  function renderRssItems(items) {
+    var tbody = document.getElementById('rss-items-body');
+    if (!items || items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No feed items yet. Add a feed to get started.</td></tr>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var dateStr = it.published_at ? new Date(it.published_at).toLocaleDateString() : (it.first_seen_at ? new Date(it.first_seen_at).toLocaleDateString() : '--');
+      var statusHtml = it.downloaded
+        ? '<span class="rss-item-downloaded" title="Downloaded">&#10003;</span>'
+        : '<span class="rss-item-pending" title="Not downloaded">&#9711;</span>';
+      var actionHtml = it.downloaded
+        ? '<span style="font-size:0.75rem;color:var(--text-muted);">Done</span>'
+        : (it.url ? '<button class="btn btn-sm btn-success rss-download-btn" onclick="window._rssItemDownload(\''+esc(it.id)+'\')">&#8595; Download</button>' : '<span style="font-size:0.75rem;color:var(--text-muted);">No URL</span>');
+      html += '<tr>' +
+        '<td title="'+esc(it.title)+'"><div style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(it.title)+'</div></td>' +
+        '<td class="col-center" style="font-size:0.8rem;">'+esc(it.feed_name)+'</td>' +
+        '<td class="col-center" style="font-size:0.8rem;">'+dateStr+'</td>' +
+        '<td class="col-center">'+statusHtml+'</td>' +
+        '<td class="col-center">'+actionHtml+'</td></tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  window._rssItemDownload = function(id) {
+    notify('Downloading...','info');
+    api('POST', '/api/rss/items/' + encodeURIComponent(id) + '/download').then(function() {
+      notify('NZB added to queue','success');
+      fetchRssItems();
+      fetchQueue();
+    }).catch(function(e) { notify('Download failed: '+e.message,'error'); });
+  };
+
+  // ---- RSS Download Rules ----
+  function fetchRssRules() {
+    api('GET', '/api/rss/rules').then(function(rules) { renderRssRules(rules); }).catch(function(){});
+  }
+
+  function renderRssRules(rules) {
+    var tbody = document.getElementById('rss-rules-body-table');
+    if (!rules || rules.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No download rules configured.</td></tr>';
+      return;
+    }
+    var priLabels = {0:'Low', 1:'Normal', 2:'High', 3:'Force'};
+    var html = '';
+    for (var i = 0; i < rules.length; i++) {
+      var r = rules[i];
+      html += '<tr>' +
+        '<td>'+esc(r.name)+'</td>' +
+        '<td class="col-center" style="font-size:0.85rem;">'+esc(r.feed_name)+'</td>' +
+        '<td class="col-center" style="font-size:0.85rem;">'+(r.category || 'Default')+'</td>' +
+        '<td class="col-center" style="font-size:0.85rem;">'+(priLabels[r.priority]||r.priority)+'</td>' +
+        '<td style="font-family:monospace;font-size:0.8rem;">'+esc(r.match_regex)+'</td>' +
+        '<td class="col-center"><span class="status-dot '+(r.enabled?'enabled':'disabled')+'"></span></td>' +
+        '<td><div class="actions">' +
+          '<button class="btn btn-sm" onclick="window._rssRuleEdit(\''+esc(r.id)+'\')">Edit</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="window._rssRuleDelete(\''+esc(r.id)+'\')">Delete</button>' +
+        '</div></td></tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  window.openRssRuleModal = function(rule) {
+    var isEdit = !!rule;
+    document.getElementById('rss-rule-modal-title').textContent = isEdit ? 'Edit Download Rule' : 'Add Download Rule';
+    document.getElementById('rule-edit-id').value = isEdit ? rule.id : '';
+    document.getElementById('rule-name').value = isEdit ? (rule.name||'') : '';
+    document.getElementById('rule-regex').value = isEdit ? (rule.match_regex||'') : '';
+    document.getElementById('rule-priority').value = isEdit ? String(rule.priority) : '1';
+    document.getElementById('rule-enabled').checked = isEdit ? rule.enabled : true;
+    // Populate feed dropdown
+    var feedSel = document.getElementById('rule-feed');
+    feedSel.innerHTML = '<option value="">Select a feed...</option>';
+    for (var i = 0; i < cachedRssFeeds.length; i++) {
+      feedSel.innerHTML += '<option value="'+esc(cachedRssFeeds[i].name)+'">'+esc(cachedRssFeeds[i].name)+'</option>';
+    }
+    if (isEdit && rule.feed_name) feedSel.value = rule.feed_name;
+    // Populate category dropdown
+    api('GET','/api/config/categories').then(function(cats) {
+      var catSel = document.getElementById('rule-category');
+      catSel.innerHTML = '<option value="">Default</option>';
+      for (var j=0;j<cats.length;j++) catSel.innerHTML += '<option value="'+esc(cats[j].name)+'">'+esc(cats[j].name)+'</option>';
+      if (isEdit && rule.category) catSel.value = rule.category;
+    }).catch(function(){});
+    document.getElementById('modal-rss-rule').classList.add('active');
+  };
+
+  document.getElementById('btn-rule-cancel').addEventListener('click', function() { document.getElementById('modal-rss-rule').classList.remove('active'); });
+  document.getElementById('modal-rss-rule').addEventListener('click', function(e) { if(e.target===this) this.classList.remove('active'); });
+
+  document.getElementById('btn-rule-save').addEventListener('click', function() {
+    var editId = document.getElementById('rule-edit-id').value;
+    var body = {
+      name: document.getElementById('rule-name').value.trim(),
+      feed_name: document.getElementById('rule-feed').value,
+      category: document.getElementById('rule-category').value || null,
+      priority: parseInt(document.getElementById('rule-priority').value) || 1,
+      match_regex: document.getElementById('rule-regex').value.trim(),
+      enabled: document.getElementById('rule-enabled').checked
+    };
+    if (!body.name) { notify('Rule name is required','error'); return; }
+    if (!body.feed_name) { notify('Feed is required','error'); return; }
+    if (!body.match_regex) { notify('Regex is required','error'); return; }
+
+    var method = editId ? 'PUT' : 'POST';
+    var url = editId ? '/api/rss/rules/' + encodeURIComponent(editId) : '/api/rss/rules';
+    api(method, url, body).then(function() {
+      notify(editId ? 'Rule updated' : 'Rule added','success');
+      document.getElementById('modal-rss-rule').classList.remove('active');
+      fetchRssRules();
+    }).catch(function(e) { notify('Error: '+e.message,'error'); });
+  });
+
+  window._rssRuleEdit = function(id) {
+    api('GET', '/api/rss/rules').then(function(rules) {
+      var rule = null;
+      for (var i=0;i<rules.length;i++) if(rules[i].id===id){rule=rules[i];break;}
+      if (rule) openRssRuleModal(rule);
+    }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  };
+  window._rssRuleDelete = function(id) {
+    if(!confirm('Delete this download rule?')) return;
+    api('DELETE', '/api/rss/rules/' + encodeURIComponent(id)).then(function(){ notify('Rule deleted'); fetchRssRules(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
   };
 
   // ---- Settings ----
@@ -1692,6 +1977,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     }
 
     var retVal = g.history_retention == null ? '' : String(g.history_retention);
+    var rssHistVal = g.rss_history_limit == null ? '' : String(g.rss_history_limit);
     var cacheMB = Math.round((g.cache_size || 0) / 1048576);
 
     var html = '<div class="settings-form">' +
@@ -1710,6 +1996,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       '<div class="settings-section"><div class="settings-section-title">History</div>'+
         '<div class="setting-row"><span class="setting-label">Retention (NZBs to keep)</span>'+
           sel('set-retention', [['','Keep All'],['10','10'],['20','20'],['50','50'],['100','100'],['200','200'],['500','500']], retVal)+'</div>'+
+        '<div class="setting-row"><span class="setting-label">RSS Feed history to keep</span>'+
+          sel('set-rss-history', [['','Keep All'],['100','100'],['500','500'],['1000','1000']], rssHistVal)+'</div>'+
       '</div>'+
     '</div>';
 
@@ -1720,6 +2008,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   document.getElementById('btn-save-settings').addEventListener('click', function() {
     var cacheMB = parseInt(document.getElementById('set-cache-size').value) || 0;
     var retVal = document.getElementById('set-retention').value;
+    var rssHistVal = document.getElementById('set-rss-history').value;
     var body = {
       incomplete_dir: document.getElementById('set-incomplete-dir').value.trim(),
       complete_dir: document.getElementById('set-complete-dir').value.trim(),
@@ -1727,7 +2016,8 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       watch_dir: document.getElementById('set-watch-dir').value.trim(),
       cache_size: cacheMB * 1048576,
       max_active_downloads: parseInt(document.getElementById('set-max-downloads').value),
-      history_retention: retVal === '' ? null : parseInt(retVal)
+      history_retention: retVal === '' ? null : parseInt(retVal),
+      rss_history_limit: rssHistVal === '' ? null : parseInt(rssHistVal)
     };
     api('PUT', '/api/config/general', body).then(function() {
       notify('Settings saved', 'success');
@@ -1867,7 +2157,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   // ---- Keyboard shortcuts ----
   document.addEventListener('keydown', function(e) {
-    if(e.key==='Escape'){modalEl.classList.remove('active');document.getElementById('modal-files').classList.remove('active');document.getElementById('modal-server').classList.remove('active');addUrlModal.classList.remove('active');document.getElementById('modal-category').classList.remove('active');document.getElementById('modal-rss').classList.remove('active');document.getElementById('modal-dir-browser').classList.remove('active');}
+    if(e.key==='Escape'){modalEl.classList.remove('active');document.getElementById('modal-files').classList.remove('active');document.getElementById('modal-server').classList.remove('active');addUrlModal.classList.remove('active');document.getElementById('modal-category').classList.remove('active');document.getElementById('modal-rss').classList.remove('active');document.getElementById('modal-rss-rule').classList.remove('active');document.getElementById('modal-dir-browser').classList.remove('active');}
     if(e.key===' '&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'&&e.target.tagName!=='SELECT'){e.preventDefault();if(globalPaused)document.getElementById('btn-resume-all').click();else{api('POST','/api/queue/pause').then(function(){globalPaused=true;notify('All paused');fetchQueue();}).catch(function(e){notify('Error: '+e.message,'error');});}}
   });
 
@@ -2003,11 +2293,13 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   fetchQueue(); setInterval(function(){ if(activeTab==='queue') fetchQueue(); }, 2000);
   setInterval(function(){ if(activeTab==='history') fetchHistory(); }, 10000);
   setInterval(function(){ if(activeTab==='categories') fetchCategories(); }, 10000);
-  setInterval(function(){ if(activeTab==='rss') fetchRssFeeds(); }, 30000);
+  setInterval(function(){ if(activeTab==='rss'){ fetchRssFeeds(); fetchRssItems(); fetchRssRules(); } }, 30000);
   setInterval(function(){ if(activeTab==='logs') fetchLogs(); }, 2000);
   drawSpeedGraph();
   // Auto-check server health on load
   checkServersHealth();
+  // Initial RSS data load
+  fetchRssItems(); fetchRssRules();
 
 })();
 </script>

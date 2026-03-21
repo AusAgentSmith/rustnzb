@@ -59,6 +59,13 @@ pub struct GeneralConfig {
     pub min_free_space_bytes: u64,
     /// Directory to watch for new .nzb files to auto-enqueue
     pub watch_dir: Option<PathBuf>,
+    /// RSS feed history limit: how many feed items to keep (None = keep all, default 500)
+    #[serde(default = "default_rss_history_limit")]
+    pub rss_history_limit: Option<usize>,
+}
+
+fn default_rss_history_limit() -> Option<usize> {
+    Some(500)
 }
 
 fn default_min_free_space() -> u64 {
@@ -82,6 +89,7 @@ impl Default for GeneralConfig {
             max_active_downloads: 1,
             min_free_space_bytes: default_min_free_space(),
             watch_dir: None,
+            rss_history_limit: default_rss_history_limit(),
         }
     }
 }

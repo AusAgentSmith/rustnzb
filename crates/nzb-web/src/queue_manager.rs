@@ -1159,10 +1159,11 @@ impl QueueManager {
     /// Pause all downloads globally.
     pub fn pause_all(&self) {
         self.globally_paused.store(true, Ordering::Relaxed);
-        let jobs = self.jobs.lock();
-        for (_id, state) in jobs.iter() {
+        let mut jobs = self.jobs.lock();
+        for (_id, state) in jobs.iter_mut() {
             if state.job.status == JobStatus::Downloading {
                 state.engine.pause();
+                state.job.status = JobStatus::Paused;
             }
         }
         info!("All downloads paused");
@@ -1330,6 +1331,85 @@ impl QueueManager {
     pub fn history_get_logs(&self, id: &str) -> nzb_core::Result<Option<String>> {
         let db = self.db.lock();
         db.history_get_logs(id).map_err(Into::into)
+    }
+
+    // -----------------------------------------------------------------------
+    // RSS item/rule query methods (delegate to DB)
+    // -----------------------------------------------------------------------
+
+    /// List RSS feed items.
+    pub fn rss_items_list(
+        &self,
+        feed_name: Option<&str>,
+        limit: usize,
+    ) -> nzb_core::Result<Vec<RssItem>> {
+        let db = self.db.lock();
+        db.rss_items_list(feed_name, limit).map_err(Into::into)
+    }
+
+    /// Get a single RSS item by ID.
+    pub fn rss_item_get(&self, id: &str) -> nzb_core::Result<Option<RssItem>> {
+        let db = self.db.lock();
+        db.rss_item_get(id).map_err(Into::into)
+    }
+
+    /// Mark an RSS item as downloaded.
+    pub fn rss_item_mark_downloaded(
+        &self,
+        id: &str,
+        category: Option<&str>,
+    ) -> nzb_core::Result<()> {
+        let db = self.db.lock();
+        db.rss_item_mark_downloaded(id, category)
+            .map_err(Into::into)
+    }
+
+    /// Upsert an RSS feed item.
+    pub fn rss_item_upsert(&self, item: &RssItem) -> nzb_core::Result<()> {
+        let db = self.db.lock();
+        db.rss_item_upsert(item).map_err(Into::into)
+    }
+
+    /// Check if an RSS item exists.
+    pub fn rss_item_exists(&self, id: &str) -> nzb_core::Result<bool> {
+        let db = self.db.lock();
+        db.rss_item_exists(id).map_err(Into::into)
+    }
+
+    /// Count total RSS items.
+    pub fn rss_item_count(&self) -> nzb_core::Result<usize> {
+        let db = self.db.lock();
+        db.rss_item_count().map_err(Into::into)
+    }
+
+    /// Prune RSS items to keep only N most recent.
+    pub fn rss_items_prune(&self, keep: usize) -> nzb_core::Result<usize> {
+        let db = self.db.lock();
+        db.rss_items_prune(keep).map_err(Into::into)
+    }
+
+    /// List all RSS download rules.
+    pub fn rss_rule_list(&self) -> nzb_core::Result<Vec<RssRule>> {
+        let db = self.db.lock();
+        db.rss_rule_list().map_err(Into::into)
+    }
+
+    /// Insert a new RSS download rule.
+    pub fn rss_rule_insert(&self, rule: &RssRule) -> nzb_core::Result<()> {
+        let db = self.db.lock();
+        db.rss_rule_insert(rule).map_err(Into::into)
+    }
+
+    /// Update an RSS download rule.
+    pub fn rss_rule_update(&self, rule: &RssRule) -> nzb_core::Result<()> {
+        let db = self.db.lock();
+        db.rss_rule_update(rule).map_err(Into::into)
+    }
+
+    /// Delete an RSS download rule.
+    pub fn rss_rule_delete(&self, id: &str) -> nzb_core::Result<()> {
+        let db = self.db.lock();
+        db.rss_rule_delete(id).map_err(Into::into)
     }
 
     // -----------------------------------------------------------------------

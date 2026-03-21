@@ -989,6 +989,188 @@ pub async fn h_rss_feed_delete(
 }
 
 // ---------------------------------------------------------------------------
+// RSS item handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize, Default)]
+pub struct RssItemsQuery {
+    pub feed: Option<String>,
+    pub limit: Option<usize>,
+}
+
+/// GET /api/rss/items -- List RSS feed items.
+pub async fn h_rss_items_list(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<RssItemsQuery>,
+) -> Result<Json<Vec<RssItem>>, ApiError> {
+    let limit = q.limit.unwrap_or(500);
+    let items = state
+        .queue_manager
+        .rss_items_list(q.feed.as_deref(), limit)
+        .map_err(ApiError::from)?;
+    Ok(Json(items))
+}
+
+/// POST /api/rss/items/{id}/download -- Download a specific RSS feed item.
+pub async fn h_rss_item_download(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    let item = state
+        .queue_manager
+        .rss_item_get(&id)
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::from(anyhow::anyhow!("RSS item not found")))?;
+
+    let url = item
+        .url
+        .as_ref()
+        .ok_or_else(|| ApiError::from(anyhow::anyhow!("No download URL for this item")))?;
+
+    // Fetch the NZB
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {}", e)))?;
+
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to fetch NZB: {}", e)))?;
+
+    if !response.status().is_success() {
+        return Err(ApiError::from(anyhow::anyhow!(
+            "HTTP {}",
+            response.status()
+        )));
+    }
+
+    let data = response
+        .bytes()
+        .await
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {}", e)))?;
+
+    let mut job = nzb_parser::parse_nzb(&item.title, &data)
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to parse NZB: {}", e)))?;
+
+    // Use the item's category or feed category
+    if let Some(ref cat) = item.category {
+        job.category = cat.clone();
+    }
+
+    job.work_dir = state.queue_manager.incomplete_dir().join(&job.id);
+    job.output_dir = if let Some(ref cat) = item.category {
+        state.queue_manager.complete_dir().join(cat)
+    } else {
+        state.queue_manager.complete_dir().to_path_buf()
+    };
+
+    std::fs::create_dir_all(&job.work_dir)
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to create work dir: {}", e)))?;
+
+    state
+        .queue_manager
+        .add_job(job, Some(data.to_vec()))
+        .map_err(ApiError::from)?;
+
+    // Mark as downloaded
+    let _ = state
+        .queue_manager
+        .rss_item_mark_downloaded(&id, item.category.as_deref());
+
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+// ---------------------------------------------------------------------------
+// RSS rule handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+pub struct RssRuleBody {
+    pub name: String,
+    pub feed_name: String,
+    pub category: Option<String>,
+    pub priority: Option<i32>,
+    pub match_regex: String,
+    pub enabled: Option<bool>,
+}
+
+/// GET /api/rss/rules -- List RSS download rules.
+pub async fn h_rss_rules_list(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<RssRule>>, ApiError> {
+    let rules = state
+        .queue_manager
+        .rss_rule_list()
+        .map_err(ApiError::from)?;
+    Ok(Json(rules))
+}
+
+/// POST /api/rss/rules -- Add an RSS download rule.
+pub async fn h_rss_rule_add(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<RssRuleBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    // Validate the regex
+    regex::Regex::new(&body.match_regex)
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {}", e)))?;
+
+    let rule = RssRule {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: body.name,
+        feed_name: body.feed_name,
+        category: body.category,
+        priority: body.priority.unwrap_or(1),
+        match_regex: body.match_regex,
+        enabled: body.enabled.unwrap_or(true),
+    };
+    state
+        .queue_manager
+        .rss_rule_insert(&rule)
+        .map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+/// PUT /api/rss/rules/{id} -- Update an RSS download rule.
+pub async fn h_rss_rule_update(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(body): Json<RssRuleBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    // Validate the regex
+    regex::Regex::new(&body.match_regex)
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {}", e)))?;
+
+    let rule = RssRule {
+        id,
+        name: body.name,
+        feed_name: body.feed_name,
+        category: body.category,
+        priority: body.priority.unwrap_or(1),
+        match_regex: body.match_regex,
+        enabled: body.enabled.unwrap_or(true),
+    };
+    state
+        .queue_manager
+        .rss_rule_update(&rule)
+        .map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+/// DELETE /api/rss/rules/{id} -- Delete an RSS download rule.
+pub async fn h_rss_rule_delete(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    state
+        .queue_manager
+        .rss_rule_delete(&id)
+        .map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+// ---------------------------------------------------------------------------
 // General settings handler
 // ---------------------------------------------------------------------------
 
@@ -1001,6 +1183,7 @@ pub struct UpdateGeneralBody {
     pub cache_size: Option<u64>,
     pub max_active_downloads: Option<usize>,
     pub history_retention: Option<Option<usize>>,
+    pub rss_history_limit: Option<Option<usize>>,
 }
 
 /// PUT /api/config/general -- Update general settings.
@@ -1037,6 +1220,13 @@ pub async fn h_general_update(
     if let Some(ret) = body.history_retention {
         state.queue_manager.set_history_retention(ret);
         config.general.history_retention = ret;
+    }
+    if let Some(rss_limit) = body.rss_history_limit {
+        config.general.rss_history_limit = rss_limit;
+        // Prune RSS items if a limit is set
+        if let Some(limit) = rss_limit {
+            let _ = state.queue_manager.rss_items_prune(limit);
+        }
     }
 
     state.update_config(config).map_err(ApiError::from)?;

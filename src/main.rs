@@ -329,6 +329,7 @@ async fn main() -> anyhow::Result<()> {
             config.rss_feeds.clone(),
             Arc::clone(&queue_manager),
             config.general.data_dir.clone(),
+            config.general.rss_history_limit,
         );
         tokio::spawn(async move { monitor.run().await });
         info!(

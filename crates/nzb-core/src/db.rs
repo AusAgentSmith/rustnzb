@@ -144,6 +144,43 @@ impl Database {
             )?;
         }
 
+        if version < 4 {
+            info!("Applying database migration v4");
+            self.conn.execute_batch(
+                "
+                -- RSS feed items (persistent feed cache)
+                CREATE TABLE IF NOT EXISTS rss_items (
+                    id TEXT PRIMARY KEY,
+                    feed_name TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    url TEXT,
+                    published_at TEXT,
+                    first_seen_at TEXT NOT NULL,
+                    downloaded INTEGER NOT NULL DEFAULT 0,
+                    downloaded_at TEXT,
+                    category TEXT,
+                    size_bytes INTEGER DEFAULT 0
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_rss_items_feed ON rss_items(feed_name);
+                CREATE INDEX IF NOT EXISTS idx_rss_items_seen ON rss_items(first_seen_at DESC);
+
+                -- RSS download rules
+                CREATE TABLE IF NOT EXISTS rss_rules (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    feed_name TEXT NOT NULL,
+                    category TEXT,
+                    priority INTEGER NOT NULL DEFAULT 1,
+                    match_regex TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1
+                );
+
+                UPDATE schema_version SET version = 4;
+                ",
+            )?;
+        }
+
         Ok(())
     }
 
@@ -483,6 +520,209 @@ impl Database {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(NzbError::Database(e)),
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // RSS item operations
+    // -----------------------------------------------------------------------
+
+    /// Upsert an RSS feed item (insert or ignore if already exists).
+    pub fn rss_item_upsert(&self, item: &RssItem) -> Result<(), NzbError> {
+        self.conn.execute(
+            "INSERT OR IGNORE INTO rss_items (id, feed_name, title, url, published_at,
+             first_seen_at, downloaded, downloaded_at, category, size_bytes)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![
+                item.id,
+                item.feed_name,
+                item.title,
+                item.url,
+                item.published_at.map(|d| d.to_rfc3339()),
+                item.first_seen_at.to_rfc3339(),
+                item.downloaded as i32,
+                item.downloaded_at.map(|d| d.to_rfc3339()),
+                item.category,
+                item.size_bytes as i64,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Check if an RSS item ID already exists in the database.
+    pub fn rss_item_exists(&self, id: &str) -> Result<bool, NzbError> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM rss_items WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    }
+
+    /// List RSS items, optionally filtered by feed name, ordered by first_seen_at DESC.
+    pub fn rss_items_list(
+        &self,
+        feed_name: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<RssItem>, NzbError> {
+        let (sql, limit_val) = if let Some(name) = feed_name {
+            let mut stmt = self.conn.prepare(
+                "SELECT id, feed_name, title, url, published_at, first_seen_at,
+                 downloaded, downloaded_at, category, size_bytes
+                 FROM rss_items WHERE feed_name = ?1
+                 ORDER BY first_seen_at DESC LIMIT ?2",
+            )?;
+            let items = stmt
+                .query_map(params![name, limit as i64], |row| self.map_rss_item(row))?
+                .collect::<Result<Vec<_>, _>>()?;
+            return Ok(items);
+        } else {
+            (
+                "SELECT id, feed_name, title, url, published_at, first_seen_at,
+                 downloaded, downloaded_at, category, size_bytes
+                 FROM rss_items ORDER BY first_seen_at DESC LIMIT ?1",
+                limit,
+            )
+        };
+        let mut stmt = self.conn.prepare(sql)?;
+        let items = stmt
+            .query_map(params![limit_val as i64], |row| self.map_rss_item(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(items)
+    }
+
+    /// Get a single RSS item by ID.
+    pub fn rss_item_get(&self, id: &str) -> Result<Option<RssItem>, NzbError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, feed_name, title, url, published_at, first_seen_at,
+             downloaded, downloaded_at, category, size_bytes
+             FROM rss_items WHERE id = ?1",
+        )?;
+        let result = stmt.query_row(params![id], |row| self.map_rss_item(row));
+        match result {
+            Ok(item) => Ok(Some(item)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(NzbError::Database(e)),
+        }
+    }
+
+    /// Mark an RSS item as downloaded.
+    pub fn rss_item_mark_downloaded(
+        &self,
+        id: &str,
+        category: Option<&str>,
+    ) -> Result<(), NzbError> {
+        self.conn.execute(
+            "UPDATE rss_items SET downloaded = 1, downloaded_at = ?2, category = ?3 WHERE id = ?1",
+            params![id, Utc::now().to_rfc3339(), category],
+        )?;
+        Ok(())
+    }
+
+    /// Count total RSS items.
+    pub fn rss_item_count(&self) -> Result<usize, NzbError> {
+        let count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM rss_items", [], |row| row.get(0))?;
+        Ok(count as usize)
+    }
+
+    /// Prune RSS items to keep only the N most recent (by first_seen_at).
+    pub fn rss_items_prune(&self, keep: usize) -> Result<usize, NzbError> {
+        let deleted = self.conn.execute(
+            "DELETE FROM rss_items WHERE id NOT IN (
+                SELECT id FROM rss_items ORDER BY first_seen_at DESC LIMIT ?1
+            )",
+            params![keep as i64],
+        )?;
+        Ok(deleted)
+    }
+
+    fn map_rss_item(&self, row: &rusqlite::Row<'_>) -> rusqlite::Result<RssItem> {
+        Ok(RssItem {
+            id: row.get(0)?,
+            feed_name: row.get(1)?,
+            title: row.get(2)?,
+            url: row.get(3)?,
+            published_at: row
+                .get::<_, Option<String>>(4)?
+                .map(|s| parse_datetime(&s)),
+            first_seen_at: parse_datetime(&row.get::<_, String>(5)?),
+            downloaded: row.get::<_, i32>(6)? != 0,
+            downloaded_at: row
+                .get::<_, Option<String>>(7)?
+                .map(|s| parse_datetime(&s)),
+            category: row.get(8)?,
+            size_bytes: row.get::<_, i64>(9)? as u64,
+        })
+    }
+
+    // -----------------------------------------------------------------------
+    // RSS rule operations
+    // -----------------------------------------------------------------------
+
+    /// Insert a new RSS download rule.
+    pub fn rss_rule_insert(&self, rule: &RssRule) -> Result<(), NzbError> {
+        self.conn.execute(
+            "INSERT INTO rss_rules (id, name, feed_name, category, priority, match_regex, enabled)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                rule.id,
+                rule.name,
+                rule.feed_name,
+                rule.category,
+                rule.priority,
+                rule.match_regex,
+                rule.enabled as i32,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// List all RSS download rules.
+    pub fn rss_rule_list(&self) -> Result<Vec<RssRule>, NzbError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, feed_name, category, priority, match_regex, enabled
+             FROM rss_rules ORDER BY name ASC",
+        )?;
+        let rules = stmt
+            .query_map([], |row| {
+                Ok(RssRule {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    feed_name: row.get(2)?,
+                    category: row.get(3)?,
+                    priority: row.get(4)?,
+                    match_regex: row.get(5)?,
+                    enabled: row.get::<_, i32>(6)? != 0,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rules)
+    }
+
+    /// Update an RSS download rule.
+    pub fn rss_rule_update(&self, rule: &RssRule) -> Result<(), NzbError> {
+        self.conn.execute(
+            "UPDATE rss_rules SET name=?2, feed_name=?3, category=?4, priority=?5,
+             match_regex=?6, enabled=?7 WHERE id=?1",
+            params![
+                rule.id,
+                rule.name,
+                rule.feed_name,
+                rule.category,
+                rule.priority,
+                rule.match_regex,
+                rule.enabled as i32,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Delete an RSS download rule.
+    pub fn rss_rule_delete(&self, id: &str) -> Result<(), NzbError> {
+        self.conn
+            .execute("DELETE FROM rss_rules WHERE id=?1", params![id])?;
+        Ok(())
     }
 }
 
