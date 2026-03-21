@@ -796,6 +796,19 @@ impl QueueManager {
         Ok(())
     }
 
+    /// Move a job to a new position in the queue order.
+    pub fn move_job(&self, id: &str, position: usize) -> nzb_core::Result<()> {
+        let mut order = self.job_order.lock();
+        let current_pos = order
+            .iter()
+            .position(|x| x == id)
+            .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
+        let id_str = order.remove(current_pos);
+        let new_pos = position.min(order.len());
+        order.insert(new_pos, id_str);
+        Ok(())
+    }
+
     /// Pause all downloads globally.
     pub fn pause_all(&self) {
         self.globally_paused.store(true, Ordering::Relaxed);

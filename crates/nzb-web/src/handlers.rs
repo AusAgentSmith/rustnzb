@@ -49,6 +49,11 @@ pub struct PauseForQuery {
     pub duration_secs: u64,
 }
 
+#[derive(Deserialize)]
+pub struct MoveJobBody {
+    pub position: usize,
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct HistoryRetentionBody {
     pub retention: Option<usize>,
@@ -276,6 +281,19 @@ pub async fn h_queue_delete(
     state
         .queue_manager
         .remove_job(&id)
+        .map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+/// POST /api/queue/{id}/move -- Move a job to a new position.
+pub async fn h_queue_move(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(body): Json<MoveJobBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    state
+        .queue_manager
+        .move_job(&id, body.position)
         .map_err(ApiError::from)?;
     Ok(Json(SimpleResponse { status: true }))
 }

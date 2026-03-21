@@ -795,8 +795,26 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   window._queuePause = function(id) { api('POST','/api/queue/'+id+'/pause').then(function(){ notify('Job paused'); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); }); };
   window._queueResume = function(id) { api('POST','/api/queue/'+id+'/resume').then(function(){ notify('Job resumed'); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); }); };
   window._queueDelete = function(id) { if(!confirm('Remove this job?')) return; api('DELETE','/api/queue/'+id).then(function(){ notify('Job removed'); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); }); };
-  window._queueMoveUp = function(id) { notify('Reorder not yet supported','info'); };
-  window._queueMoveDown = function(id) { notify('Reorder not yet supported','info'); };
+  window._queueMoveUp = function(id) {
+    var row = document.querySelector('tr[data-job-id="'+id+'"]');
+    if (!row) return;
+    var rows = document.querySelectorAll('#queue-body tr[data-job-id]');
+    var idx = Array.prototype.indexOf.call(rows, row);
+    if (idx <= 0) return;
+    api('POST', '/api/queue/' + id + '/move', { position: idx - 1 })
+      .then(function() { fetchQueue(); })
+      .catch(function(e) { notify('Error: ' + e.message, 'error'); });
+  };
+  window._queueMoveDown = function(id) {
+    var row = document.querySelector('tr[data-job-id="'+id+'"]');
+    if (!row) return;
+    var rows = document.querySelectorAll('#queue-body tr[data-job-id]');
+    var idx = Array.prototype.indexOf.call(rows, row);
+    if (idx < 0 || idx >= rows.length - 1) return;
+    api('POST', '/api/queue/' + id + '/move', { position: idx + 1 })
+      .then(function() { fetchQueue(); })
+      .catch(function(e) { notify('Error: ' + e.message, 'error'); });
+  };
 
   // ---- Files/Stats/Logs Modal ----
   window._showFiles = function(jobId) {
