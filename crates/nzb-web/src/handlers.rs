@@ -704,3 +704,11 @@ fn get_disk_space_free(path: &std::path::Path) -> u64 {
         0
     }
 }
+
+// ---------------------------------------------------------------------------
+// Health check
+// ---------------------------------------------------------------------------
+
+pub async fn h_health() -> Json<serde_json::Value> {
+    Json(serde_json::json!({"status": "ok"}))
+}

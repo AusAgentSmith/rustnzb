@@ -54,6 +54,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // Native REST API
     let api_routes = Router::new()
+        // Health check (Docker HEALTHCHECK)
+        .route("/health", get(handlers::h_health))
         // Status
         .route("/status", get(handlers::h_status))
         // Logs
