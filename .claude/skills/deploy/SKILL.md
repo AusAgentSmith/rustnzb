@@ -1,15 +1,15 @@
 ---
 name: deploy
-description: Deploy rustnzbd (pull latest image, restart container)
+description: Deploy rustnzb (pull latest image, restart container)
 disable-model-invocation: true
 allowed-tools: Bash(ssh *), Bash(curl *)
 user-invocable: true
 argument-hint: "[--build] [--down] [--logging] [--status]"
 ---
 
-# Deploy rustnzbd
+# Deploy rustnzb
 
-Manage the rustnzbd Docker deployment on the deploy host.
+Manage the rustnzb Docker deployment on the deploy host.
 
 Host and network details are in `DEPLOY.local.md` (gitignored).
 Default deploy host: set DEPLOY_HOST env var or see DEPLOY.local.md.
@@ -26,13 +26,13 @@ Default deploy host: set DEPLOY_HOST env var or see DEPLOY.local.md.
 
 1. SSH to deploy host: `ssh -o ConnectTimeout=10 $DEPLOY_HOST`
    (Default from DEPLOY.local.md — check that file for the actual host)
-2. Working directory: `cd ~/rustnzbd`
+2. Working directory: `cd ~/rustnzb`
 
 3. If `--status` (read-only check):
    ```bash
    docker compose ps
    curl -sf http://localhost:9095/api/status | python3 -m json.tool
-   docker images --format '{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}' | grep rustnzbd
+   docker images --format '{{.Repository}}:{{.Tag}} {{.Size}} {{.CreatedAt}}' | grep rustnzb
    ```
    Stop here — no changes made.
 
@@ -63,11 +63,11 @@ Default deploy host: set DEPLOY_HOST env var or see DEPLOY.local.md.
    - Wait 5s
    - Health check: `curl -sf http://localhost:9095/api/status`
    - Container status: `docker compose ps`
-   - If logging enabled: `docker logs rustnzbd-promtail-1 --tail 5`
+   - If logging enabled: `docker logs rustnzb-promtail-1 --tail 5`
 
 ## CI/CD
 
-rustnzbd has a GitHub Actions workflow (`.github/workflows/docker-deploy.yml`) that:
+rustnzb has a GitHub Actions workflow (`.github/workflows/docker-deploy.yml`) that:
 1. Builds and pushes to GHCR + Docker Hub on push to `main`
 2. Runs a smoke test (`--smoke-test`) against the built image to verify par2/unrar/7z
 3. Auto-deploys via self-hosted runner
@@ -78,4 +78,4 @@ So `/deploy` is mainly for manual re-deploys or config changes.
 
 | Port | Service |
 |------|---------|
-| 9095 (host) → 9090 (container) | rustnzbd web UI + API |
+| 9095 (host) → 9090 (container) | rustnzb web UI + API |

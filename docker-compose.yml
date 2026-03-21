@@ -1,7 +1,7 @@
 services:
-  rustnzbd:
-    image: ${DOCKERHUB_USERNAME:-ausagentsmith}/rustnzbd:latest
-    container_name: rustnzbd
+  rustnzb:
+    image: ${DOCKERHUB_USERNAME:-ausagentsmith}/rustnzb:latest
+    container_name: rustnzb
     restart: unless-stopped
     ports:
       - "9095:9090"
@@ -29,6 +29,6 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     environment:
       LOKI_URL: ${LOKI_URL}
-      HOSTNAME: ${HOSTNAME:-rustnzbd}
+      HOSTNAME: ${HOSTNAME:-rustnzb}
     command: -config.file=/etc/promtail/config.yml -config.expand-env=true
     restart: unless-stopped

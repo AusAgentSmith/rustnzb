@@ -1,12 +1,12 @@
 use super::StageTiming;
 use anyhow::Result;
 
-pub struct RustnzbdClient {
+pub struct RustnzbClient {
     url: String,
     http: reqwest::Client,
 }
 
-impl RustnzbdClient {
+impl RustnzbClient {
     pub fn new(url: &str) -> Self {
         Self {
             url: url.trim_end_matches('/').to_string(),
@@ -39,7 +39,7 @@ impl RustnzbdClient {
             .await?;
         resp.error_for_status_ref()?;
         let body: serde_json::Value = resp.json().await?;
-        tracing::debug!("rustnzbd add response: {body}");
+        tracing::debug!("rustnzb add response: {body}");
         Ok(())
     }
 
@@ -154,7 +154,7 @@ impl RustnzbdClient {
 
         let entries = history["entries"].as_array().cloned().unwrap_or_default();
         for entry in &entries {
-            // rustnzbd provides stages with duration_secs
+            // rustnzb provides stages with duration_secs
             if let Some(stages) = entry["stages"].as_array() {
                 for stage in stages {
                     let name = stage["name"].as_str().unwrap_or("");

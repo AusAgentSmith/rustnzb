@@ -1,4 +1,4 @@
-pub mod rustnzbd;
+pub mod rustnzb;
 pub mod sabnzbd;
 
 #[derive(Default)]

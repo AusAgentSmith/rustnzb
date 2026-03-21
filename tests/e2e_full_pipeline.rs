@@ -18,7 +18,7 @@ async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {
     let db = Database::open_memory().expect("Failed to create in-memory database");
 
     // Create a temp directory for incomplete/complete dirs
-    let tmp_dir = std::env::temp_dir().join(format!("rustnzbd_test_{}", std::process::id()));
+    let tmp_dir = std::env::temp_dir().join(format!("rustnzb_test_{}", std::process::id()));
     let incomplete_dir = tmp_dir.join("incomplete");
     let complete_dir = tmp_dir.join("complete");
     std::fs::create_dir_all(&incomplete_dir).ok();
@@ -334,8 +334,8 @@ async fn test_upload_nzb_and_verify_queue() {
     assert_eq!(resp.status(), 200);
     let body = resp.text().await.unwrap();
     assert!(
-        body.contains("rustnzbd"),
-        "Index page should contain 'rustnzbd'"
+        body.contains("rustnzb"),
+        "Index page should contain 'rustnzb'"
     );
     eprintln!("Static file serving: OK");
 

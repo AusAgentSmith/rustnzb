@@ -1,6 +1,6 @@
 ---
 name: test
-description: Run the rustnzbd Rust test suite
+description: Run the rustnzb Rust test suite
 disable-model-invocation: true
 allowed-tools: Bash(cargo *)
 user-invocable: true
@@ -9,7 +9,7 @@ argument-hint: "[test-name-or-module] [-- --nocapture]"
 
 # Run Tests
 
-Run the rustnzbd Rust test suite.
+Run the rustnzb Rust test suite.
 
 ## Usage
 

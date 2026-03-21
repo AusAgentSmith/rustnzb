@@ -1,12 +1,12 @@
   benchnzb/
   ├── Cargo.toml
   ├── Dockerfile          # Rust build + par2/p7zip runtime
-  ├── docker-compose.yml  # mock-nntp, sabnzbd, rustnzbd, orchestrator
+  ├── docker-compose.yml  # mock-nntp, sabnzbd, rustnzb, orchestrator
   ├── run.sh              # Entry point
   ├── .gitignore
   ├── configs/
   │   ├── sabnzbd.ini     # Pre-seeded SABnzbd config (known API key, mock NNTP)
-  │   └── rustnzbd.toml   # Pre-seeded rustnzbd config (mock NNTP)
+  │   └── rustnzb.toml   # Pre-seeded rustnzb config (mock NNTP)
   └── src/
       ├── main.rs         # CLI: run | mock-nntp | regen-charts
       ├── config.rs       # 9 scenarios: 5/10/50 GB x raw/par2/unpack
@@ -22,14 +22,14 @@
       └── clients/
           ├── mod.rs
           ├── sabnzbd.rs  # SABnzbd API client (queue/history/stage timing)
-          └── rustnzbd.rs # rustnzbd API client (queue/history/stage timing)
+          └── rustnzb.rs # rustnzb API client (queue/history/stage timing)
 
   How it works
 
   1. run.sh --scenarios quick seeds configs, launches Docker Compose
   2. mock-nntp starts serving articles on port 119 (reads data files, yEnc-encodes on-the-fly)
   3. orchestrator generates random test data + par2/7z + NZB files, reloads mock-nntp index
-  4. For each scenario, runs SABnzbd then rustnzbd sequentially, collecting Docker stats
+  4. For each scenario, runs SABnzbd then rustnzb sequentially, collecting Docker stats
   5. Outputs JSON, CSV, summary text, and SVG charts to results/
 
   Scenarios

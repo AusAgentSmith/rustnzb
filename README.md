@@ -1,8 +1,8 @@
-# rustnzbd
+# rustnzb
 
 A high-performance Usenet NZB download client written in Rust.
 
-rustnzbd is a full-featured binary newsreader that downloads, decodes, verifies, repairs, and extracts files from Usenet. It provides a web UI, REST API, and a SABnzbd-compatible API so it works as a drop-in replacement with Sonarr, Radarr, and other *arr applications.
+rustnzb is a full-featured binary newsreader that downloads, decodes, verifies, repairs, and extracts files from Usenet. It provides a web UI, REST API, and a SABnzbd-compatible API so it works as a drop-in replacement with Sonarr, Radarr, and other *arr applications.
 
 ## Features
 
@@ -27,12 +27,12 @@ rustnzbd is a full-featured binary newsreader that downloads, decodes, verifies,
 
 ```bash
 docker run -d \
-  --name rustnzbd \
+  --name rustnzb \
   -p 9090:9090 \
   -v ./config:/config \
   -v ./data:/data \
   -v /path/to/downloads:/downloads \
-  ausagentsmith/rustnzbd:latest
+  ausagentsmith/rustnzb:latest
 ```
 
 Then open `http://localhost:9090` in your browser. Add your NNTP servers via the web UI.
@@ -41,9 +41,9 @@ Then open `http://localhost:9090` in your browser. Add your NNTP servers via the
 
 ```yaml
 services:
-  rustnzbd:
-    image: ausagentsmith/rustnzbd:latest
-    container_name: rustnzbd
+  rustnzb:
+    image: ausagentsmith/rustnzb:latest
+    container_name: rustnzb
     restart: unless-stopped
     ports:
       - "9090:9090"
@@ -74,21 +74,21 @@ docker compose up -d
 - par2 is bundled automatically, no system install needed
 
 ```bash
-git clone https://github.com/AusAgentSmith/rustnzbd.git
-cd rustnzbd
+git clone https://github.com/AusAgentSmith/rustnzb.git
+cd rustnzb
 cargo build --release
-./target/release/rustnzbd --config config.example.toml
+./target/release/rustnzb --config config.example.toml
 ```
 
 Verify external tools work:
 
 ```bash
-./target/release/rustnzbd --smoke-test
+./target/release/rustnzb --smoke-test
 ```
 
 ## Configuration
 
-rustnzbd uses a TOML configuration file. Copy `config.example.toml` to get started:
+rustnzb uses a TOML configuration file. Copy `config.example.toml` to get started:
 
 ```bash
 cp config.example.toml config.toml
@@ -164,7 +164,7 @@ post_processing = 3
 [otel]
 enabled = false
 endpoint = "http://localhost:4317"
-service_name = "rustnzbd"
+service_name = "rustnzb"
 ```
 
 ### Environment Variables
@@ -173,23 +173,23 @@ All CLI arguments can be set via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RUSTNZBD_CONFIG` | `config.toml` | Config file path |
-| `RUSTNZBD_PORT` | from config | Listen port |
-| `RUSTNZBD_LISTEN_ADDR` | from config | Listen address |
-| `RUSTNZBD_DATA_DIR` | from config | Data directory |
-| `RUSTNZBD_LOG_LEVEL` | `info` | Log level |
-| `RUSTNZBD_LOG_FILE` | — | Log file path |
+| `RUSTNZB_CONFIG` | `config.toml` | Config file path |
+| `RUSTNZB_PORT` | from config | Listen port |
+| `RUSTNZB_LISTEN_ADDR` | from config | Listen address |
+| `RUSTNZB_DATA_DIR` | from config | Data directory |
+| `RUSTNZB_LOG_LEVEL` | `info` | Log level |
+| `RUSTNZB_LOG_FILE` | — | Log file path |
 | `RUST_LOG` | — | tracing env filter (advanced) |
 | `OTEL_ENABLED` | `false` | Enable OpenTelemetry |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OTLP gRPC endpoint |
-| `OTEL_SERVICE_NAME` | `rustnzbd` | Telemetry service name |
+| `OTEL_SERVICE_NAME` | `rustnzb` | Telemetry service name |
 
 ## Usage
 
 ### CLI
 
 ```
-rustnzbd [OPTIONS]
+rustnzb [OPTIONS]
 
 Options:
   -c, --config <PATH>        Config file path [default: config.toml]
@@ -243,11 +243,11 @@ curl http://localhost:9090/api/status
 
 ### SABnzbd API
 
-rustnzbd implements the SABnzbd API, so it works with any application that supports SABnzbd as a download client.
+rustnzb implements the SABnzbd API, so it works with any application that supports SABnzbd as a download client.
 
 **In Sonarr/Radarr/etc.:**
-- **Host:** your rustnzbd host
-- **Port:** your rustnzbd port
+- **Host:** your rustnzb host
+- **Port:** your rustnzb port
 - **API Key:** your configured `api_key` (if set)
 - **Use SSL:** as applicable
 - **Category:** as configured
@@ -256,7 +256,7 @@ The SABnzbd API is available at `/sabnzbd/api`.
 
 ## Architecture
 
-rustnzbd is organized as a Cargo workspace with 6 focused crates:
+rustnzb is organized as a Cargo workspace with 6 focused crates:
 
 | Crate | Purpose |
 |-------|---------|
@@ -337,7 +337,7 @@ par2cmdline-turbo binaries are available for:
 
 ## Benchmarking
 
-The `benchnzb/` directory contains a benchmark suite that compares rustnzbd against SABnzbd using a mock NNTP server and Docker Compose.
+The `benchnzb/` directory contains a benchmark suite that compares rustnzb against SABnzbd using a mock NNTP server and Docker Compose.
 
 ```bash
 cd benchnzb
@@ -360,9 +360,9 @@ Results are saved to `benchnzb/results/` as JSON, CSV, and SVG charts.
 
 ### Logging
 
-rustnzbd uses the `tracing` crate. Control log level via:
+rustnzb uses the `tracing` crate. Control log level via:
 - `--log-level` CLI flag
-- `RUST_LOG` environment variable (e.g., `RUST_LOG=rustnzbd=debug,nzb_nntp=trace`)
+- `RUST_LOG` environment variable (e.g., `RUST_LOG=rustnzb=debug,nzb_nntp=trace`)
 - `log_level` in config.toml
 
 Logs are also available via the web UI log viewer and the `/api/logs` endpoint.
@@ -383,7 +383,7 @@ Enable OTLP export for metrics and logs:
 [otel]
 enabled = true
 endpoint = "http://your-collector:4317"
-service_name = "rustnzbd"
+service_name = "rustnzb"
 ```
 
 Or via environment variables: `OTEL_ENABLED=true`, `OTEL_EXPORTER_OTLP_ENDPOINT=...`
@@ -412,7 +412,7 @@ cargo test --test e2e_download_test
 RUST_LOG=debug cargo run -- --config config.example.toml
 
 # Build Docker image locally
-docker build -t rustnzbd:local .
+docker build -t rustnzb:local .
 ```
 
 ## License

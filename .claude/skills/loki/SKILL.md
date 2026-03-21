@@ -1,21 +1,21 @@
 ---
 name: loki
-description: Query rustnzbd logs from the centralized Loki instance
+description: Query rustnzb logs from the centralized Loki instance
 disable-model-invocation: true
 allowed-tools: Bash(curl *)
 user-invocable: true
 argument-hint: "[filter] [--since duration] [--limit N]"
 ---
 
-# Query rustnzbd Logs from Loki
+# Query rustnzb Logs from Loki
 
-Query rustnzbd logs from the centralized Loki stack. Logs are shipped via a Promtail sidecar.
+Query rustnzb logs from the centralized Loki stack. Logs are shipped via a Promtail sidecar.
 
 Loki endpoint and host labels are in `DEPLOY.local.md` (gitignored).
 
 ## Usage
 
-- `/loki` — Recent rustnzbd logs (last 10 minutes)
+- `/loki` — Recent rustnzb logs (last 10 minutes)
 - `/loki ERROR` — Error lines only
 - `/loki "download complete"` — Filter for specific text
 - `/loki --since 1h` — Last hour
@@ -30,16 +30,16 @@ Loki endpoint and host labels are in `DEPLOY.local.md` (gitignored).
    - `--since <duration>` → time range (default `10m`)
    - `--limit <N>` → max lines (default `50`)
 
-3. Build LogQL query — always scoped to rustnzbd:
+3. Build LogQL query — always scoped to rustnzb:
    ```logql
-   {container="rustnzbd", host="<HOST_LABEL>"}
+   {container="rustnzb", host="<HOST_LABEL>"}
    ```
    Add `|= "<filter>"` if filter text provided.
 
 4. Execute:
    ```bash
    curl -s -G '<LOKI_URL>/loki/api/v1/query_range' \
-     --data-urlencode 'query={container="rustnzbd", host="<HOST_LABEL>"} |= "<filter>"' \
+     --data-urlencode 'query={container="rustnzb", host="<HOST_LABEL>"} |= "<filter>"' \
      --data-urlencode 'limit=<N>' \
      --data-urlencode 'since=<duration>'
    ```
@@ -70,15 +70,15 @@ Loki endpoint and host labels are in `DEPLOY.local.md` (gitignored).
 ## LogQL examples
 
 ```logql
-# All rustnzbd logs (replace HOST_LABEL from DEPLOY.local.md)
-{container="rustnzbd", host="<HOST_LABEL>"}
+# All rustnzb logs (replace HOST_LABEL from DEPLOY.local.md)
+{container="rustnzb", host="<HOST_LABEL>"}
 
 # Errors only
-{container="rustnzbd", host="<HOST_LABEL>"} |~ "ERROR|error|Error"
+{container="rustnzb", host="<HOST_LABEL>"} |~ "ERROR|error|Error"
 
 # Download activity
-{container="rustnzbd", host="<HOST_LABEL>"} |~ "download|Download"
+{container="rustnzb", host="<HOST_LABEL>"} |~ "download|Download"
 
 # Connection issues
-{container="rustnzbd", host="<HOST_LABEL>"} |~ "connection|timeout|refused"
+{container="rustnzb", host="<HOST_LABEL>"} |~ "connection|timeout|refused"
 ```

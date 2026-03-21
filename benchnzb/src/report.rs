@@ -13,7 +13,7 @@ pub fn write_json(
             serde_json::json!({
                 "scenario": sab.scenario,
                 "sabnzbd": sab,
-                "rustnzbd": rnzb,
+                "rustnzb": rnzb,
             })
         })
         .collect();
@@ -82,7 +82,7 @@ pub fn build_summary(results: &[(ClientResult, ClientResult)]) -> String {
     let mut lines = Vec::new();
     lines.push(String::new());
     lines.push("=".repeat(84));
-    lines.push("  BENCHMARK RESULTS: SABnzbd vs rustnzbd".into());
+    lines.push("  BENCHMARK RESULTS: SABnzbd vs rustnzb".into());
     lines.push("=".repeat(84));
 
     for (sab, rnzb) in results {
@@ -94,7 +94,7 @@ pub fn build_summary(results: &[(ClientResult, ClientResult)]) -> String {
         lines.push("-".repeat(84));
         lines.push(format!(
             "  {:24} {:>15} {:>15} {:>14}",
-            "Metric", "SABnzbd", "rustnzbd", "Delta"
+            "Metric", "SABnzbd", "rustnzb", "Delta"
         ));
         lines.push("-".repeat(84));
 
@@ -203,7 +203,7 @@ pub fn build_summary(results: &[(ClientResult, ClientResult)]) -> String {
     }
 
     lines.push(String::new());
-    lines.push("  Delta: ▲ = rustnzbd better, ▼ = rustnzbd worse".into());
+    lines.push("  Delta: ▲ = rustnzb better, ▼ = rustnzb worse".into());
     lines.push(String::new());
     lines.join("\n")
 }
@@ -230,7 +230,7 @@ fn delta_str(sab: f64, rnzb: f64, lower_better: bool) -> String {
         return "~same".to_string();
     }
     let prefix = if pct > 0.0 { "+" } else { "" };
-    // ▲ = rustnzbd better, ▼ = rustnzbd worse
+    // ▲ = rustnzb better, ▼ = rustnzb worse
     let arrow = if pct > 0.0 { " \u{25B2}" } else { " \u{25BC}" };
     format!("{prefix}{pct:.1}%{arrow}")
 }

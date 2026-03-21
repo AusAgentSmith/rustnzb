@@ -1,8 +1,8 @@
 [
   {
-    "rustnzbd": {
+    "rustnzb": {
       "avg_speed_mbps": 10337.539498056512,
-      "client": "rustnzbd",
+      "client": "rustnzb",
       "cpu_avg": 384.97253585072446,
       "cpu_peak": 496.8146835443038,
       "disk_write_avg_mbps": 579.5805776503163,
@@ -176,9 +176,9 @@
     "scenario": "sz5gb_raw"
   },
   {
-    "rustnzbd": {
+    "rustnzb": {
       "avg_speed_mbps": 9954.718408554276,
-      "client": "rustnzbd",
+      "client": "rustnzb",
       "cpu_avg": 411.31921091528267,
       "cpu_peak": 470.41240467717336,
       "disk_write_avg_mbps": 451.5400936497624,
@@ -620,9 +620,9 @@
     "scenario": "sz5gb_par2"
   },
   {
-    "rustnzbd": {
+    "rustnzb": {
       "avg_speed_mbps": 5879.813006252195,
-      "client": "rustnzbd",
+      "client": "rustnzb",
       "cpu_avg": 289.98123019933706,
       "cpu_peak": 481.0844984802431,
       "disk_write_avg_mbps": 1063.556378882293,
@@ -866,9 +866,9 @@
     "scenario": "sz5gb_unpack"
   },
   {
-    "rustnzbd": {
+    "rustnzb": {
       "avg_speed_mbps": 11294.981648528177,
-      "client": "rustnzbd",
+      "client": "rustnzb",
       "cpu_avg": 422.34980417534405,
       "cpu_peak": 468.87203647416413,
       "disk_write_avg_mbps": 847.2656027957876,
@@ -1112,9 +1112,9 @@
     "scenario": "sz10gb_raw"
   },
   {
-    "rustnzbd": {
+    "rustnzb": {
       "avg_speed_mbps": 4532.511417178477,
-      "client": "rustnzbd",
+      "client": "rustnzb",
       "cpu_avg": 237.54884084225185,
       "cpu_peak": 285.663110667996,
       "disk_write_avg_mbps": 393.6995490005979,
@@ -2226,9 +2226,9 @@
     "scenario": "sz10gb_par2"
   },
   {
-    "rustnzbd": {
+    "rustnzb": {
       "avg_speed_mbps": 4420.252020011918,
-      "client": "rustnzbd",
+      "client": "rustnzb",
       "cpu_avg": 241.39048266525612,
       "cpu_peak": 397.7837537840565,
       "disk_write_avg_mbps": 933.1881011079568,

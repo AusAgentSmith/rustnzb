@@ -24,15 +24,15 @@ services:
     networks: [bench]
     depends_on: [mock-nntp]
 
-  rustnzbd:
+  rustnzb:
     build:
-      context: ${RUSTNZBD_DIR:-..}
+      context: ${RUSTNZB_DIR:-..}
       dockerfile: Dockerfile
     command: ["--config", "/config/config.toml"]
     environment:
       - RUST_LOG=${RUST_LOG:-info}
     volumes:
-      - ./state/rustnzbd:/config
+      - ./state/rustnzb:/config
       - downloads-rnzb:/downloads
     networks: [bench]
     depends_on: [mock-nntp]
@@ -50,7 +50,7 @@ services:
     depends_on:
       - mock-nntp
       - sabnzbd
-      - rustnzbd
+      - rustnzb
 
 networks:
   bench:

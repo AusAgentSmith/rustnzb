@@ -14,7 +14,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "benchnzb", about = "Usenet client benchmark: SABnzbd vs rustnzbd")]
+#[command(name = "benchnzb", about = "Usenet client benchmark: SABnzbd vs rustnzb")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -90,7 +90,7 @@ fn main() -> anyhow::Result<()> {
                     let sab: runner::ClientResult =
                         serde_json::from_value(item["sabnzbd"].clone())?;
                     let rnzb: runner::ClientResult =
-                        serde_json::from_value(item["rustnzbd"].clone())?;
+                        serde_json::from_value(item["rustnzb"].clone())?;
                     results.push((sab, rnzb));
                 }
                 std::fs::create_dir_all(&out)?;

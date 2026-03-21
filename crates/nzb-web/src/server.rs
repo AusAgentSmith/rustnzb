@@ -19,7 +19,7 @@ use crate::sabnzbd_compat;
 use crate::state::AppState;
 
 #[derive(OpenApi)]
-#[openapi(info(title = "rustnzbd API", version = env!("CARGO_PKG_VERSION")))]
+#[openapi(info(title = "rustnzb API", version = env!("CARGO_PKG_VERSION")))]
 struct ApiDoc;
 
 /// Embed the static/ directory at compile time.

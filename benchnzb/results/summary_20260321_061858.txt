@@ -1,11 +1,11 @@
 
 ====================================================================================
-  BENCHMARK RESULTS: SABnzbd vs rustnzbd
+  BENCHMARK RESULTS: SABnzbd vs rustnzb
 ====================================================================================
 
   Scenario: sz5gb_raw — 5 GB raw download [raw]
 ------------------------------------------------------------------------------------
-  Metric                           SABnzbd        rustnzbd          Delta
+  Metric                           SABnzbd        rustnzb          Delta
 ------------------------------------------------------------------------------------
   Total Time                          8.1s            4.5s       +44.9% ▲
   Download Time                       8.1s            4.5s       +44.9% ▲
@@ -21,7 +21,7 @@
 
   Scenario: sz5gb_par2 — 5 GB download + par2 repair (3% missing) [par2]
 ------------------------------------------------------------------------------------
-  Metric                           SABnzbd        rustnzbd          Delta
+  Metric                           SABnzbd        rustnzb          Delta
 ------------------------------------------------------------------------------------
   Total Time                         39.5s           36.5s        +7.8% ▲
   Download Time                      16.5s            4.6s       +72.3% ▲
@@ -38,7 +38,7 @@
 
   Scenario: sz5gb_unpack — 5 GB download + 7z extraction [unpack]
 ------------------------------------------------------------------------------------
-  Metric                           SABnzbd        rustnzbd          Delta
+  Metric                           SABnzbd        rustnzb          Delta
 ------------------------------------------------------------------------------------
   Total Time                         10.1s            8.4s       +16.9% ▲
   Download Time                       7.1s            4.9s       +30.8% ▲
@@ -54,7 +54,7 @@
 
   Scenario: sz10gb_raw — 10 GB raw download [raw]
 ------------------------------------------------------------------------------------
-  Metric                           SABnzbd        rustnzbd          Delta
+  Metric                           SABnzbd        rustnzb          Delta
 ------------------------------------------------------------------------------------
   Total Time                         12.1s            9.8s       +19.3% ▲
   Download Time                      12.1s            9.8s       +19.3% ▲
@@ -70,7 +70,7 @@
 
   Scenario: sz10gb_par2 — 10 GB download + par2 repair (3% missing) [par2]
 ------------------------------------------------------------------------------------
-  Metric                           SABnzbd        rustnzbd          Delta
+  Metric                           SABnzbd        rustnzb          Delta
 ------------------------------------------------------------------------------------
   Total Time                         93.2s           90.3s        +3.1% ▲
   Download Time                      25.2s           10.5s       +58.5% ▲
@@ -87,7 +87,7 @@
 
   Scenario: sz10gb_unpack — 10 GB download + 7z extraction [unpack]
 ------------------------------------------------------------------------------------
-  Metric                           SABnzbd        rustnzbd          Delta
+  Metric                           SABnzbd        rustnzb          Delta
 ------------------------------------------------------------------------------------
   Total Time                         22.1s           20.5s        +7.3% ▲
   Download Time                      14.1s           13.0s        +8.2% ▲
@@ -101,4 +101,4 @@
   Disk Write Avg                806.8 MB/s      892.7 MB/s       +10.6% ▲
 ------------------------------------------------------------------------------------
 
-  Delta: ▲ = rustnzbd better, ▼ = rustnzbd worse
+  Delta: ▲ = rustnzb better, ▼ = rustnzb worse

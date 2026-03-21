@@ -1,4 +1,4 @@
-# rustnzbd — Remaining TODO
+# rustnzb — Remaining TODO
 
 Status check against sabnzbd/review.md (March 2026). Items ordered by impact.
 

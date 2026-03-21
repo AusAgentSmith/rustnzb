@@ -40,8 +40,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/ausagentsmith/rustnzbd
-            ${{ vars.DOCKERHUB_USERNAME }}/rustnzbd
+            ghcr.io/ausagentsmith/rustnzb
+            ${{ vars.DOCKERHUB_USERNAME }}/rustnzb
           tags: |
             type=ref,event=branch
             type=sha,prefix=,format=long
@@ -75,7 +75,7 @@ jobs:
       - name: Smoke test - external tools work in runtime image
         run: |
           set -e
-          IMAGE="ghcr.io/ausagentsmith/rustnzbd:${{ github.sha }}"
+          IMAGE="ghcr.io/ausagentsmith/rustnzb:${{ github.sha }}"
           echo "==> Pulling image ${IMAGE}..."
           docker pull "${IMAGE}"
           echo "==> Running smoke tests inside container..."
@@ -89,7 +89,7 @@ jobs:
       - name: Deploy
         run: |
           set -e
-          cd ~/rustnzbd
+          cd ~/rustnzb
           echo "==> Pulling latest image..."
           docker compose pull
           echo "==> Deploying container..."

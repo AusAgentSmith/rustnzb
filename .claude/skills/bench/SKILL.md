@@ -1,6 +1,6 @@
 ---
 name: bench
-description: Run the benchnzb benchmark suite (rustnzbd vs SABnzbd)
+description: Run the benchnzb benchmark suite (rustnzb vs SABnzbd)
 disable-model-invocation: true
 allowed-tools: Bash(cd *), Bash(./run.sh *), Bash(docker *), Bash(ls *), Bash(cat *)
 user-invocable: true
@@ -9,7 +9,7 @@ argument-hint: "[--scenarios quick|medium|speed|postproc|full] [--no-cleanup]"
 
 # Run Benchmarks
 
-Run the benchnzb performance benchmark suite comparing rustnzbd vs SABnzbd.
+Run the benchnzb performance benchmark suite comparing rustnzb vs SABnzbd.
 
 ## Usage
 
@@ -34,7 +34,7 @@ Run the benchnzb performance benchmark suite comparing rustnzbd vs SABnzbd.
 
 1. Change to benchnzb directory:
    ```bash
-   cd /home/sprooty/rustnzbd/benchnzb
+   cd /home/sprooty/rustnzb/benchnzb
    ```
 
 2. Parse `$ARGUMENTS` for `--scenarios` (default: `quick`) and `--no-cleanup`
@@ -55,7 +55,7 @@ Run the benchnzb performance benchmark suite comparing rustnzbd vs SABnzbd.
 The benchmark uses Docker Compose with 4 services:
 - **mock-nntp**: Generates yEnc-encoded articles on the fly
 - **sabnzbd**: LinuxServer SABnzbd image for comparison
-- **rustnzbd**: Built from the parent Dockerfile
+- **rustnzb**: Built from the parent Dockerfile
 - **orchestrator**: benchnzb binary that drives scenarios and collects metrics
 
 Results include JSON, CSV, and SVG charts in `benchnzb/results/`.

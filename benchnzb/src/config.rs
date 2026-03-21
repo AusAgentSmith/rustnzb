@@ -9,7 +9,7 @@ pub const MSG_ID_DOMAIN: &str = "benchnzb";
 
 pub const SABNZBD_API: &str = "http://sabnzbd:8080";
 pub const SABNZBD_API_KEY: &str = "benchnzb0123456789abcdef01234567";
-pub const RUSTNZBD_API: &str = "http://rustnzbd:9090";
+pub const RUSTNZB_API: &str = "http://rustnzb:9090";
 
 pub const POLL_INTERVAL_MS: u64 = 1000;
 

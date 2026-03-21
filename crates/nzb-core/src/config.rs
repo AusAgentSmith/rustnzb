@@ -103,7 +103,7 @@ impl Default for OtelConfig {
         Self {
             enabled: false,
             endpoint: "http://100.96.114.15:3100".into(),
-            service_name: "rustnzbd".into(),
+            service_name: "rustnzb".into(),
         }
     }
 }

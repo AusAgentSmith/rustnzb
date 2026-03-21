@@ -12,30 +12,30 @@ use nzb_core::db::Database;
 use nzb_web::{AppState, LogBuffer, LogBufferLayer, QueueManager};
 
 #[derive(Parser, Debug)]
-#[command(name = "rustnzbd", version, about = "Usenet NZB download client")]
+#[command(name = "rustnzb", version, about = "Usenet NZB download client")]
 struct Args {
     /// Path to config file
-    #[arg(short, long, default_value = "config.toml", env = "RUSTNZBD_CONFIG")]
+    #[arg(short, long, default_value = "config.toml", env = "RUSTNZB_CONFIG")]
     config: PathBuf,
 
     /// Override listen address
-    #[arg(long, env = "RUSTNZBD_LISTEN_ADDR")]
+    #[arg(long, env = "RUSTNZB_LISTEN_ADDR")]
     listen_addr: Option<String>,
 
     /// Override listen port
-    #[arg(short, long, env = "RUSTNZBD_PORT")]
+    #[arg(short, long, env = "RUSTNZB_PORT")]
     port: Option<u16>,
 
     /// Override data directory
-    #[arg(long, env = "RUSTNZBD_DATA_DIR")]
+    #[arg(long, env = "RUSTNZB_DATA_DIR")]
     data_dir: Option<PathBuf>,
 
     /// Log level (trace, debug, info, warn, error)
-    #[arg(long, default_value = "info", env = "RUSTNZBD_LOG_LEVEL")]
+    #[arg(long, default_value = "info", env = "RUSTNZB_LOG_LEVEL")]
     log_level: String,
 
     /// Log file path
-    #[arg(long, env = "RUSTNZBD_LOG_FILE")]
+    #[arg(long, env = "RUSTNZB_LOG_FILE")]
     log_file: Option<PathBuf>,
 
     /// Run smoke tests to verify external tools (par2, unrar, 7z) work, then exit
@@ -284,7 +284,7 @@ async fn main() -> anyhow::Result<()> {
             .init();
     }
 
-    info!("rustnzbd v{}", env!("CARGO_PKG_VERSION"));
+    info!("rustnzb v{}", env!("CARGO_PKG_VERSION"));
 
     // Ensure directories exist
     std::fs::create_dir_all(&config.general.data_dir)?;
@@ -292,7 +292,7 @@ async fn main() -> anyhow::Result<()> {
     std::fs::create_dir_all(&config.general.complete_dir)?;
 
     // Open database
-    let db_path = config.general.data_dir.join("rustnzbd.db");
+    let db_path = config.general.data_dir.join("rustnzb.db");
     let db = Database::open(&db_path)?;
     info!(path = %db_path.display(), "Database opened");
 
@@ -326,7 +326,7 @@ async fn main() -> anyhow::Result<()> {
     if config.otel.enabled && _otel_meter_provider.is_some() {
         let qm = Arc::clone(&queue_manager);
         tokio::spawn(async move {
-            let meter = opentelemetry::global::meter("rustnzbd");
+            let meter = opentelemetry::global::meter("rustnzb");
             let speed_gauge = meter.f64_gauge("download.speed_bps").build();
             let queue_gauge = meter.u64_gauge("queue.depth").build();
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));

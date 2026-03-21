@@ -1,13 +1,13 @@
-# CLAUDE.md — rustnzbd
+# CLAUDE.md — rustnzb
 
 ## Project Overview
 
-**rustnzbd** is a high-performance Usenet NZB download client written in Rust. It provides a REST API, embedded web UI, and SABnzbd-compatible API for integration with *arr applications (Sonarr, Radarr, etc.). The project is a Cargo workspace with 6 crates, deployed as a single Docker container.
+**rustnzb** is a high-performance Usenet NZB download client written in Rust. It provides a REST API, embedded web UI, and SABnzbd-compatible API for integration with *arr applications (Sonarr, Radarr, etc.). The project is a Cargo workspace with 6 crates, deployed as a single Docker container.
 
 ## Repository Layout
 
 ```
-rustnzbd/
+rustnzb/
 ├── src/main.rs                    # Binary entry point (CLI, config, tracing, startup)
 ├── crates/
 │   ├── nzb-core/                  # Shared models, config, NZB parser, SQLite database
@@ -16,7 +16,7 @@ rustnzbd/
 │   ├── nzb-decode/                # yEnc decoder (SIMD via yenc-simd), file assembler
 │   ├── nzb-postproc/              # Post-processing: par2 verify/repair, RAR/7z/ZIP extraction
 │   └── par2-sys/                  # Embeds par2cmdline-turbo binary (downloaded at build time)
-├── benchnzb/                      # Benchmark suite: rustnzbd vs SABnzbd (excluded from workspace)
+├── benchnzb/                      # Benchmark suite: rustnzb vs SABnzbd (excluded from workspace)
 ├── tests/                         # Integration tests (e2e download, NNTP, post-processing)
 ├── config.example.toml            # Configuration reference
 ├── Dockerfile                     # Multi-stage build (rust:1.88-bookworm → debian:bookworm-slim)
@@ -58,7 +58,7 @@ rustnzbd/
 - **DownloadEngine** (`nzb-web/src/download_engine.rs`): Per-job orchestrator. Fetches articles via NNTP, decodes yEnc, assembles files, triggers post-processing.
 - **Downloader** (`nzb-nntp/src/downloader.rs`): Multi-server article fetcher with priority-based failover, request pipelining, and bandwidth limiting.
 - **ConnectionPool** (`nzb-nntp/src/pool.rs`): Per-server async NNTP connection pool with health checks.
-- **SABnzbd Compat** (`nzb-web/src/sabnzbd_compat.rs`): Implements the SABnzbd API protocol so Sonarr/Radarr/etc. can use rustnzbd as a drop-in replacement.
+- **SABnzbd Compat** (`nzb-web/src/sabnzbd_compat.rs`): Implements the SABnzbd API protocol so Sonarr/Radarr/etc. can use rustnzb as a drop-in replacement.
 - **par2-sys** (`crates/par2-sys/`): Downloads par2cmdline-turbo at build time, embeds via `include_bytes!`, extracts to temp dir at runtime. No system par2 dependency needed.
 
 ### Background Services
@@ -115,14 +115,14 @@ cargo run -- --smoke-test
 
 ```bash
 # Build image
-docker build -t rustnzbd:local .
+docker build -t rustnzb:local .
 
 # Run
 docker run -p 9090:9090 \
   -v ./config:/config \
   -v ./data:/data \
   -v /path/to/downloads:/downloads \
-  rustnzbd:local
+  rustnzb:local
 ```
 
 ### Docker Compose (Production)
@@ -144,11 +144,11 @@ Configuration is loaded from TOML with CLI and environment variable overrides.
 
 | Variable | Purpose |
 |----------|---------|
-| `RUSTNZBD_CONFIG` | Config file path (default: `config.toml`) |
-| `RUSTNZBD_PORT` | Listen port |
-| `RUSTNZBD_LISTEN_ADDR` | Listen address |
-| `RUSTNZBD_DATA_DIR` | Data directory |
-| `RUSTNZBD_LOG_LEVEL` | Log level (trace/debug/info/warn/error) |
+| `RUSTNZB_CONFIG` | Config file path (default: `config.toml`) |
+| `RUSTNZB_PORT` | Listen port |
+| `RUSTNZB_LISTEN_ADDR` | Listen address |
+| `RUSTNZB_DATA_DIR` | Data directory |
+| `RUSTNZB_LOG_LEVEL` | Log level (trace/debug/info/warn/error) |
 | `RUST_LOG` | tracing env filter (overrides log level) |
 | `OTEL_ENABLED` | Enable OpenTelemetry (`true`/`1`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP gRPC endpoint |
@@ -212,14 +212,14 @@ Push to main
 
 | Registry | Image |
 |----------|-------|
-| GHCR | `ghcr.io/ausagentsmith/rustnzbd` |
-| Docker Hub | `ausagentsmith/rustnzbd` |
+| GHCR | `ghcr.io/ausagentsmith/rustnzb` |
+| Docker Hub | `ausagentsmith/rustnzb` |
 
 ### Dockerfile
 
 Two-stage build:
 1. **Builder** (`rust:1.88-bookworm`): `cargo build --release` — par2-sys downloads par2cmdline-turbo automatically
-2. **Runtime** (`debian:bookworm-slim`): Copies binary, installs `ca-certificates`, `curl`, `unrar-free`, `p7zip-full`. Runs as non-root `rustnzbd` user.
+2. **Runtime** (`debian:bookworm-slim`): Copies binary, installs `ca-certificates`, `curl`, `unrar-free`, `p7zip-full`. Runs as non-root `rustnzb` user.
 
 Exposes port 9090. Volumes: `/config`, `/data`, `/downloads`.
 
@@ -235,7 +235,7 @@ The generic deployment flow is:
 
 ## Benchmarking
 
-The `benchnzb/` directory contains a comprehensive benchmark suite comparing rustnzbd vs SABnzbd.
+The `benchnzb/` directory contains a comprehensive benchmark suite comparing rustnzb vs SABnzbd.
 
 ```bash
 cd benchnzb

@@ -1,5 +1,5 @@
 use crate::clients::sabnzbd::SabnzbdClient;
-use crate::clients::rustnzbd::RustnzbdClient;
+use crate::clients::rustnzb::RustnzbClient;
 use crate::config::{self, Scenario, MB, GB};
 use crate::metrics::{MetricSample, MetricsCollector};
 use crate::{charts, datagen, docker, report};
@@ -31,12 +31,12 @@ pub struct ClientResult {
     pub iowait_avg: f64,
     pub iowait_peak: f64,
     pub timeseries: Vec<MetricSample>,
-    /// Internal metrics from the client's own API (rustnzbd only).
+    /// Internal metrics from the client's own API (rustnzb only).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub internal_metrics: Option<InternalMetrics>,
 }
 
-/// Metrics captured from rustnzbd's own REST API after job completion.
+/// Metrics captured from rustnzb's own REST API after job completion.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, Default)]
 pub struct InternalMetrics {
     /// Per-server download statistics.
@@ -126,7 +126,7 @@ pub async fn run(
     results_dir: PathBuf,
 ) -> Result<()> {
     tracing::info!("============================================================");
-    tracing::info!("  Usenet Client Benchmark: SABnzbd vs rustnzbd");
+    tracing::info!("  Usenet Client Benchmark: SABnzbd vs rustnzb");
     tracing::info!("============================================================");
 
     let docker_client = docker::connect()?;
@@ -137,21 +137,21 @@ pub async fn run(
     wait_for_service("mock-nntp", "http://mock-nntp:8080/health", 120).await?;
     wait_for_service("sabnzbd", &format!("{}/", config::SABNZBD_API), 180).await?;
     wait_for_service(
-        "rustnzbd",
-        &format!("{}/api/status", config::RUSTNZBD_API),
+        "rustnzb",
+        &format!("{}/api/status", config::RUSTNZB_API),
         120,
     )
     .await?;
 
     let sab = SabnzbdClient::new(config::SABNZBD_API);
-    let rnzb = RustnzbdClient::new(config::RUSTNZBD_API);
+    let rnzb = RustnzbClient::new(config::RUSTNZB_API);
 
     // Resolve container IDs for metrics and log capture
     metrics.resolve_container_id("sabnzbd").await;
-    metrics.resolve_container_id("rustnzbd").await;
+    metrics.resolve_container_id("rustnzb").await;
 
     let sab_container_id = docker::get_container_id(&docker_client, "sabnzbd").await;
-    let rnzb_container_id = docker::get_container_id(&docker_client, "rustnzbd").await;
+    let rnzb_container_id = docker::get_container_id(&docker_client, "rustnzb").await;
 
     // Resolve scenarios
     let scenarios = config::resolve_scenarios(&scenario_selector);
@@ -198,7 +198,7 @@ pub async fn run(
 
         // Clean download directories
         clean_download_dir(&docker_client, "sabnzbd", "/downloads").await;
-        clean_download_dir(&docker_client, "rustnzbd", "/downloads").await;
+        clean_download_dir(&docker_client, "rustnzb", "/downloads").await;
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         // Run SABnzbd
@@ -216,12 +216,12 @@ pub async fn run(
 
         // Clean between runs
         clean_download_dir(&docker_client, "sabnzbd", "/downloads").await;
-        clean_download_dir(&docker_client, "rustnzbd", "/downloads").await;
+        clean_download_dir(&docker_client, "rustnzb", "/downloads").await;
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-        // Run rustnzbd
+        // Run rustnzb
         let rnzb_start = chrono::Utc::now().to_rfc3339();
-        let rnzb_result = run_client("rustnzbd", sc, &nzb_path, &sab, &rnzb, &metrics).await;
+        let rnzb_result = run_client("rustnzb", sc, &nzb_path, &sab, &rnzb, &metrics).await;
         let rnzb_logs = if let Some(ref cid) = rnzb_container_id {
             docker::get_container_logs(&docker_client, cid, &rnzb_start)
                 .await
@@ -259,7 +259,7 @@ pub async fn run(
             std::fs::write(&path, sab_logs)?;
         }
         if !rnzb_logs.is_empty() {
-            let path = logs_dir.join(format!("{scenario_name}_rustnzbd.log"));
+            let path = logs_dir.join(format!("{scenario_name}_rustnzb.log"));
             std::fs::write(&path, rnzb_logs)?;
         }
     }
@@ -274,7 +274,7 @@ async fn run_client(
     sc: &Scenario,
     nzb_path: &Path,
     sab: &SabnzbdClient,
-    rnzb: &RustnzbdClient,
+    rnzb: &RustnzbClient,
     metrics: &MetricsCollector,
 ) -> ClientResult {
     let mut result = ClientResult {
@@ -407,8 +407,8 @@ async fn run_client(
         result.download_sec = result.total_sec;
     }
 
-    // Internal metrics (rustnzbd only)
-    if client_name == "rustnzbd" {
+    // Internal metrics (rustnzb only)
+    if client_name == "rustnzb" {
         match rnzb.get_internal_metrics().await {
             Ok(metrics) => {
                 tracing::info!(

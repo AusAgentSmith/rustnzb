@@ -859,17 +859,112 @@ impl QueueManager {
     // Job control
     // -----------------------------------------------------------------------
 
-    /// Change the priority of a specific job.
-    pub fn set_job_priority(&self, id: &str, priority: Priority) -> nzb_core::Result<()> {
-        let mut jobs = self.jobs.lock();
-        let job_state = jobs
-            .get_mut(id)
-            .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
-        job_state.job.priority = priority;
-        let db = self.db.lock();
-        db.queue_update_priority(id, priority as i32)?;
-        info!(job_id = %id, ?priority, "Job priority changed");
+    /// Change the priority of a specific job, reorder the queue, and preempt
+    /// lower-priority downloads when a higher-priority job is waiting.
+    pub fn set_job_priority(self: &Arc<Self>, id: &str, priority: Priority) -> nzb_core::Result<()> {
+        // 1. Update priority
+        {
+            let mut jobs = self.jobs.lock();
+            let job_state = jobs
+                .get_mut(id)
+                .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
+            job_state.job.priority = priority;
+            let db = self.db.lock();
+            db.queue_update_priority(id, priority as i32)?;
+            info!(job_id = %id, ?priority, "Job priority changed");
+        }
+
+        // 2. Reorder job_order by priority (stable: preserves order within same priority)
+        self.reorder_by_priority();
+
+        // 3. Preempt lower-priority downloads if a higher-priority queued job is waiting
+        self.preempt_lower_priority();
+
         Ok(())
+    }
+
+    /// Sort the job_order list by priority descending (stable sort preserves
+    /// the relative order of jobs with equal priority).
+    fn reorder_by_priority(&self) {
+        let jobs = self.jobs.lock();
+        let mut order = self.job_order.lock();
+        order.sort_by(|a, b| {
+            let pa = jobs.get(a).map(|s| s.job.priority as u8).unwrap_or(0);
+            let pb = jobs.get(b).map(|s| s.job.priority as u8).unwrap_or(0);
+            pb.cmp(&pa) // descending
+        });
+    }
+
+    /// If all download slots are full, check whether any downloading job has
+    /// a lower priority than the highest-priority queued job. If so, pause
+    /// the lowest-priority downloading job to make room.
+    fn preempt_lower_priority(self: &Arc<Self>) {
+        let max = self.max_active_downloads.load(Ordering::Relaxed);
+        if max == 0 {
+            // Unlimited slots — just start the queued job normally
+            self.start_next_queued();
+            return;
+        }
+
+        loop {
+            let active = self.active_download_count();
+            if active < max {
+                // There's a free slot — start_next_queued will handle it
+                self.start_next_queued();
+                return;
+            }
+
+            // Find highest-priority queued job and lowest-priority downloading job
+            let (best_queued, worst_downloading) = {
+                let jobs = self.jobs.lock();
+                let order = self.job_order.lock();
+
+                let mut best_q: Option<(String, u8)> = None;
+                let mut worst_d: Option<(String, u8)> = None;
+
+                for id in order.iter() {
+                    if let Some(s) = jobs.get(id) {
+                        let p = s.job.priority as u8;
+                        if s.job.status == JobStatus::Queued {
+                            if best_q.as_ref().map_or(true, |(_, bp)| p > *bp) {
+                                best_q = Some((id.clone(), p));
+                            }
+                        } else if s.job.status == JobStatus::Downloading {
+                            if worst_d.as_ref().map_or(true, |(_, wp)| p < *wp) {
+                                worst_d = Some((id.clone(), p));
+                            }
+                        }
+                    }
+                }
+                (best_q, worst_d)
+            };
+
+            match (best_queued, worst_downloading) {
+                (Some((q_id, q_pri)), Some((d_id, d_pri))) if q_pri > d_pri => {
+                    // Preempt: pause the engine and set status to Queued so it
+                    // can be picked up again when a slot opens.
+                    info!(
+                        preempted = %d_id,
+                        preempted_priority = d_pri,
+                        starting = %q_id,
+                        starting_priority = q_pri,
+                        "Preempting lower-priority download for higher-priority job"
+                    );
+                    {
+                        let mut jobs = self.jobs.lock();
+                        if let Some(state) = jobs.get_mut(&d_id) {
+                            state.engine.pause();
+                            state.job.status = JobStatus::Paused;
+                        }
+                    }
+                    // Now there's a free slot — loop will start the queued job
+                }
+                _ => {
+                    // No preemption needed
+                    return;
+                }
+            }
+        }
     }
 
     /// Pause a specific job.

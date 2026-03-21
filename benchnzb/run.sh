@@ -4,7 +4,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 cat <<'BANNER'
 +=====================================================+
-|  benchnzb: SABnzbd vs rustnzbd                      |
+|  benchnzb: SABnzbd vs rustnzb                      |
 +=====================================================+
 BANNER
 
@@ -42,12 +42,12 @@ export SCENARIOS
 mkdir -p results
 
 # Clean state directories for fresh run (removes stale databases/history)
-rm -rf state/sabnzbd state/rustnzbd
-mkdir -p state/sabnzbd state/rustnzbd
+rm -rf state/sabnzbd state/rustnzb
+mkdir -p state/sabnzbd state/rustnzb
 
 # Seed config files
 cp configs/sabnzbd.ini state/sabnzbd/sabnzbd.ini
-cp configs/rustnzbd.toml state/rustnzbd/config.toml
+cp configs/rustnzb.toml state/rustnzb/config.toml
 
 LOGFILE="results/run_$(date +%Y%m%d_%H%M%S).log"
 

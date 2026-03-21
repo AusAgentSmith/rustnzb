@@ -25,18 +25,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         p7zip-full \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/target/release/rustnzbd /usr/local/bin/rustnzbd
+COPY --from=builder /build/target/release/rustnzb /usr/local/bin/rustnzb
 
-RUN useradd -m -s /bin/bash rustnzbd \
+RUN useradd -m -s /bin/bash rustnzb \
     && mkdir -p /config /data /downloads/incomplete /downloads/complete \
-    && chown -R rustnzbd:rustnzbd /config /data /downloads
+    && chown -R rustnzb:rustnzb /config /data /downloads
 
-USER rustnzbd
+USER rustnzb
 WORKDIR /app
 
 EXPOSE 9090
 
 VOLUME ["/config", "/data", "/downloads"]
 
-ENTRYPOINT ["rustnzbd"]
+ENTRYPOINT ["rustnzb"]
 CMD ["--config", "/config/config.toml", "--data-dir", "/data", "--port", "9090"]

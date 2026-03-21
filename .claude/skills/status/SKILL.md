@@ -1,15 +1,15 @@
 ---
 name: status
-description: Check rustnzbd deployment status, health, and queue
+description: Check rustnzb deployment status, health, and queue
 disable-model-invocation: true
 allowed-tools: Bash(ssh *), Bash(curl *)
 user-invocable: true
 argument-hint: ""
 ---
 
-# Check rustnzbd Status
+# Check rustnzb Status
 
-Quick health check of the rustnzbd deployment.
+Quick health check of the rustnzb deployment.
 
 Host and port details are in `DEPLOY.local.md` (gitignored).
 
@@ -24,7 +24,7 @@ Host and port details are in `DEPLOY.local.md` (gitignored).
 2. Check container status on deploy host:
    ```bash
    ssh -o ConnectTimeout=10 $DEPLOY_HOST \
-     "cd ~/rustnzbd && docker compose ps"
+     "cd ~/rustnzb && docker compose ps"
    ```
 
 3. Query the API for live status:

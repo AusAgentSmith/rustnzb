@@ -96,7 +96,7 @@ fn write_bar_chart(sab: &ClientResult, rnzb: &ClientResult, dir: &Path) -> Resul
 <text x="{}" y="28" fill="{TEXT_COLOR}" font-size="16" text-anchor="middle" font-family="monospace" font-weight="bold">{} — Comparison</text>
 <text x="{}" y="48" fill="{MUTED_TEXT}" font-size="12" text-anchor="middle" font-family="monospace">{desc}</text>
 <text x="{}" y="68" fill="{SAB_COLOR}" font-size="11" font-family="monospace">■ SABnzbd</text>
-<text x="{}" y="68" fill="{RNZB_COLOR}" font-size="11" font-family="monospace">■ rustnzbd</text>"#,
+<text x="{}" y="68" fill="{RNZB_COLOR}" font-size="11" font-family="monospace">■ rustnzb</text>"#,
         w / 2, sab.scenario, w / 2, w - 220, w - 110,
     );
 
@@ -172,7 +172,7 @@ fn write_timeseries(sab: &ClientResult, rnzb: &ClientResult, dir: &Path) -> Resu
 <text x="{}" y="28" fill="{TEXT_COLOR}" font-size="16" text-anchor="middle" font-family="monospace" font-weight="bold">{} — Time Series</text>
 <text x="{}" y="48" fill="{MUTED_TEXT}" font-size="12" text-anchor="middle" font-family="monospace">{desc}</text>
 <text x="{}" y="66" fill="{SAB_COLOR}" font-size="11" font-family="monospace">— SABnzbd</text>
-<text x="{}" y="66" fill="{RNZB_COLOR}" font-size="11" font-family="monospace">— rustnzbd</text>"#,
+<text x="{}" y="66" fill="{RNZB_COLOR}" font-size="11" font-family="monospace">— rustnzb</text>"#,
         w / 2, sab.scenario, w / 2, w - 220, w - 110,
     );
 
@@ -250,8 +250,8 @@ fn write_cross_scenario(results: &[(ClientResult, ClientResult)], dir: &Path) ->
 
     let mut svg = format!(
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" style="background:{BG_COLOR}">
-<text x="{}" y="28" fill="{TEXT_COLOR}" font-size="16" text-anchor="middle" font-family="monospace" font-weight="bold">Cross-Scenario: Speed Ratio (SABnzbd time / rustnzbd time)</text>
-<text x="{}" y="50" fill="{GREEN}" font-size="10" font-family="monospace">Green = rustnzbd faster</text>
+<text x="{}" y="28" fill="{TEXT_COLOR}" font-size="16" text-anchor="middle" font-family="monospace" font-weight="bold">Cross-Scenario: Speed Ratio (SABnzbd time / rustnzb time)</text>
+<text x="{}" y="50" fill="{GREEN}" font-size="10" font-family="monospace">Green = rustnzb faster</text>
 <text x="{}" y="50" fill="{RED}" font-size="10" font-family="monospace">Red = SABnzbd faster</text>"#,
         w / 2, w / 2 - 120, w / 2 + 60,
     );
@@ -309,9 +309,9 @@ fn write_dashboard(results: &[(ClientResult, ClientResult)], dir: &Path) -> Resu
 
     let mut svg = format!(
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" style="background:{BG_COLOR}">
-<text x="{}" y="28" fill="{TEXT_COLOR}" font-size="18" text-anchor="middle" font-family="monospace" font-weight="bold">Benchmark Dashboard: SABnzbd vs rustnzbd</text>
+<text x="{}" y="28" fill="{TEXT_COLOR}" font-size="18" text-anchor="middle" font-family="monospace" font-weight="bold">Benchmark Dashboard: SABnzbd vs rustnzb</text>
 <text x="60" y="55" fill="{SAB_COLOR}" font-size="12" font-family="monospace">■ SABnzbd</text>
-<text x="180" y="55" fill="{RNZB_COLOR}" font-size="12" font-family="monospace">■ rustnzbd</text>"#,
+<text x="180" y="55" fill="{RNZB_COLOR}" font-size="12" font-family="monospace">■ rustnzb</text>"#,
         w / 2,
     );
 

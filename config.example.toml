@@ -8,7 +8,7 @@ data_dir = "data"
 speed_limit_bps = 0  # 0 = unlimited
 cache_size = 524288000  # 500 MB
 log_level = "info"
-# log_file = "data/rustnzbd.log"
+# log_file = "data/rustnzb.log"
 # history_retention = 100  # Number of NZBs to keep in history (omit for keep all)
 
 # NNTP servers — add as many as needed, ordered by priority
@@ -71,7 +71,7 @@ post_processing = 2
 [otel]
 enabled = false
 endpoint = "http://localhost:4317"  # OTLP gRPC endpoint
-service_name = "rustnzbd"
+service_name = "rustnzb"
 
 # --- Loki logging (alternative to OTEL) ---
 # A Promtail sidecar is included in docker-compose.yml behind the "logging" profile.

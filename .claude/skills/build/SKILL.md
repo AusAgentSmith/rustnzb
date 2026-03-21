@@ -1,15 +1,15 @@
 ---
 name: build
-description: Build rustnzbd locally with cargo
+description: Build rustnzb locally with cargo
 disable-model-invocation: true
 allowed-tools: Bash(cargo *), Bash(docker *), Bash(ls *)
 user-invocable: true
 argument-hint: "[--release] [--docker] [--check] [--clippy]"
 ---
 
-# Build rustnzbd
+# Build rustnzb
 
-Build the rustnzbd project.
+Build the rustnzb project.
 
 ## Usage
 
@@ -23,7 +23,7 @@ Build the rustnzbd project.
 
 1. If `--docker`:
    ```bash
-   docker build -t rustnzbd:local .
+   docker build -t rustnzb:local .
    ```
 
 2. If `--check`:
@@ -49,7 +49,7 @@ Build the rustnzbd project.
 6. Report build result — if errors, show the first error clearly
 7. On success, show binary size for release builds:
    ```bash
-   ls -lh target/release/rustnzbd
+   ls -lh target/release/rustnzb
    ```
 
 ## Notes

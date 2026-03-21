@@ -83,7 +83,7 @@ par2 = { path = "crates/par2" }
 yenc-simd = "0.1"
 
 [package]
-name = "rustnzbd"
+name = "rustnzb"
 version.workspace = true
 edition.workspace = true
 
