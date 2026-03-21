@@ -1089,7 +1089,7 @@ pub async fn h_rss_item_download(
 #[derive(Deserialize)]
 pub struct RssRuleBody {
     pub name: String,
-    pub feed_name: String,
+    pub feed_names: Vec<String>,
     pub category: Option<String>,
     pub priority: Option<i32>,
     pub match_regex: String,
@@ -1119,7 +1119,7 @@ pub async fn h_rss_rule_add(
     let rule = RssRule {
         id: uuid::Uuid::new_v4().to_string(),
         name: body.name,
-        feed_name: body.feed_name,
+        feed_names: body.feed_names,
         category: body.category,
         priority: body.priority.unwrap_or(1),
         match_regex: body.match_regex,
@@ -1145,7 +1145,7 @@ pub async fn h_rss_rule_update(
     let rule = RssRule {
         id,
         name: body.name,
-        feed_name: body.feed_name,
+        feed_names: body.feed_names,
         category: body.category,
         priority: body.priority.unwrap_or(1),
         match_regex: body.match_regex,

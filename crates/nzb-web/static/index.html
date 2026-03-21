@@ -545,13 +545,56 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       <button class="btn btn-primary btn-sm" id="btn-add-rss" onclick="event.stopPropagation(); openRssFeedModal(null);">+ Add Feed</button>
     </div>
     <div class="collapsible-body" id="rss-feeds-body">
-      <div class="server-grid" id="rss-grid">
-        <div class="table-empty" style="grid-column:1/-1;">No RSS feeds configured. Click "Add Feed" to get started.</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:30px;">Status</th>
+              <th>Name</th>
+              <th>URL</th>
+              <th class="col-center">Interval</th>
+              <th class="col-center">Category</th>
+              <th class="col-hide-mobile">Filter</th>
+              <th class="col-actions" style="width:100px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rss-feeds-tbody">
+            <tr><td colspan="7" class="table-empty">No RSS feeds configured.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Download Rules (collapsible) -->
+    <div style="margin-top:16px;">
+      <div class="collapsible-header" id="rss-rules-header" onclick="toggleCollapsible('rss-rules')">
+        <span class="section-title"><span class="chevron">&#9654;</span> Download Rules</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-rule" onclick="event.stopPropagation(); openRssRuleModal(null);">+ Add Rule</button>
+      </div>
+      <div class="collapsible-body" id="rss-rules-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th class="col-center">Feeds</th>
+                <th class="col-center">Category</th>
+                <th class="col-center">Priority</th>
+                <th>Regex</th>
+                <th class="col-center" style="width:60px;">Enabled</th>
+                <th class="col-actions" style="width:100px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rss-rules-body-table">
+              <tr><td colspan="7" class="table-empty">No download rules configured.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <!-- Feed Items -->
-    <div style="margin-top:8px;">
+    <div style="margin-top:16px;">
       <div class="rss-items-toolbar">
         <span style="font-size:0.95rem;font-weight:600;color:var(--text-primary);">Feed Items</span>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -575,34 +618,6 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
             <tr><td colspan="5" class="table-empty">No feed items yet. Add a feed to get started.</td></tr>
           </tbody>
         </table>
-      </div>
-    </div>
-
-    <!-- Download Rules (collapsible) -->
-    <div style="margin-top:16px;">
-      <div class="collapsible-header" id="rss-rules-header" onclick="toggleCollapsible('rss-rules')">
-        <span class="section-title"><span class="chevron">&#9654;</span> Download Rules</span>
-        <button class="btn btn-primary btn-sm" id="btn-add-rule" onclick="event.stopPropagation(); openRssRuleModal(null);">+ Add Rule</button>
-      </div>
-      <div class="collapsible-body" id="rss-rules-body">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th class="col-center">Feed</th>
-                <th class="col-center">Category</th>
-                <th class="col-center">Priority</th>
-                <th>Regex</th>
-                <th class="col-center" style="width:60px;">Enabled</th>
-                <th class="col-actions" style="width:100px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="rss-rules-body-table">
-              <tr><td colspan="7" class="table-empty">No download rules configured.</td></tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   </div>
@@ -755,8 +770,9 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       <input type="text" id="rule-name" placeholder="e.g. HD Movies">
     </div>
     <div class="modal-field">
-      <label for="rule-feed">Linked Feed</label>
-      <select id="rule-feed"><option value="">Select a feed...</option></select>
+      <label for="rule-feeds">Linked Feed(s)</label>
+      <select id="rule-feeds" multiple style="min-height:60px;"></select>
+      <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Hold Ctrl/Cmd to select multiple feeds</div>
     </div>
     <div class="modal-field-row">
       <div class="modal-field">
@@ -1723,27 +1739,25 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     }).catch(function(){});
   }
   function renderRssFeeds(feeds) {
-    var grid = document.getElementById('rss-grid');
-    if (!feeds || feeds.length === 0) { grid.innerHTML = '<div class="table-empty" style="grid-column:1/-1;">No RSS feeds configured. Click "Add Feed" to get started.</div>'; return; }
+    var tbody = document.getElementById('rss-feeds-tbody');
+    if (!feeds || feeds.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No RSS feeds configured. Click "Add Feed" to get started.</td></tr>'; return; }
     var html = '';
     for (var i=0;i<feeds.length;i++) {
       var f = feeds[i];
       var intervalMin = Math.round((f.poll_interval_secs || 900) / 60);
-      html += '<div class="server-card"><div class="server-card-header">'+
-        '<span class="server-card-name">'+esc(f.name)+'</span>'+
-        '<span class="server-card-status"><span class="status-dot '+(f.enabled?'enabled':'disabled')+'"></span>'+(f.enabled?'Enabled':'Disabled')+'</span></div>'+
-        '<div class="server-details">'+
-          '<div class="server-detail" style="grid-column:1/-1;"><span class="server-detail-label">URL</span><span class="server-detail-value" style="word-break:break-all;font-size:0.8rem;">'+esc(f.url)+'</span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">Interval</span><span class="server-detail-value">'+intervalMin+' min</span></div>'+
-          '<div class="server-detail"><span class="server-detail-label">Category</span><span class="server-detail-value">'+(f.category?esc(f.category):'Default')+'</span></div>'+
-          (f.filter_regex?'<div class="server-detail" style="grid-column:1/-1;"><span class="server-detail-label">Filter</span><span class="server-detail-value" style="font-family:monospace;font-size:0.8rem;">'+esc(f.filter_regex)+'</span></div>':'')+
-        '</div>'+
-        '<div class="server-card-actions">'+
+      html += '<tr>'+
+        '<td><span class="server-card-status"><span class="status-dot '+(f.enabled?'enabled':'disabled')+'"></span>'+(f.enabled?'On':'Off')+'</span></td>'+
+        '<td style="font-weight:600;">'+esc(f.name)+'</td>'+
+        '<td style="font-size:0.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(f.url)+'">'+esc(f.url)+'</td>'+
+        '<td class="col-center">'+intervalMin+'m</td>'+
+        '<td class="col-center">'+(f.category?esc(f.category):'Default')+'</td>'+
+        '<td class="col-hide-mobile" style="font-family:monospace;font-size:0.8rem;">'+(f.filter_regex?esc(f.filter_regex):'--')+'</td>'+
+        '<td><div class="actions">'+
           '<button class="btn btn-sm" onclick="window._rssFeedEdit(\''+esc(f.name).replace(/'/g,"\\'")+'\')">Edit</button>'+
           '<button class="btn btn-sm btn-danger" onclick="window._rssFeedDelete(\''+esc(f.name).replace(/'/g,"\\'")+'\')">Delete</button>'+
-        '</div></div>';
+        '</div></td></tr>';
     }
-    grid.innerHTML = html;
+    tbody.innerHTML = html;
   }
 
   function updateRssFeedFilter() {
@@ -1872,9 +1886,10 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     var html = '';
     for (var i = 0; i < rules.length; i++) {
       var r = rules[i];
+      var feedsDisplay = (r.feed_names || []).join(', ') || '--';
       html += '<tr>' +
         '<td>'+esc(r.name)+'</td>' +
-        '<td class="col-center" style="font-size:0.85rem;">'+esc(r.feed_name)+'</td>' +
+        '<td class="col-center" style="font-size:0.85rem;">'+esc(feedsDisplay)+'</td>' +
         '<td class="col-center" style="font-size:0.85rem;">'+(r.category || 'Default')+'</td>' +
         '<td class="col-center" style="font-size:0.85rem;">'+(priLabels[r.priority]||r.priority)+'</td>' +
         '<td style="font-family:monospace;font-size:0.8rem;">'+esc(r.match_regex)+'</td>' +
@@ -1895,13 +1910,17 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     document.getElementById('rule-regex').value = isEdit ? (rule.match_regex||'') : '';
     document.getElementById('rule-priority').value = isEdit ? String(rule.priority) : '1';
     document.getElementById('rule-enabled').checked = isEdit ? rule.enabled : true;
-    // Populate feed dropdown
-    var feedSel = document.getElementById('rule-feed');
-    feedSel.innerHTML = '<option value="">Select a feed...</option>';
+    // Populate feed multi-select
+    var feedSel = document.getElementById('rule-feeds');
+    feedSel.innerHTML = '';
     for (var i = 0; i < cachedRssFeeds.length; i++) {
       feedSel.innerHTML += '<option value="'+esc(cachedRssFeeds[i].name)+'">'+esc(cachedRssFeeds[i].name)+'</option>';
     }
-    if (isEdit && rule.feed_name) feedSel.value = rule.feed_name;
+    if (isEdit && rule.feed_names) {
+      for (var j = 0; j < feedSel.options.length; j++) {
+        feedSel.options[j].selected = rule.feed_names.indexOf(feedSel.options[j].value) !== -1;
+      }
+    }
     // Populate category dropdown
     api('GET','/api/config/categories').then(function(cats) {
       var catSel = document.getElementById('rule-category');
@@ -1917,16 +1936,21 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   document.getElementById('btn-rule-save').addEventListener('click', function() {
     var editId = document.getElementById('rule-edit-id').value;
+    var feedSel = document.getElementById('rule-feeds');
+    var selectedFeeds = [];
+    for (var fi = 0; fi < feedSel.options.length; fi++) {
+      if (feedSel.options[fi].selected) selectedFeeds.push(feedSel.options[fi].value);
+    }
     var body = {
       name: document.getElementById('rule-name').value.trim(),
-      feed_name: document.getElementById('rule-feed').value,
+      feed_names: selectedFeeds,
       category: document.getElementById('rule-category').value || null,
       priority: parseInt(document.getElementById('rule-priority').value) || 1,
       match_regex: document.getElementById('rule-regex').value.trim(),
       enabled: document.getElementById('rule-enabled').checked
     };
     if (!body.name) { notify('Rule name is required','error'); return; }
-    if (!body.feed_name) { notify('Feed is required','error'); return; }
+    if (body.feed_names.length === 0) { notify('At least one feed is required','error'); return; }
     if (!body.match_regex) { notify('Regex is required','error'); return; }
 
     var method = editId ? 'PUT' : 'POST';

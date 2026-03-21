@@ -156,7 +156,7 @@ impl RssMonitor {
             .rss_rule_list()
             .unwrap_or_default()
             .into_iter()
-            .filter(|r| r.enabled && r.feed_name == feed.name)
+            .filter(|r| r.enabled && r.feed_names.iter().any(|n| n == &feed.name))
             .collect::<Vec<_>>();
 
         let mut new_items = 0;

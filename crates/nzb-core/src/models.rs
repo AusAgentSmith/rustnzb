@@ -250,8 +250,8 @@ pub struct RssRule {
     pub id: String,
     /// Human-readable name for the rule
     pub name: String,
-    /// Which feed this rule applies to
-    pub feed_name: String,
+    /// Which feed(s) this rule applies to (one or more feed names)
+    pub feed_names: Vec<String>,
     /// Category to assign to downloaded NZBs
     pub category: Option<String>,
     /// Download priority (0=low, 1=normal, 2=high, 3=force)

@@ -661,14 +661,16 @@ impl Database {
     // -----------------------------------------------------------------------
 
     /// Insert a new RSS download rule.
+    /// feed_names is stored as comma-separated string in the DB.
     pub fn rss_rule_insert(&self, rule: &RssRule) -> Result<(), NzbError> {
+        let feed_names_str = rule.feed_names.join(",");
         self.conn.execute(
             "INSERT INTO rss_rules (id, name, feed_name, category, priority, match_regex, enabled)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 rule.id,
                 rule.name,
-                rule.feed_name,
+                feed_names_str,
                 rule.category,
                 rule.priority,
                 rule.match_regex,
@@ -686,10 +688,16 @@ impl Database {
         )?;
         let rules = stmt
             .query_map([], |row| {
+                let feed_names_str: String = row.get(2)?;
+                let feed_names: Vec<String> = feed_names_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
                 Ok(RssRule {
                     id: row.get(0)?,
                     name: row.get(1)?,
-                    feed_name: row.get(2)?,
+                    feed_names,
                     category: row.get(3)?,
                     priority: row.get(4)?,
                     match_regex: row.get(5)?,
@@ -702,13 +710,14 @@ impl Database {
 
     /// Update an RSS download rule.
     pub fn rss_rule_update(&self, rule: &RssRule) -> Result<(), NzbError> {
+        let feed_names_str = rule.feed_names.join(",");
         self.conn.execute(
             "UPDATE rss_rules SET name=?2, feed_name=?3, category=?4, priority=?5,
              match_regex=?6, enabled=?7 WHERE id=?1",
             params![
                 rule.id,
                 rule.name,
-                rule.feed_name,
+                feed_names_str,
                 rule.category,
                 rule.priority,
                 rule.match_regex,
