@@ -4,8 +4,8 @@ use crate::nzb::{self, NzbFile};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-/// Maximum time to wait for a single par2 create subprocess (30 minutes).
-const PAR2_TIMEOUT_SECS: u64 = 30 * 60;
+/// Maximum time to wait for a single par2 create subprocess (10 minutes).
+const PAR2_TIMEOUT_SECS: u64 = 10 * 60;
 
 pub async fn prepare_data(scenarios: &[Scenario], data_dir: &Path) -> Result<()> {
     let testdata_dir = data_dir.join("testdata");
@@ -255,7 +255,7 @@ async fn generate_par2(data_file: &Path, redundancy_pct: f64) -> Result<Vec<Path
     // Spawn par2 with inherited stderr so progress is visible in logs
     use tokio::process::Command;
     let mut child = Command::new("par2")
-        .args(["create", &format!("-r{redundancy}"), "-n4"])
+        .args(["create", &format!("-r{redundancy}"), &format!("-t{}", std::thread::available_parallelism().map_or(4, |n| n.get()))])
         .arg(data_file)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::inherit())
@@ -384,7 +384,7 @@ async fn preflight_check(scenarios: &[Scenario], data_dir: &Path) -> Result<()> 
     if needs_par2 || needs_7z {
         // par2 at 30% redundancy for raw and/or 7z
         let par2_sources = if needs_7z { raw_total * 2 } else { raw_total };
-        estimated_bytes += (par2_sources as f64 * 0.35) as u64; // ~35% for par2 overhead
+        estimated_bytes += (par2_sources as f64 * 0.12) as u64; // ~12% for par2 overhead (8% + index)
     }
 
     let estimated_gb = estimated_bytes as f64 / GB as f64;

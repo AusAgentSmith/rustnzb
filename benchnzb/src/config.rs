@@ -55,12 +55,12 @@ fn make_scenario(size: u64, test_type: TestType) -> Scenario {
     let name = format!("sz{}_{}", label, type_str);
 
     let missing_pct = if test_type == TestType::Par2 {
-        5.0
+        3.0
     } else {
         0.0
     };
     let redundancy_pct = if matches!(test_type, TestType::Par2 | TestType::Unpack) {
-        30.0
+        8.0
     } else {
         0.0
     };
