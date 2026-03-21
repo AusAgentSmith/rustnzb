@@ -259,7 +259,28 @@ fn dispatch_mode(
 
         "history" => handle_history(state, req),
 
-        "get_config" => handle_get_config(state),
+        "get_config" | "config" => handle_get_config(state),
+
+        "get_cats" => handle_get_cats(state),
+
+        "change_cat" => handle_change_cat(state, req),
+
+        "rename" => handle_rename(state, req),
+
+        "change_complete_action" => {
+            // No-op stub — Sonarr/Radarr may call this but we don't support custom actions
+            Json(serde_json::json!({ "status": true }))
+        }
+
+        "switch" => {
+            // TODO: implement queue reordering when priority queue is added
+            Json(serde_json::json!({ "status": true }))
+        }
+
+        "priority" => {
+            // TODO: implement priority changes for queued jobs
+            Json(serde_json::json!({ "status": true }))
+        }
 
         "fullstatus" | "server_stats" => {
             let qm = &state.queue_manager;
@@ -486,6 +507,69 @@ fn handle_retry(_state: &AppState, _req: &SabApiRequest) -> Json<serde_json::Val
         "status": false,
         "error": "Retry not yet implemented"
     }))
+}
+
+fn handle_get_cats(state: &AppState) -> Json<serde_json::Value> {
+    let config = state.config();
+    let mut cats: Vec<String> = config.categories.iter().map(|c| c.name.clone()).collect();
+    if !cats.iter().any(|c| c == "Default") {
+        cats.insert(0, "Default".into());
+    }
+    Json(serde_json::json!({ "categories": cats }))
+}
+
+fn handle_change_cat(state: &AppState, req: &SabApiRequest) -> Json<serde_json::Value> {
+    let job_id = req.value.as_deref().unwrap_or("");
+    let new_cat = req.value2.as_deref().unwrap_or("");
+
+    if job_id.is_empty() || new_cat.is_empty() {
+        return Json(serde_json::json!({
+            "status": false,
+            "error": "Missing value (job id) or value2 (category)"
+        }));
+    }
+
+    let search_id = job_id
+        .strip_prefix("SABnzbd_nzo_")
+        .unwrap_or(job_id);
+
+    let qm = &state.queue_manager;
+    match qm.change_job_category(search_id, new_cat) {
+        Ok(()) => Json(serde_json::json!({ "status": true })),
+        Err(e) => Json(serde_json::json!({
+            "status": false,
+            "error": format!("{e}")
+        })),
+    }
+}
+
+fn handle_rename(state: &AppState, req: &SabApiRequest) -> Json<serde_json::Value> {
+    let job_id = req.value.as_deref().unwrap_or("");
+    let new_name = req
+        .value2
+        .as_deref()
+        .or(req.name.as_deref())
+        .unwrap_or("");
+
+    if job_id.is_empty() || new_name.is_empty() {
+        return Json(serde_json::json!({
+            "status": false,
+            "error": "Missing value (job id) or value2/name (new name)"
+        }));
+    }
+
+    let search_id = job_id
+        .strip_prefix("SABnzbd_nzo_")
+        .unwrap_or(job_id);
+
+    let qm = &state.queue_manager;
+    match qm.rename_job(search_id, new_name) {
+        Ok(()) => Json(serde_json::json!({ "status": true })),
+        Err(e) => Json(serde_json::json!({
+            "status": false,
+            "error": format!("{e}")
+        })),
+    }
 }
 
 /// Convert arr-protocol priority string to our Priority enum.

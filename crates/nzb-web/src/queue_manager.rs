@@ -796,6 +796,41 @@ impl QueueManager {
         Ok(())
     }
 
+    /// Rename a job in the queue.
+    pub fn rename_job(&self, id: &str, new_name: &str) -> nzb_core::Result<()> {
+        let mut jobs = self.jobs.lock();
+        let state = jobs
+            .iter_mut()
+            .find(|(_, s)| s.job.id == id || s.job.id.starts_with(id));
+        match state {
+            Some((_, s)) => {
+                s.job.name = new_name.to_string();
+                info!(job_id = %id, new_name = %new_name, "Job renamed");
+                Ok(())
+            }
+            None => Err(nzb_core::NzbError::JobNotFound(id.to_string())),
+        }
+    }
+
+    /// Change a job's category in the queue.
+    pub fn change_job_category(&self, id: &str, category: &str) -> nzb_core::Result<()> {
+        let mut jobs = self.jobs.lock();
+        let state = jobs
+            .iter_mut()
+            .find(|(_, s)| s.job.id == id || s.job.id.starts_with(id));
+        match state {
+            Some((_, s)) => {
+                s.job.category = category.to_string();
+                // Update the output directory to match the new category
+                let complete_dir = self.complete_dir.join(category);
+                s.job.output_dir = complete_dir;
+                info!(job_id = %id, category = %category, "Job category changed");
+                Ok(())
+            }
+            None => Err(nzb_core::NzbError::JobNotFound(id.to_string())),
+        }
+    }
+
     /// Pause all downloads globally.
     pub fn pause_all(&self) {
         self.globally_paused.store(true, Ordering::Relaxed);
