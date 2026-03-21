@@ -1,6 +1,6 @@
 ---
 name: loki
-description: Query rustnzbd logs from the centralized Loki instance on the VPS
+description: Query rustnzbd logs from the centralized Loki instance
 disable-model-invocation: true
 allowed-tools: Bash(curl *)
 user-invocable: true
@@ -9,7 +9,9 @@ argument-hint: "[filter] [--since duration] [--limit N]"
 
 # Query rustnzbd Logs from Loki
 
-Query rustnzbd logs from the centralized Loki stack. Logs are shipped via a Promtail sidecar on Node B.
+Query rustnzbd logs from the centralized Loki stack. Logs are shipped via a Promtail sidecar.
+
+Loki endpoint and host labels are in `DEPLOY.local.md` (gitignored).
 
 ## Usage
 
@@ -19,32 +21,30 @@ Query rustnzbd logs from the centralized Loki stack. Logs are shipped via a Prom
 - `/loki --since 1h` — Last hour
 - `/loki --since 30m --limit 100` — Last 30 min, up to 100 lines
 
-## Loki endpoint
-
-Direct via Tailscale: `http://100.96.114.15:3100`
-
 ## Steps
 
-1. Parse `$ARGUMENTS`:
+1. Read `DEPLOY.local.md` to get the Loki endpoint URL and host label.
+
+2. Parse `$ARGUMENTS`:
    - Text words → filter (`|=` or `|~` for multiple terms)
    - `--since <duration>` → time range (default `10m`)
    - `--limit <N>` → max lines (default `50`)
 
-2. Build LogQL query — always scoped to rustnzbd:
+3. Build LogQL query — always scoped to rustnzbd:
    ```logql
-   {container="rustnzbd", host="NodeB"}
+   {container="rustnzbd", host="<HOST_LABEL>"}
    ```
    Add `|= "<filter>"` if filter text provided.
 
-3. Execute:
+4. Execute:
    ```bash
-   curl -s -G 'http://100.96.114.15:3100/loki/api/v1/query_range' \
-     --data-urlencode 'query={container="rustnzbd", host="NodeB"} |= "<filter>"' \
+   curl -s -G '<LOKI_URL>/loki/api/v1/query_range' \
+     --data-urlencode 'query={container="rustnzbd", host="<HOST_LABEL>"} |= "<filter>"' \
      --data-urlencode 'limit=<N>' \
      --data-urlencode 'since=<duration>'
    ```
 
-4. Format output:
+5. Format output:
    ```bash
    | python3 -c "
    import json, sys
@@ -62,23 +62,23 @@ Direct via Tailscale: `http://100.96.114.15:3100`
    "
    ```
 
-5. If no results, suggest:
+6. If no results, suggest:
    - Check promtail is running: `/logs` and look for promtail
    - Broaden time range with `--since`
-   - Verify in Grafana: http://46.250.255.234:3000
+   - Check Grafana (URL in DEPLOY.local.md)
 
 ## LogQL examples
 
 ```logql
-# All rustnzbd logs
-{container="rustnzbd", host="NodeB"}
+# All rustnzbd logs (replace HOST_LABEL from DEPLOY.local.md)
+{container="rustnzbd", host="<HOST_LABEL>"}
 
 # Errors only
-{container="rustnzbd", host="NodeB"} |~ "ERROR|error|Error"
+{container="rustnzbd", host="<HOST_LABEL>"} |~ "ERROR|error|Error"
 
 # Download activity
-{container="rustnzbd", host="NodeB"} |~ "download|Download"
+{container="rustnzbd", host="<HOST_LABEL>"} |~ "download|Download"
 
 # Connection issues
-{container="rustnzbd", host="NodeB"} |~ "connection|timeout|refused"
+{container="rustnzbd", host="<HOST_LABEL>"} |~ "connection|timeout|refused"
 ```
