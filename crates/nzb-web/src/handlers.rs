@@ -247,6 +247,116 @@ pub async fn h_queue_add(
     ))
 }
 
+// ---------------------------------------------------------------------------
+// Add URL handler
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+pub struct AddUrlBody {
+    pub url: String,
+    pub name: Option<String>,
+    pub category: Option<String>,
+    pub priority: Option<i32>,
+}
+
+/// POST /api/queue/add-url -- Add an NZB from a URL.
+pub async fn h_queue_add_url(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<AddUrlBody>,
+) -> Result<impl IntoResponse, ApiError> {
+    if body.url.is_empty() {
+        return Err(ApiError::from(anyhow::anyhow!("No URL provided")));
+    }
+
+    tracing::info!(url = %body.url, "Fetching NZB from URL");
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {e}")))?;
+
+    let response = client
+        .get(&body.url)
+        .send()
+        .await
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to fetch URL: {e}")))?;
+
+    if !response.status().is_success() {
+        return Err(ApiError::from(anyhow::anyhow!(
+            "URL returned HTTP {}",
+            response.status()
+        )));
+    }
+
+    let data = response
+        .bytes()
+        .await
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {e}")))?;
+
+    // Derive job name from URL filename or user-provided name
+    let job_name = body.name.unwrap_or_else(|| {
+        body.url
+            .rsplit('/')
+            .next()
+            .and_then(|s| s.split('?').next())
+            .unwrap_or("unknown")
+            .strip_suffix(".nzb")
+            .unwrap_or(
+                body.url
+                    .rsplit('/')
+                    .next()
+                    .and_then(|s| s.split('?').next())
+                    .unwrap_or("unknown"),
+            )
+            .to_string()
+    });
+
+    let nzb_data = data.to_vec();
+    let mut job = nzb_parser::parse_nzb(&job_name, &data).map_err(ApiError::from)?;
+
+    if let Some(ref cat) = body.category {
+        if !cat.is_empty() {
+            job.category = cat.clone();
+        }
+    }
+
+    if let Some(prio) = body.priority {
+        job.priority = match prio {
+            0 => Priority::Low,
+            2 => Priority::High,
+            3 => Priority::Force,
+            _ => Priority::Normal,
+        };
+    }
+
+    let qm = &state.queue_manager;
+    job.work_dir = qm.incomplete_dir().join(&job.id);
+    job.output_dir = qm.complete_dir().join(&job.category);
+
+    std::fs::create_dir_all(&job.work_dir)
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to create work dir: {e}")))?;
+
+    let id = job.id.clone();
+
+    tracing::info!(
+        name = %job.name,
+        id = %job.id,
+        files = job.file_count,
+        articles = job.article_count,
+        "NZB added to queue from URL"
+    );
+
+    qm.add_job(job, Some(nzb_data)).map_err(ApiError::from)?;
+
+    Ok((
+        StatusCode::OK,
+        Json(AddNzbResponse {
+            status: true,
+            nzo_ids: vec![id],
+        }),
+    ))
+}
+
 /// POST /api/queue/{id}/pause -- Pause a job.
 pub async fn h_queue_pause(
     State(state): State<Arc<AppState>>,

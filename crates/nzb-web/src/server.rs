@@ -61,6 +61,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Queue
         .route("/queue", get(handlers::h_queue_list))
         .route("/queue/add", post(handlers::h_queue_add))
+        .route("/queue/add-url", post(handlers::h_queue_add_url))
         .route("/queue/pause", post(handlers::h_queue_pause_all))
         .route("/queue/resume", post(handlers::h_queue_resume_all))
         .route("/queue/pause-for", post(handlers::h_queue_pause_for))

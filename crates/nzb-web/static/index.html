@@ -330,6 +330,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     <div class="toolbar">
       <div class="toolbar-left">
         <button class="btn btn-primary" id="btn-add-nzb">+ Add NZB</button>
+        <button class="btn" id="btn-add-url">+ Add URL</button>
         <div class="dropdown" id="pause-dropdown">
           <button class="btn" id="btn-pause-toggle">Pause All &#9662;</button>
           <div class="dropdown-menu" id="pause-menu">
@@ -482,6 +483,38 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     <div class="modal-actions">
       <button class="btn" id="btn-upload-cancel">Cancel</button>
       <button class="btn btn-primary" id="btn-upload-submit">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Add URL Modal ===== -->
+<div class="modal-overlay" id="modal-addurl">
+  <div class="modal">
+    <h2>Add NZB from URL</h2>
+    <div class="modal-field">
+      <label for="addurl-url">URL</label>
+      <input type="text" id="addurl-url" placeholder="https://...">
+    </div>
+    <div class="modal-field">
+      <label for="addurl-name">Name (optional)</label>
+      <input type="text" id="addurl-name" placeholder="Auto-detect from URL">
+    </div>
+    <div class="modal-field">
+      <label for="addurl-category">Category</label>
+      <select id="addurl-category"><option value="">Default</option></select>
+    </div>
+    <div class="modal-field">
+      <label for="addurl-priority">Priority</label>
+      <select id="addurl-priority">
+        <option value="0">Low</option>
+        <option value="1" selected>Normal</option>
+        <option value="2">High</option>
+        <option value="3">Force</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btn-addurl-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-addurl-submit">Add</button>
     </div>
   </div>
 </div>
@@ -1300,6 +1333,43 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   fileInput.addEventListener('change', function(){ if(fileInput.files.length>0){selectedFile=fileInput.files[0]; document.getElementById('selected-file').textContent='Selected: '+selectedFile.name;} });
   document.getElementById('btn-upload-submit').addEventListener('click', function(){ if(!selectedFile){notify('Please select an NZB file','error');return;} uploadFile(selectedFile); });
 
+  // ---- Add URL Modal ----
+  var addUrlModal = document.getElementById('modal-addurl');
+
+  function openAddUrlModal() {
+    api('GET','/api/config/categories').then(function(cats) {
+      var sel = document.getElementById('addurl-category');
+      sel.innerHTML = '<option value="">Default</option>';
+      for (var i=0;i<cats.length;i++) sel.innerHTML += '<option value="'+esc(cats[i].name)+'">'+esc(cats[i].name)+'</option>';
+    }).catch(function(){});
+    document.getElementById('addurl-url').value = '';
+    document.getElementById('addurl-name').value = '';
+    document.getElementById('addurl-priority').value = '1';
+    addUrlModal.classList.add('active');
+  }
+
+  function submitAddUrl() {
+    var url = document.getElementById('addurl-url').value.trim();
+    if (!url) { notify('Please enter a URL','error'); return; }
+    var name = document.getElementById('addurl-name').value.trim();
+    var category = document.getElementById('addurl-category').value;
+    var priority = parseInt(document.getElementById('addurl-priority').value, 10);
+    var body = { url: url };
+    if (name) body.name = name;
+    if (category) body.category = category;
+    body.priority = priority;
+    api('POST', '/api/queue/add-url', body).then(function() {
+      notify('NZB added from URL','success');
+      addUrlModal.classList.remove('active');
+      fetchQueue();
+    }).catch(function(e) { notify('Add URL failed: '+e.message,'error'); });
+  }
+
+  document.getElementById('btn-add-url').addEventListener('click', openAddUrlModal);
+  document.getElementById('btn-addurl-cancel').addEventListener('click', function(){ addUrlModal.classList.remove('active'); });
+  addUrlModal.addEventListener('click', function(e){ if(e.target===addUrlModal) addUrlModal.classList.remove('active'); });
+  document.getElementById('btn-addurl-submit').addEventListener('click', submitAddUrl);
+
   // ---- Page drag-and-drop ----
   var pageDropOverlay = document.getElementById('page-drop-overlay');
   var dragCounter = 0;
@@ -1310,7 +1380,7 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
 
   // ---- Keyboard shortcuts ----
   document.addEventListener('keydown', function(e) {
-    if(e.key==='Escape'){modalEl.classList.remove('active');document.getElementById('modal-files').classList.remove('active');document.getElementById('modal-server').classList.remove('active');}
+    if(e.key==='Escape'){modalEl.classList.remove('active');document.getElementById('modal-files').classList.remove('active');document.getElementById('modal-server').classList.remove('active');addUrlModal.classList.remove('active');}
     if(e.key===' '&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'&&e.target.tagName!=='SELECT'){e.preventDefault();if(globalPaused)document.getElementById('btn-resume-all').click();else{api('POST','/api/queue/pause').then(function(){globalPaused=true;notify('All paused');fetchQueue();}).catch(function(e){notify('Error: '+e.message,'error');});}}
   });
 

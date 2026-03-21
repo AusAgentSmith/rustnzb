@@ -209,17 +209,86 @@ pub async fn h_sabnzbd_api_post(
                 })));
             }
 
-            let nzo_id = format!(
-                "SABnzbd_nzo_{}",
-                &uuid::Uuid::new_v4().to_string()[..12]
-            );
+            tracing::info!(url = %url, "Fetching NZB from URL via arr API");
 
-            tracing::info!(url = %url, "URL add requested via arr API (stub)");
+            // Fetch the NZB from the URL
+            let client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {e}")))?;
 
-            Ok(Json(serde_json::json!({
-                "status": true,
-                "nzo_ids": [nzo_id]
-            })))
+            let response = client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to fetch URL: {e}")))?;
+
+            if !response.status().is_success() {
+                return Ok(Json(serde_json::json!({
+                    "status": false,
+                    "error": format!("URL returned HTTP {}", response.status())
+                })));
+            }
+
+            let data = response
+                .bytes()
+                .await
+                .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {e}")))?;
+
+            // Derive job name from URL filename if not provided
+            let job_name = name.clone().unwrap_or_else(|| {
+                url.rsplit('/')
+                    .next()
+                    .and_then(|s| s.split('?').next())
+                    .unwrap_or("unknown")
+                    .strip_suffix(".nzb")
+                    .unwrap_or(
+                        url.rsplit('/')
+                            .next()
+                            .and_then(|s| s.split('?').next())
+                            .unwrap_or("unknown"),
+                    )
+                    .to_string()
+            });
+
+            match nzb_parser::parse_nzb(&job_name, &data) {
+                Ok(mut job) => {
+                    if let Some(ref c) = cat {
+                        if !c.is_empty() {
+                            job.category = c.clone();
+                        }
+                    }
+                    if let Some(ref p) = priority {
+                        job.priority = sab_priority_to_priority(p);
+                    }
+
+                    let qm = &state.queue_manager;
+                    job.work_dir = qm.incomplete_dir().join(&job.id);
+                    job.output_dir = qm.complete_dir().join(&job.category);
+
+                    let nzo_id =
+                        format!("SABnzbd_nzo_{}", &job.id[..12.min(job.id.len())]);
+
+                    tracing::info!(
+                        name = %job.name,
+                        id = %job.id,
+                        files = job.file_count,
+                        "NZB added to queue via URL (arr API)"
+                    );
+
+                    let nzb_bytes = data.to_vec();
+                    qm.add_job(job, Some(nzb_bytes)).map_err(ApiError::from)?;
+
+                    Ok(Json(serde_json::json!({
+                        "status": true,
+                        "nzo_ids": [nzo_id]
+                    })))
+                }
+                Err(e) => Ok(Json(serde_json::json!({
+                    "status": false,
+                    "error": format!("Failed to parse NZB: {e}")
+                }))),
+            }
         }
 
         _ => {
