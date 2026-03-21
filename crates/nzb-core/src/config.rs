@@ -51,6 +51,13 @@ pub struct GeneralConfig {
     pub history_retention: Option<usize>,
     /// Max number of NZBs downloading simultaneously (default 1)
     pub max_active_downloads: usize,
+    /// Minimum free disk space in bytes before pausing downloads (default 1 GB)
+    #[serde(default = "default_min_free_space")]
+    pub min_free_space_bytes: u64,
+}
+
+fn default_min_free_space() -> u64 {
+    1_073_741_824 // 1 GB
 }
 
 impl Default for GeneralConfig {
@@ -68,6 +75,7 @@ impl Default for GeneralConfig {
             log_file: None,
             history_retention: None, // keep all
             max_active_downloads: 1,
+            min_free_space_bytes: default_min_free_space(),
         }
     }
 }
