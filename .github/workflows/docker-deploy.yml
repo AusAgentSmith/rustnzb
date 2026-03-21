@@ -44,7 +44,7 @@ jobs:
             ${{ vars.DOCKERHUB_USERNAME }}/rustnzbd
           tags: |
             type=ref,event=branch
-            type=sha,prefix=
+            type=sha,prefix=,format=long
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
