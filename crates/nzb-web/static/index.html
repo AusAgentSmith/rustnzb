@@ -380,10 +380,10 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
       <div class="toolbar-left">
         <button class="btn btn-primary" id="btn-add-nzb">+ Add NZB</button>
         <button class="btn" id="btn-add-url">+ Add URL</button>
-        <div class="dropdown" id="pause-dropdown">
-          <button class="btn" id="btn-pause-toggle">Pause All &#9662;</button>
+        <div class="dropdown" id="pause-dropdown" style="display:inline-flex;">
+          <button class="btn" id="btn-pause-now" style="border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;">Pause All</button>
+          <button class="btn" id="btn-pause-toggle" style="padding:8px 6px;border-top-left-radius:0;border-bottom-left-radius:0;">&#9662;</button>
           <div class="dropdown-menu" id="pause-menu">
-            <button class="dropdown-item" data-action="pause">Pause All</button>
             <button class="dropdown-item" data-action="pause-for" data-secs="300">Pause for 5m</button>
             <button class="dropdown-item" data-action="pause-for" data-secs="600">Pause for 10m</button>
             <button class="dropdown-item" data-action="pause-for" data-secs="1800">Pause for 30m</button>
@@ -1029,7 +1029,16 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
     }).catch(function(){});
   }
 
+  var _pendingQueueData = null;
   function renderQueue(d) {
+    // Skip re-render if user is interacting with a control in the queue table
+    var active = document.activeElement;
+    if (active && (active.tagName === 'SELECT' || active.tagName === 'INPUT') &&
+        active.closest('#tab-queue')) {
+      _pendingQueueData = d;
+      return;
+    }
+    _pendingQueueData = null;
     var tbody = document.getElementById('queue-body');
     var jobs = d.jobs || [], speed = d.speed_bps || 0;
     currentQueueSpeed = speed;
@@ -1190,19 +1199,32 @@ kbd { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); 
   document.getElementById('btn-files-close').addEventListener('click', function() { document.getElementById('modal-files').classList.remove('active'); });
   document.getElementById('modal-files').addEventListener('click', function(e) { if(e.target===this) this.classList.remove('active'); });
 
+  // Flush deferred queue render when user finishes interacting
+  document.getElementById('tab-queue').addEventListener('focusout', function() {
+    setTimeout(function() {
+      if (_pendingQueueData && (!document.activeElement || !document.activeElement.closest('#tab-queue') ||
+          (document.activeElement.tagName !== 'SELECT' && document.activeElement.tagName !== 'INPUT'))) {
+        renderQueue(_pendingQueueData);
+      }
+    }, 100);
+  });
+
   // ---- Pause dropdown ----
   var pauseBtn = document.getElementById('btn-pause-toggle');
   var pauseMenu = document.getElementById('pause-menu');
   pauseBtn.addEventListener('click', function(e) { e.stopPropagation(); pauseMenu.classList.toggle('show'); });
   document.addEventListener('click', function() { pauseMenu.classList.remove('show'); });
 
+  // Direct pause button
+  document.getElementById('btn-pause-now').addEventListener('click', function() {
+    api('POST','/api/queue/pause').then(function(){ globalPaused=true; notify('All paused'); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
+  });
+
   document.querySelectorAll('#pause-menu .dropdown-item').forEach(function(item) {
     item.addEventListener('click', function() {
       pauseMenu.classList.remove('show');
       var action = this.dataset.action;
-      if (action === 'pause') {
-        api('POST','/api/queue/pause').then(function(){ globalPaused=true; notify('All paused'); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
-      } else if (action === 'pause-for') {
+      if (action === 'pause-for') {
         var secs = parseInt(this.dataset.secs);
         api('POST','/api/queue/pause-for?duration_secs='+secs).then(function(){ globalPaused=true; notify('Paused for '+formatDuration(secs)); fetchQueue(); }).catch(function(e){ notify('Error: '+e.message,'error'); });
       } else if (action === 'pause-custom') {
