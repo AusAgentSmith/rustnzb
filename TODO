@@ -1,8 +1,22 @@
-1) Full log visiability in GUI
-2) Log per NZB (click on NZB to see log as one component)
-3) Each NZB to store some useful information that is shown when NZB is selected (articles downloaded per each server, avg speed)
-4) NZB download panel to show speed per NZB, not just overall speed 
-5) Implement proper server editor
-6) Implement "Pause for" 5-10-30-1hr-custom
-7) From History panel, add a retry button
-8) Implement open telemetry; use .env vars for user to be able to define targets; please see /home/sprooty/MyEnv and set VPS Loki as my custom target 
+0) Collapse everything closer into center of page, like the actual website, style /home/sprooty/rustnzbd_Website
+
+1) Center buttons on main nav panel /html/body/nav
+
+2) Restyle version wigit as it seems to be sitting higher than other elements -  //*[@id="app-version"]
+
+3) Settings > Centre the whole page (like the logs page is)
+
+4) History page, show more of the name, there is alot more room ; Foundation.S03E06.The.Shape.of.Time.2160p.ATVP.WEB- vs   Foundation.S03E06.The.Shape.of.Time.2160p.ATVP.WEB-DL.DDP5.1.Atmos.DV.H.2
+
+5) NZB Stats panel, show Time to donwload, avg download speed
+
+6) Lable and text are too similar style/font
+Status: Completed
+Size: 8.18 GB / 8.18 GB
+Category: Default
+Completed: 21/03/2026, 8:44:38 pm
+Output: downloads/complete/Default
+
+7) //*[@id="header-speed-limit"] - User needs abiility to be able to enter a number; not just select from a list.
+
+8) Actions Arrow + X are our out of alignment with "Actions" column (similar to #1)

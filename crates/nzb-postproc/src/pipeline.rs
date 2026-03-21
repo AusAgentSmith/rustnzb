@@ -16,6 +16,23 @@ use crate::detect::{find_archives, find_cleanup_files, find_par2_files, ArchiveT
 use crate::par2::par2_repair;
 use crate::unpack::{extract_7z, extract_rar, extract_zip};
 
+/// Outcome of the combined verify+repair spawn_blocking task.
+/// Keeps VerifyResult (which is !Send) on the blocking thread, then returns
+/// only Send-safe data back to the async context.
+enum VerifyRepairOutcome {
+    AllCorrect {
+        intact_count: usize,
+    },
+    Damaged {
+        intact: usize,
+        damaged: usize,
+        missing: usize,
+        blocks_needed: u32,
+        blocks_available: u32,
+        repair_result: Result<rust_par2::RepairResult, rust_par2::RepairError>,
+    },
+}
+
 /// Final result of the complete post-processing pipeline.
 #[derive(Debug)]
 pub struct PostProcResult {
@@ -84,59 +101,137 @@ pub async fn run_pipeline(job_dir: &Path, config: &PostProcConfig) -> PostProcRe
         });
     } else {
         let verify_start = Instant::now();
-        let index_par2 = &par2_files[0];
+        let index_par2 = par2_files[0].clone();
 
-        match rust_par2::parse(index_par2) {
+        match rust_par2::parse(&index_par2) {
             Ok(file_set) => {
-                let verify_result = rust_par2::verify(&file_set, job_dir);
+                // Run verify (and repair if needed) in a single spawn_blocking call.
+                // This avoids two problems:
+                //   1. CPU-intensive verify/repair doesn't block the async runtime
+                //   2. VerifyResult (not Send) stays on one thread, so repair_from_verify
+                //      can reuse it — no redundant second verification pass
+                let dir = job_dir.to_path_buf();
+                let verify_repair_result = tokio::task::spawn_blocking(move || {
+                    let verify_result = rust_par2::verify(&file_set, &dir);
+
+                    if verify_result.all_correct() {
+                        VerifyRepairOutcome::AllCorrect {
+                            intact_count: verify_result.intact.len(),
+                        }
+                    } else {
+                        let intact = verify_result.intact.len();
+                        let damaged = verify_result.damaged.len();
+                        let missing = verify_result.missing.len();
+                        let blocks_needed = verify_result.blocks_needed();
+                        let blocks_available = verify_result.recovery_blocks_available;
+
+                        info!(
+                            intact,
+                            damaged,
+                            missing,
+                            blocks_needed,
+                            "Native PAR2 verify: damage detected, attempting native repair"
+                        );
+
+                        // Repair using the pre-computed verify result — no second verify pass
+                        info!("Running native PAR2 repair (with pre-computed verify)");
+                        let repair_result =
+                            rust_par2::repair_from_verify(&file_set, &dir, &verify_result);
+
+                        VerifyRepairOutcome::Damaged {
+                            intact,
+                            damaged,
+                            missing,
+                            blocks_needed,
+                            blocks_available,
+                            repair_result,
+                        }
+                    }
+                }).await;
+
                 let verify_duration = verify_start.elapsed().as_secs_f64();
 
-                if verify_result.all_correct() {
-                    // All files intact — no repair needed, no par2cmdline spawn.
-                    info!(
-                        files = verify_result.intact.len(),
-                        duration_secs = verify_duration,
-                        "Native PAR2 verify: all files correct"
-                    );
-                    stages.push(StageResult {
-                        name: "Verify".to_string(),
-                        status: StageStatus::Success,
-                        message: Some(format!(
-                            "All {} files correct (native verify, {verify_duration:.3}s)",
-                            verify_result.intact.len()
-                        )),
-                        duration_secs: verify_duration,
-                    });
-                } else {
-                    // Files damaged or missing — repair natively.
-                    info!(
-                        intact = verify_result.intact.len(),
-                        damaged = verify_result.damaged.len(),
-                        missing = verify_result.missing.len(),
-                        blocks_needed = verify_result.blocks_needed(),
-                        "Native PAR2 verify: damage detected, attempting native repair"
-                    );
-                    stages.push(StageResult {
-                        name: "Verify".to_string(),
-                        status: StageStatus::Success,
-                        message: Some(format!(
-                            "{} intact, {} damaged, {} missing — {} blocks needed (native verify, {verify_duration:.3}s)",
-                            verify_result.intact.len(),
-                            verify_result.damaged.len(),
-                            verify_result.missing.len(),
-                            verify_result.blocks_needed(),
-                        )),
-                        duration_secs: verify_duration,
-                    });
-
-                    // Stage 2: Native Rust repair (using pre-computed verify result)
-                    let repair_result = run_repair_from_verify_stage(
-                        &file_set, job_dir, &verify_result,
-                    ).await;
-                    if repair_result.status == StageStatus::Failed {
-                        pipeline_ok = false;
+                match verify_repair_result {
+                    Ok(VerifyRepairOutcome::AllCorrect { intact_count }) => {
+                        info!(
+                            files = intact_count,
+                            duration_secs = verify_duration,
+                            "Native PAR2 verify: all files correct"
+                        );
+                        stages.push(StageResult {
+                            name: "Verify".to_string(),
+                            status: StageStatus::Success,
+                            message: Some(format!(
+                                "All {intact_count} files correct (native verify, {verify_duration:.3}s)",
+                            )),
+                            duration_secs: verify_duration,
+                        });
                     }
-                    stages.push(repair_result);
+                    Ok(VerifyRepairOutcome::Damaged {
+                        intact,
+                        damaged,
+                        missing,
+                        blocks_needed,
+                        blocks_available,
+                        repair_result,
+                    }) => {
+                        // Push the verify stage result
+                        stages.push(StageResult {
+                            name: "Verify".to_string(),
+                            status: StageStatus::Success,
+                            message: Some(format!(
+                                "{intact} intact, {damaged} damaged, {missing} missing — {blocks_needed} blocks needed (native verify)",
+                            )),
+                            duration_secs: verify_duration,
+                        });
+
+                        // Push the repair stage result
+                        match repair_result {
+                            Ok(result) => {
+                                info!(
+                                    blocks_repaired = result.blocks_repaired,
+                                    files_repaired = result.files_repaired,
+                                    "Native PAR2 repair complete"
+                                );
+                                if !result.success {
+                                    pipeline_ok = false;
+                                }
+                                stages.push(StageResult {
+                                    name: "Repair".to_string(),
+                                    status: if result.success { StageStatus::Success } else { StageStatus::Failed },
+                                    message: Some(result.message),
+                                    duration_secs: verify_duration,
+                                });
+                            }
+                            Err(e) => {
+                                error!(
+                                    error = %e,
+                                    blocks_needed,
+                                    blocks_available,
+                                    damaged,
+                                    missing,
+                                    "Native PAR2 repair failed"
+                                );
+                                pipeline_ok = false;
+                                stages.push(StageResult {
+                                    name: "Repair".to_string(),
+                                    status: StageStatus::Failed,
+                                    message: Some(format!("Repair failed: {e}")),
+                                    duration_secs: verify_duration,
+                                });
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Verify/repair task panicked");
+                        pipeline_ok = false;
+                        stages.push(StageResult {
+                            name: "Verify".to_string(),
+                            status: StageStatus::Failed,
+                            message: Some(format!("Verify task panicked: {e}")),
+                            duration_secs: verify_duration,
+                        });
+                    }
                 }
             }
             Err(e) => {
@@ -219,73 +314,6 @@ pub async fn run_pipeline(job_dir: &Path, config: &PostProcConfig) -> PostProcRe
 // ---------------------------------------------------------------------------
 // Internal stage runners
 // ---------------------------------------------------------------------------
-
-/// Repair using a pre-computed verify result (skips redundant verification).
-async fn run_repair_from_verify_stage(
-    file_set: &rust_par2::Par2FileSet,
-    job_dir: &Path,
-    verify_result: &rust_par2::VerifyResult,
-) -> StageResult {
-    let start = Instant::now();
-
-    info!("Running native PAR2 repair (with pre-computed verify)");
-
-    let file_set = file_set.clone();
-    let dir = job_dir.to_path_buf();
-
-    // Collect verify data needed for repair_from_verify (must be on the same thread)
-    let blocks_needed = verify_result.blocks_needed();
-    let blocks_available = verify_result.recovery_blocks_available;
-    let damaged_count = verify_result.damaged.len();
-    let missing_count = verify_result.missing.len();
-
-    // We need to re-verify inside spawn_blocking since VerifyResult isn't Send.
-    // Use the full repair() which does its own verify pass.
-    let repair_result = tokio::task::spawn_blocking(move || {
-        rust_par2::repair(&file_set, &dir)
-    }).await;
-
-    match repair_result {
-        Ok(Ok(result)) => {
-            info!(
-                blocks_repaired = result.blocks_repaired,
-                files_repaired = result.files_repaired,
-                "Native PAR2 repair complete"
-            );
-            StageResult {
-                name: "Repair".to_string(),
-                status: if result.success { StageStatus::Success } else { StageStatus::Failed },
-                message: Some(result.message),
-                duration_secs: start.elapsed().as_secs_f64(),
-            }
-        }
-        Ok(Err(e)) => {
-            error!(
-                error = %e,
-                blocks_needed,
-                blocks_available,
-                damaged = damaged_count,
-                missing = missing_count,
-                "Native PAR2 repair failed"
-            );
-            StageResult {
-                name: "Repair".to_string(),
-                status: StageStatus::Failed,
-                message: Some(format!("Repair failed: {e}")),
-                duration_secs: start.elapsed().as_secs_f64(),
-            }
-        }
-        Err(e) => {
-            error!(error = %e, "Repair task panicked");
-            StageResult {
-                name: "Repair".to_string(),
-                status: StageStatus::Failed,
-                message: Some(format!("Repair task panicked: {e}")),
-                duration_secs: start.elapsed().as_secs_f64(),
-            }
-        }
-    }
-}
 
 /// Repair stage when we don't have a pre-computed verify result.
 /// Uses par2_repair which does its own parse + verify + repair.
