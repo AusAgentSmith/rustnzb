@@ -31,10 +31,11 @@ fn usenet_farm_config() -> ServerConfig {
 async fn test_fetch_single_article_and_decode() {
     // 1. Parse NZB
     let nzb_path = std::path::Path::new("TestData/We.Bury.The.Dead.2024.BDRip.x264-COCAIN.nzb");
-    if !nzb_path.exists() {
-        eprintln!("TestData not found, skipping");
+    if !nzb_path.exists() || std::env::var("CI").is_ok() {
+        eprintln!("TestData not found or CI environment, skipping");
         return;
     }
+    let _ = rustls::crypto::ring::default_provider().install_default();
 
     let job = nzb_parser::parse_nzb_file(nzb_path).unwrap();
     eprintln!("Parsed NZB: {} files, {} articles, {:.1} MB",
@@ -114,10 +115,11 @@ async fn test_fetch_single_article_and_decode() {
 async fn test_fetch_multiple_articles_from_rar() {
     // Parse NZB and find a multi-segment RAR file
     let nzb_path = std::path::Path::new("TestData/We.Bury.The.Dead.2024.BDRip.x264-COCAIN.nzb");
-    if !nzb_path.exists() {
-        eprintln!("TestData not found, skipping");
+    if !nzb_path.exists() || std::env::var("CI").is_ok() {
+        eprintln!("TestData not found or CI environment, skipping");
         return;
     }
+    let _ = rustls::crypto::ring::default_provider().install_default();
 
     let job = nzb_parser::parse_nzb_file(nzb_path).unwrap();
 
@@ -188,6 +190,15 @@ async fn test_fetch_multiple_articles_from_rar() {
 
 #[tokio::test]
 async fn test_article_not_found_handling() {
+    // Skip on CI — requires real Usenet server access
+    if std::env::var("CI").is_ok() {
+        eprintln!("Skipping on CI — requires real NNTP server");
+        return;
+    }
+
+    // Install rustls crypto provider for TLS connections
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     // Test that we handle 430 (article not found) gracefully
     let config = usenet_farm_config();
     let mut conn = NntpConnection::new("uf-test".to_string());
