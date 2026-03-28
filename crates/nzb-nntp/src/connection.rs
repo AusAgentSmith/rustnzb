@@ -211,13 +211,8 @@ impl NntpConnection {
             })?;
             debug!(server = %self.server_id, proxy = %proxy.addr, "Connecting via SOCKS5 proxy");
             let stream = if let Some((user, pass)) = &proxy.auth {
-                Socks5Stream::connect_with_password(
-                    proxy.addr.as_str(),
-                    addr.as_str(),
-                    user,
-                    pass,
-                )
-                .await
+                Socks5Stream::connect_with_password(proxy.addr.as_str(), addr.as_str(), user, pass)
+                    .await
             } else {
                 Socks5Stream::connect(proxy.addr.as_str(), addr.as_str()).await
             };
