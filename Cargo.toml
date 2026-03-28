@@ -1,0 +1,118 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/nzb-core",
+    "crates/nzb-web",
+    "crates/nzb-nntp",
+    "crates/nzb-decode",
+    "crates/nzb-postproc",
+]
+exclude = ["benchnzb", "desktop"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[workspace.lints.rust]
+unused = "warn"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+# Web
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+bincode = "1"
+# TLS
+rustls = { version = "0.23", features = ["ring"] }
+tokio-rustls = "0.26"
+# HTTP
+http = "1"
+reqwest = { version = "0.12", features = ["rustls-tls"] }
+# Data
+rusqlite = { version = "0.32", features = ["bundled"] }
+bytes = "1"
+# Decode
+crc32fast = "1"
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing-appender = "0.2"
+# OpenTelemetry
+opentelemetry = "0.28"
+opentelemetry_sdk = { version = "0.28", features = ["rt-tokio", "metrics"] }
+opentelemetry-otlp = { version = "0.28", features = ["grpc-tonic", "metrics", "logs"] }
+tracing-opentelemetry = "0.29"
+opentelemetry-appender-tracing = "0.28"
+# Error handling
+thiserror = "2"
+anyhow = "1"
+# Util
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+arc-swap = "1"
+rand = "0.9"
+hex = "0.4"
+base64 = "0.22"
+governor = "0.10"
+webpki-roots = "0.26"
+rustls-pki-types = "1"
+# XML
+quick-xml = "0.37"
+regex = "1"
+walkdir = "2"
+flate2 = "1"
+notify = "7"
+feed-rs = "2"
+
+# Internal crates
+nzb-core = { path = "crates/nzb-core" }
+nzb-web = { path = "crates/nzb-web" }
+nzb-nntp = { path = "crates/nzb-nntp" }
+nzb-decode = { path = "crates/nzb-decode" }
+nzb-postproc = { path = "crates/nzb-postproc" }
+rust-par2 = { git = "https://github.com/AusAgentSmith-org/Rust-PAR2" }
+yenc-simd = "0.1"
+
+[package]
+name = "rustnzb"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nzb-core = { workspace = true }
+nzb-web = { workspace = true }
+nzb-nntp = { workspace = true }
+rustls = { workspace = true }
+nzb-decode = { workspace = true }
+nzb-postproc = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+anyhow = { workspace = true }
+clap = { version = "4", features = ["derive", "env"] }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+opentelemetry-appender-tracing = { workspace = true }
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["multipart", "json"] }
+serde_json = { workspace = true }
+axum = { workspace = true }
+tempfile = "3"
+arc-swap.workspace = true

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>rustnzb</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #333;
+      border-top-color: #4a9eff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { font-size: 14px; opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <div class="status">Starting rustnzb engine...</div>
+  <script>
+    (async () => {
+      while (true) {
+        try {
+          const r = await fetch('http://localhost:9090/api/health');
+          if (r.ok) {
+            window.location.href = 'http://localhost:9090';
+            break;
+          }
+        } catch {}
+        await new Promise(r => setTimeout(r, 200));
+      }
+    })();
+  </script>
+</body>
+</html>

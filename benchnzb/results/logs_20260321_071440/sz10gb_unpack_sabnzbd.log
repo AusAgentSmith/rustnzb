@@ -1,0 +1,98 @@
+2026-03-21T07:13:58.657211317Z 2026-03-21 07:13:58,657::INFO::[nzbparser:86] Attempting to add sz10gb_unpack.nzb
+2026-03-21T07:13:58.658532950Z 2026-03-21 07:13:58,658::INFO::[filesystem:725] Creating directories: /downloads/incomplete
+2026-03-21T07:13:58.658660353Z 2026-03-21 07:13:58,658::INFO::[filesystem:725] Creating directories: /downloads/incomplete/sz10gb_unpack
+2026-03-21T07:13:58.658721122Z 2026-03-21 07:13:58,658::INFO::[filesystem:725] Creating directories: /downloads/incomplete/sz10gb_unpack/__ADMIN__
+2026-03-21T07:13:58.658820698Z 2026-03-21 07:13:58,658::INFO::[filesystem:1169] Saving /downloads/incomplete/sz10gb_unpack/__ADMIN__/sz10gb_unpack.nzb.gz
+2026-03-21T07:13:58.695718035Z 2026-03-21 07:13:58,695::INFO::[nzbstuff:978] File bench_10gb.7z added to queue
+2026-03-21T07:13:58.698295106Z 2026-03-21 07:13:58,698::INFO::[nzbstuff:978] File bench_10gb.7z.par2 added to queue
+2026-03-21T07:13:58.698488888Z 2026-03-21 07:13:58,698::INFO::[nzbstuff:978] File bench_10gb.7z.vol0000+001.par2 added to queue
+2026-03-21T07:13:58.698660503Z 2026-03-21 07:13:58,698::INFO::[nzbstuff:978] File bench_10gb.7z.vol0001+002.par2 added to queue
+2026-03-21T07:13:58.698806527Z 2026-03-21 07:13:58,698::INFO::[nzbstuff:978] File bench_10gb.7z.vol0003+004.par2 added to queue
+2026-03-21T07:13:58.698936944Z 2026-03-21 07:13:58,698::INFO::[nzbstuff:978] File bench_10gb.7z.vol0007+008.par2 added to queue
+2026-03-21T07:13:58.699086812Z 2026-03-21 07:13:58,699::INFO::[nzbstuff:978] File bench_10gb.7z.vol0015+016.par2 added to queue
+2026-03-21T07:13:58.699256794Z 2026-03-21 07:13:58,699::INFO::[nzbstuff:978] File bench_10gb.7z.vol0031+032.par2 added to queue
+2026-03-21T07:13:58.699442398Z 2026-03-21 07:13:58,699::INFO::[nzbstuff:978] File bench_10gb.7z.vol0063+064.par2 added to queue
+2026-03-21T07:13:58.699958561Z 2026-03-21 07:13:58,699::INFO::[nzbstuff:978] File bench_10gb.7z.vol0127+128.par2 added to queue
+2026-03-21T07:13:58.700840686Z 2026-03-21 07:13:58,700::INFO::[nzbstuff:978] File bench_10gb.7z.vol0255+256.par2 added to queue
+2026-03-21T07:13:58.701996812Z 2026-03-21 07:13:58,701::INFO::[nzbstuff:978] File bench_10gb.7z.vol0511+512.par2 added to queue
+2026-03-21T07:13:58.702504536Z 2026-03-21 07:13:58,702::INFO::[nzbstuff:978] File bench_10gb.7z.vol1023+122.par2 added to queue
+2026-03-21T07:13:58.702753765Z 2026-03-21 07:13:58,702::INFO::[nzbqueue:230] Saving queue
+2026-03-21T07:13:58.703080311Z 2026-03-21 07:13:58,703::INFO::[notifier:166] Sending notification: NZB added to queue - sz10gb_unpack.nzb (type=download, job_cat=*)
+2026-03-21T07:13:58.705132883Z 2026-03-21 07:13:58,704::INFO::[filesystem:725] Creating directories: /downloads/complete
+2026-03-21T07:13:58.816192946Z 2026-03-21 07:13:58,815::INFO::[get_addrinfo:199] Fastest connection to mock-nntp (port=119, IPv4 or IPv6): 192.168.192.2 (mock-nntp) in 0ms (out of 1 results)
+2026-03-21T07:13:58.917472848Z 2026-03-21 07:13:58,917::INFO::[downloader:616] 17@mock-nntp: Initiating connection
+2026-03-21T07:13:58.917721277Z 2026-03-21 07:13:58,917::INFO::[downloader:616] 11@mock-nntp: Initiating connection
+2026-03-21T07:13:58.917833702Z 2026-03-21 07:13:58,917::INFO::[downloader:616] 5@mock-nntp: Initiating connection
+2026-03-21T07:13:58.917993699Z 2026-03-21 07:13:58,917::INFO::[downloader:616] 18@mock-nntp: Initiating connection
+2026-03-21T07:13:58.918185298Z 2026-03-21 07:13:58,918::INFO::[downloader:616] 12@mock-nntp: Initiating connection
+2026-03-21T07:13:58.918393906Z 2026-03-21 07:13:58,918::INFO::[downloader:616] 6@mock-nntp: Initiating connection
+2026-03-21T07:13:58.918630799Z 2026-03-21 07:13:58,918::INFO::[downloader:616] 19@mock-nntp: Initiating connection
+2026-03-21T07:13:58.918928206Z 2026-03-21 07:13:58,918::INFO::[downloader:616] 13@mock-nntp: Initiating connection
+2026-03-21T07:13:58.919146669Z 2026-03-21 07:13:58,919::INFO::[downloader:616] 7@mock-nntp: Initiating connection
+2026-03-21T07:13:58.919348065Z 2026-03-21 07:13:58,919::INFO::[downloader:616] 20@mock-nntp: Initiating connection
+2026-03-21T07:13:58.919519303Z 2026-03-21 07:13:58,919::INFO::[downloader:616] 1@mock-nntp: Initiating connection
+2026-03-21T07:13:58.919689162Z 2026-03-21 07:13:58,919::INFO::[downloader:616] 14@mock-nntp: Initiating connection
+2026-03-21T07:13:58.919864586Z 2026-03-21 07:13:58,919::INFO::[downloader:616] 8@mock-nntp: Initiating connection
+2026-03-21T07:13:58.929815955Z 2026-03-21 07:13:58,929::INFO::[downloader:616] 2@mock-nntp: Initiating connection
+2026-03-21T07:13:58.930021847Z 2026-03-21 07:13:58,929::INFO::[downloader:616] 15@mock-nntp: Initiating connection
+2026-03-21T07:13:58.930270962Z 2026-03-21 07:13:58,930::INFO::[downloader:616] 9@mock-nntp: Initiating connection
+2026-03-21T07:13:58.930429266Z 2026-03-21 07:13:58,930::INFO::[downloader:616] 3@mock-nntp: Initiating connection
+2026-03-21T07:13:58.930582326Z 2026-03-21 07:13:58,930::INFO::[downloader:616] 16@mock-nntp: Initiating connection
+2026-03-21T07:13:58.930724530Z 2026-03-21 07:13:58,930::INFO::[downloader:616] 10@mock-nntp: Initiating connection
+2026-03-21T07:13:58.930856293Z 2026-03-21 07:13:58,930::INFO::[downloader:616] 4@mock-nntp: Initiating connection
+2026-03-21T07:13:58.934644222Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 17@mock-nntp finished
+2026-03-21T07:13:58.934697529Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 11@mock-nntp finished
+2026-03-21T07:13:58.934773005Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 5@mock-nntp finished
+2026-03-21T07:13:58.934842640Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 18@mock-nntp finished
+2026-03-21T07:13:58.934902549Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 12@mock-nntp finished
+2026-03-21T07:13:58.934970291Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 6@mock-nntp finished
+2026-03-21T07:13:58.935006088Z 2026-03-21 07:13:58,934::INFO::[downloader:751] Connecting 19@mock-nntp finished
+2026-03-21T07:13:58.935060938Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 13@mock-nntp finished
+2026-03-21T07:13:58.935124215Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 7@mock-nntp finished
+2026-03-21T07:13:58.935164879Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 20@mock-nntp finished
+2026-03-21T07:13:58.935218254Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 1@mock-nntp finished
+2026-03-21T07:13:58.935276838Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 14@mock-nntp finished
+2026-03-21T07:13:58.935326456Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 8@mock-nntp finished
+2026-03-21T07:13:58.935376956Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 2@mock-nntp finished
+2026-03-21T07:13:58.935425486Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 15@mock-nntp finished
+2026-03-21T07:13:58.935496000Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 9@mock-nntp finished
+2026-03-21T07:13:58.935530186Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 3@mock-nntp finished
+2026-03-21T07:13:58.935580013Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 16@mock-nntp finished
+2026-03-21T07:13:58.935639435Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 10@mock-nntp finished
+2026-03-21T07:13:58.935692844Z 2026-03-21 07:13:58,935::INFO::[downloader:751] Connecting 4@mock-nntp finished
+2026-03-21T07:13:58.950781141Z 2026-03-21 07:13:58,949::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_unpack/bench_10gb.7z.par2
+2026-03-21T07:13:58.988337805Z 2026-03-21 07:13:58,988::INFO::[nzbstuff:1790] Checking all filenames for sz10gb_unpack
+2026-03-21T07:13:58.988365353Z 2026-03-21 07:13:58,988::INFO::[nzbstuff:1793] Re-sorting sz10gb_unpack after getting filename information
+2026-03-21T07:13:59.002994637Z 2026-03-21 07:13:59,002::INFO::[nzbstuff:1790] Checking all filenames for sz10gb_unpack
+2026-03-21T07:13:59.003042718Z 2026-03-21 07:13:59,002::INFO::[nzbstuff:1793] Re-sorting sz10gb_unpack after getting filename information
+2026-03-21T07:14:09.408338813Z 2026-03-21 07:14:09,408::INFO::[nzbqueue:767] [N/A] Ending job sz10gb_unpack
+2026-03-21T07:14:09.431821170Z 2026-03-21 07:14:09,431::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz10gb_unpack/bench_10gb.7z
+2026-03-21T07:14:09.432158142Z 2026-03-21 07:14:09,432::INFO::[nzbqueue:378] [N/A] Removing job sz10gb_unpack
+2026-03-21T07:14:09.432210932Z 2026-03-21 07:14:09,432::INFO::[nzbqueue:230] Saving queue
+2026-03-21T07:14:09.432481005Z 2026-03-21 07:14:09,432::INFO::[postproc:136] Saving postproc queue
+2026-03-21T07:14:09.440010639Z 2026-03-21 07:14:09,438::INFO::[postproc:396] Starting Post-Processing on sz10gb_unpack => Repair:True, Unpack:True, Delete:True, Script:Default, Cat:*
+2026-03-21T07:14:09.441404095Z 2026-03-21 07:14:09,439::INFO::[notifier:166] Sending notification: Post-processing - sz10gb_unpack (type=pp, job_cat=*)
+2026-03-21T07:14:09.444026514Z 2026-03-21 07:14:09,442::INFO::[postproc:762] Starting verification and repair of sz10gb_unpack
+2026-03-21T07:14:09.450840947Z 2026-03-21 07:14:09,449::INFO::[filesystem:1089] [N/A] /downloads/incomplete/sz10gb_unpack/__ADMIN__/__verified__ missing
+2026-03-21T07:14:09.455981595Z 2026-03-21 07:14:09,453::INFO::[postproc:785] Running verification and repair on set bench_10gb.7z
+2026-03-21T07:14:09.466438696Z 2026-03-21 07:14:09,464::INFO::[newsunpack:1035] Quick-check for bench_10gb.7z is OK, skipping repair
+2026-03-21T07:14:09.477480291Z 2026-03-21 07:14:09,477::INFO::[postproc:843] Verification and repair finished for sz10gb_unpack
+2026-03-21T07:14:09.477496807Z 2026-03-21 07:14:09,477::INFO::[downloader:417] Forcing disconnect
+2026-03-21T07:14:09.477512435Z 2026-03-21 07:14:09,477::INFO::[filesystem:319] Checking if any resulting filenames need to be sanitized
+2026-03-21T07:14:09.477855923Z 2026-03-21 07:14:09,477::INFO::[filesystem:725] Creating directories: /downloads/complete/sz10gb_unpack
+2026-03-21T07:14:09.477966731Z 2026-03-21 07:14:09,477::INFO::[postproc:454] Running unpacker on sz10gb_unpack
+2026-03-21T07:14:09.478053198Z 2026-03-21 07:14:09,478::INFO::[newsunpack:311] 7za starting on /downloads/incomplete/sz10gb_unpack
+2026-03-21T07:14:09.478106818Z 2026-03-21 07:14:09,478::INFO::[newsunpack:889] Starting extract on 7zip set/file: bench_10gb 
+2026-03-21T07:14:09.478222248Z 2026-03-21 07:14:09,478::INFO::[misc:1324] [N/A] Running external command: ['/usr/bin/7zz', 'x', '-y', '-aou', '-ssc', '-p', '-o/downloads/complete/_UNPACK_sz10gb_unpack', '/downloads/incomplete/sz10gb_unpack/bench_10gb.7z']
+2026-03-21T07:14:15.218483594Z 2026-03-21 07:14:15,218::INFO::[newsunpack:999] Unpacked 1 files/folders in 5 seconds
+2026-03-21T07:14:15.408889545Z 2026-03-21 07:14:15,408::INFO::[newsunpack:315] 7za finished on /downloads/incomplete/sz10gb_unpack
+2026-03-21T07:14:15.409056774Z 2026-03-21 07:14:15,408::INFO::[postproc:456] Unpacked files ['/downloads/complete/_UNPACK_sz10gb_unpack/bench_10gb.bin']
+2026-03-21T07:14:15.409094469Z 2026-03-21 07:14:15,409::INFO::[filesystem:319] Checking if any resulting filenames need to be sanitized
+2026-03-21T07:14:15.409163610Z 2026-03-21 07:14:15,409::INFO::[postproc:460] Finished unpack_magic on sz10gb_unpack
+2026-03-21T07:14:15.409379300Z 2026-03-21 07:14:15,409::INFO::[postproc:554] Running deobfuscate
+2026-03-21T07:14:15.409505401Z 2026-03-21 07:14:15,409::INFO::[deobfuscate_filenames:295] Deobfuscate renaming /downloads/complete/sz10gb_unpack/bench_10gb.bin to /downloads/complete/sz10gb_unpack/sz10gb_unpack.bin
+2026-03-21T07:14:15.409664783Z 2026-03-21 07:14:15,409::INFO::[nzbstuff:1831] [N/A] Purging data for job sz10gb_unpack (delete_all_data=True)
+2026-03-21T07:14:15.410165758Z 2026-03-21 07:14:15,410::INFO::[notifier:166] Sending notification: Download Completed - sz10gb_unpack (type=complete, job_cat=*)
+2026-03-21T07:14:15.441476324Z 2026-03-21 07:14:15,441::INFO::[database:310] Added job sz10gb_unpack to history
+2026-03-21T07:14:15.441570324Z 2026-03-21 07:14:15,441::INFO::[postproc:136] Saving postproc queue
+2026-03-21T07:14:15.441955054Z 2026-03-21 07:14:15,441::INFO::[downloader:412] Post-processing finished, resuming download

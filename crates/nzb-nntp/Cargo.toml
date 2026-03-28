@@ -1,0 +1,23 @@
+[package]
+name = "nzb-nntp"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+nzb-core = { workspace = true }
+tokio = { workspace = true }
+tokio-rustls = { workspace = true }
+rustls = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+governor = { workspace = true }
+arc-swap = { workspace = true }
+webpki-roots = { workspace = true }
+rustls-pki-types = { workspace = true }
+parking_lot = { workspace = true }
+flate2 = { workspace = true }

@@ -1,0 +1,78 @@
+name: Build Desktop App (Linux)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'crates/**'
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: [self-hosted, node-b]
+    name: Build (linux-amd64)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+          shared-key: desktop-linux-amd64
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libfuse2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install npm dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Build desktop app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        with:
+          projectPath: desktop
+          tauriScript: npx tauri
+          args: --target x86_64-unknown-linux-gnu --bundles deb rpm
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustnzb-desktop-linux-amd64
+          path: |
+            desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+          if-no-files-found: warn

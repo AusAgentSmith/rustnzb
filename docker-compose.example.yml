@@ -1,0 +1,25 @@
+services:
+  rustnzb:
+    image: ghcr.io/ausagentsmith-org/rustnzb:latest
+    container_name: rustnzb
+    restart: unless-stopped
+    ports:
+      - "9090:9090"       # HTTP API + Web UI
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Australia/Sydney"
+      RUST_LOG: "info"
+    volumes:
+      - rustnzb-config:/config
+      - rustnzb-data:/data
+      - /path/to/downloads:/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9090/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  rustnzb-config:
+  rustnzb-data:

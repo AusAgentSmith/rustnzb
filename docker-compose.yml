@@ -1,0 +1,36 @@
+services:
+  rustnzb:
+    image: ${DOCKERHUB_USERNAME:-ausagentsmith}/rustnzb:latest
+    container_name: rustnzb
+    restart: unless-stopped
+    ports:
+      - "9095:9090"
+    volumes:
+      - ./config:/config
+      - ./data:/data
+      - /mnt/data3/downloads:/downloads
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Australia/Sydney
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9090/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  promtail:
+    image: grafana/promtail:3.4.2
+    profiles: [logging]
+    network_mode: host
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    environment:
+      LOKI_URL: ${LOKI_URL}
+      HOSTNAME: ${HOSTNAME:-rustnzb}
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+    restart: unless-stopped

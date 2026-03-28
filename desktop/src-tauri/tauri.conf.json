@@ -1,0 +1,37 @@
+{
+  "build": {
+    "frontendDist": "../src"
+  },
+  "productName": "rustnzb",
+  "mainBinaryName": "rustnzb-desktop",
+  "identifier": "com.rustnzb.desktop",
+  "plugins": {},
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["nzb"],
+        "mimeType": "application/x-nzb",
+        "description": "NZB File"
+      }
+    ]
+  }
+}

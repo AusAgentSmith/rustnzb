@@ -1,0 +1,8 @@
+/target
+/TestData
+/data
+/downloads
+config.toml
+DEPLOY.local.md
+.env
+tests/sonarr-e2e/data/

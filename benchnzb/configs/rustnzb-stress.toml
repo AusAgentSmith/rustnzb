@@ -1,0 +1,32 @@
+# RustNZB config for stress testing
+# Optimized for sustained throughput, no post-processing
+
+[general]
+listen_addr = "0.0.0.0"
+port = 9090
+incomplete_dir = "/downloads/incomplete"
+complete_dir = "/downloads/complete"
+data_dir = "/data"
+speed_limit_bps = 0
+cache_size = 1073741824
+log_level = "info"
+
+[[servers]]
+id = "synth"
+name = "Synthetic NNTP"
+host = "synth-nntp"
+port = 119
+ssl = false
+ssl_verify = false
+username = "bench"
+password = "bench"
+connections = 50
+priority = 0
+enabled = true
+retention = 99999
+pipelining = 1
+optional = false
+
+[[categories]]
+name = "Default"
+post_processing = 0

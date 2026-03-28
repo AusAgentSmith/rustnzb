@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for rustnzb desktop",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "notification:default"
+  ]
+}

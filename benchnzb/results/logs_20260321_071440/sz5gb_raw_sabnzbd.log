@@ -1,0 +1,75 @@
+2026-03-21T07:08:22.576433345Z 2026-03-21 07:08:22,576::INFO::[nzbparser:86] Attempting to add sz5gb_raw.nzb
+2026-03-21T07:08:22.577200718Z 2026-03-21 07:08:22,577::INFO::[filesystem:725] Creating directories: /downloads/incomplete
+2026-03-21T07:08:22.577388612Z 2026-03-21 07:08:22,577::INFO::[filesystem:725] Creating directories: /downloads/incomplete/sz5gb_raw
+2026-03-21T07:08:22.577495588Z 2026-03-21 07:08:22,577::INFO::[filesystem:725] Creating directories: /downloads/incomplete/sz5gb_raw/__ADMIN__
+2026-03-21T07:08:22.577561540Z 2026-03-21 07:08:22,577::INFO::[filesystem:1169] Saving /downloads/incomplete/sz5gb_raw/__ADMIN__/sz5gb_raw.nzb.gz
+2026-03-21T07:08:22.597287440Z 2026-03-21 07:08:22,597::INFO::[nzbstuff:978] File bench_5gb.bin added to queue
+2026-03-21T07:08:22.598504952Z 2026-03-21 07:08:22,598::INFO::[nzbqueue:230] Saving queue
+2026-03-21T07:08:22.598816356Z 2026-03-21 07:08:22,598::INFO::[notifier:166] Sending notification: NZB added to queue - sz5gb_raw.nzb (type=download, job_cat=*)
+2026-03-21T07:08:22.600628703Z 2026-03-21 07:08:22,600::INFO::[filesystem:725] Creating directories: /downloads/complete
+2026-03-21T07:08:22.700860791Z 2026-03-21 07:08:22,700::INFO::[get_addrinfo:199] Fastest connection to mock-nntp (port=119, IPv4 or IPv6): 192.168.192.2 (mock-nntp) in 0ms (out of 1 results)
+2026-03-21T07:08:22.803910617Z 2026-03-21 07:08:22,801::INFO::[downloader:616] 17@mock-nntp: Initiating connection
+2026-03-21T07:08:22.817066169Z 2026-03-21 07:08:22,816::INFO::[downloader:616] 11@mock-nntp: Initiating connection
+2026-03-21T07:08:22.817379599Z 2026-03-21 07:08:22,817::INFO::[downloader:616] 5@mock-nntp: Initiating connection
+2026-03-21T07:08:22.817614028Z 2026-03-21 07:08:22,817::INFO::[downloader:616] 18@mock-nntp: Initiating connection
+2026-03-21T07:08:22.817819296Z 2026-03-21 07:08:22,817::INFO::[downloader:616] 12@mock-nntp: Initiating connection
+2026-03-21T07:08:22.818031406Z 2026-03-21 07:08:22,817::INFO::[downloader:616] 6@mock-nntp: Initiating connection
+2026-03-21T07:08:22.818194446Z 2026-03-21 07:08:22,818::INFO::[downloader:616] 19@mock-nntp: Initiating connection
+2026-03-21T07:08:22.818357225Z 2026-03-21 07:08:22,818::INFO::[downloader:616] 13@mock-nntp: Initiating connection
+2026-03-21T07:08:22.818496524Z 2026-03-21 07:08:22,818::INFO::[downloader:616] 7@mock-nntp: Initiating connection
+2026-03-21T07:08:22.818868295Z 2026-03-21 07:08:22,818::INFO::[downloader:616] 20@mock-nntp: Initiating connection
+2026-03-21T07:08:22.819048019Z 2026-03-21 07:08:22,818::INFO::[downloader:616] 1@mock-nntp: Initiating connection
+2026-03-21T07:08:22.819193229Z 2026-03-21 07:08:22,819::INFO::[downloader:616] 14@mock-nntp: Initiating connection
+2026-03-21T07:08:22.819312785Z 2026-03-21 07:08:22,819::INFO::[downloader:616] 8@mock-nntp: Initiating connection
+2026-03-21T07:08:22.819484741Z 2026-03-21 07:08:22,819::INFO::[downloader:616] 2@mock-nntp: Initiating connection
+2026-03-21T07:08:22.819774150Z 2026-03-21 07:08:22,819::INFO::[downloader:616] 15@mock-nntp: Initiating connection
+2026-03-21T07:08:22.819923723Z 2026-03-21 07:08:22,819::INFO::[downloader:616] 9@mock-nntp: Initiating connection
+2026-03-21T07:08:22.820055686Z 2026-03-21 07:08:22,819::INFO::[downloader:616] 3@mock-nntp: Initiating connection
+2026-03-21T07:08:22.820306575Z 2026-03-21 07:08:22,820::INFO::[downloader:616] 16@mock-nntp: Initiating connection
+2026-03-21T07:08:22.820525799Z 2026-03-21 07:08:22,820::INFO::[downloader:616] 10@mock-nntp: Initiating connection
+2026-03-21T07:08:22.820694905Z 2026-03-21 07:08:22,820::INFO::[downloader:616] 4@mock-nntp: Initiating connection
+2026-03-21T07:08:22.824898140Z 2026-03-21 07:08:22,824::INFO::[downloader:751] Connecting 17@mock-nntp finished
+2026-03-21T07:08:22.825006182Z 2026-03-21 07:08:22,824::INFO::[downloader:751] Connecting 11@mock-nntp finished
+2026-03-21T07:08:22.825098193Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 5@mock-nntp finished
+2026-03-21T07:08:22.825166103Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 18@mock-nntp finished
+2026-03-21T07:08:22.825248757Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 12@mock-nntp finished
+2026-03-21T07:08:22.825321729Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 6@mock-nntp finished
+2026-03-21T07:08:22.825380653Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 13@mock-nntp finished
+2026-03-21T07:08:22.825439831Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 19@mock-nntp finished
+2026-03-21T07:08:22.825509449Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 7@mock-nntp finished
+2026-03-21T07:08:22.825565770Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 20@mock-nntp finished
+2026-03-21T07:08:22.825628660Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 14@mock-nntp finished
+2026-03-21T07:08:22.825716890Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 1@mock-nntp finished
+2026-03-21T07:08:22.825783452Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 8@mock-nntp finished
+2026-03-21T07:08:22.825821265Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 2@mock-nntp finished
+2026-03-21T07:08:22.825861033Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 15@mock-nntp finished
+2026-03-21T07:08:22.825912378Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 9@mock-nntp finished
+2026-03-21T07:08:22.825968891Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 3@mock-nntp finished
+2026-03-21T07:08:22.826013116Z 2026-03-21 07:08:22,825::INFO::[downloader:751] Connecting 16@mock-nntp finished
+2026-03-21T07:08:22.826061335Z 2026-03-21 07:08:22,826::INFO::[downloader:751] Connecting 10@mock-nntp finished
+2026-03-21T07:08:22.826100358Z 2026-03-21 07:08:22,826::INFO::[downloader:751] Connecting 4@mock-nntp finished
+2026-03-21T07:08:27.272326469Z 2026-03-21 07:08:27,272::INFO::[nzbqueue:767] [N/A] Ending job sz5gb_raw
+2026-03-21T07:08:27.279852104Z 2026-03-21 07:08:27,279::INFO::[assembler:88] Decoding finished /downloads/incomplete/sz5gb_raw/bench_5gb.bin
+2026-03-21T07:08:27.280038657Z 2026-03-21 07:08:27,279::INFO::[nzbqueue:378] [N/A] Removing job sz5gb_raw
+2026-03-21T07:08:27.280055159Z 2026-03-21 07:08:27,280::INFO::[nzbqueue:230] Saving queue
+2026-03-21T07:08:27.280210247Z 2026-03-21 07:08:27,280::INFO::[postproc:136] Saving postproc queue
+2026-03-21T07:08:28.790298673Z 2026-03-21 07:08:28,790::INFO::[postproc:396] Starting Post-Processing on sz5gb_raw => Repair:True, Unpack:True, Delete:True, Script:Default, Cat:*
+2026-03-21T07:08:28.790367465Z 2026-03-21 07:08:28,790::INFO::[notifier:166] Sending notification: Post-processing - sz5gb_raw (type=pp, job_cat=*)
+2026-03-21T07:08:28.790415676Z 2026-03-21 07:08:28,790::INFO::[postproc:762] Starting verification and repair of sz5gb_raw
+2026-03-21T07:08:28.790580245Z 2026-03-21 07:08:28,790::INFO::[filesystem:1089] [N/A] /downloads/incomplete/sz5gb_raw/__ADMIN__/__verified__ missing
+2026-03-21T07:08:28.790948397Z 2026-03-21 07:08:28,790::INFO::[postproc:809] No par2 sets for sz5gb_raw
+2026-03-21T07:08:28.791495931Z 2026-03-21 07:08:28,791::INFO::[postproc:843] Verification and repair finished for sz5gb_raw
+2026-03-21T07:08:28.791580979Z 2026-03-21 07:08:28,791::INFO::[downloader:417] Forcing disconnect
+2026-03-21T07:08:28.791730549Z 2026-03-21 07:08:28,791::INFO::[filesystem:319] Checking if any resulting filenames need to be sanitized
+2026-03-21T07:08:28.792091764Z 2026-03-21 07:08:28,792::INFO::[filesystem:725] Creating directories: /downloads/complete/sz5gb_raw
+2026-03-21T07:08:28.792227273Z 2026-03-21 07:08:28,792::INFO::[postproc:454] Running unpacker on sz5gb_raw
+2026-03-21T07:08:28.792382331Z 2026-03-21 07:08:28,792::INFO::[postproc:456] Unpacked files []
+2026-03-21T07:08:28.792423612Z 2026-03-21 07:08:28,792::INFO::[filesystem:319] Checking if any resulting filenames need to be sanitized
+2026-03-21T07:08:28.792463635Z 2026-03-21 07:08:28,792::INFO::[postproc:460] Finished unpack_magic on sz5gb_raw
+2026-03-21T07:08:28.792678541Z 2026-03-21 07:08:28,792::INFO::[postproc:554] Running deobfuscate
+2026-03-21T07:08:28.792965741Z 2026-03-21 07:08:28,792::INFO::[deobfuscate_filenames:295] Deobfuscate renaming /downloads/complete/sz5gb_raw/bench_5gb.bin to /downloads/complete/sz5gb_raw/sz5gb_raw.bin
+2026-03-21T07:08:28.793076634Z 2026-03-21 07:08:28,793::INFO::[nzbstuff:1831] [N/A] Purging data for job sz5gb_raw (delete_all_data=True)
+2026-03-21T07:08:28.793313119Z 2026-03-21 07:08:28,793::INFO::[notifier:166] Sending notification: Download Completed - sz5gb_raw (type=complete, job_cat=*)
+2026-03-21T07:08:28.873509462Z 2026-03-21 07:08:28,873::INFO::[database:310] Added job sz5gb_raw to history
+2026-03-21T07:08:28.873658032Z 2026-03-21 07:08:28,873::INFO::[postproc:136] Saving postproc queue
+2026-03-21T07:08:28.873878276Z 2026-03-21 07:08:28,873::INFO::[downloader:412] Post-processing finished, resuming download

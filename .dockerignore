@@ -1,0 +1,9 @@
+target/
+TestData/
+data/
+downloads/
+config.toml
+*.md
+.git
+.github
+.gitignore

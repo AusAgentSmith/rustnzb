@@ -1,0 +1,79 @@
+[general]
+listen_addr = "0.0.0.0"
+port = 8080
+# api_key = "your-secret-api-key-here"
+incomplete_dir = "/downloads/incomplete"
+complete_dir = "/downloads/complete"
+data_dir = "/data"
+speed_limit_bps = 0  # 0 = unlimited
+cache_size = 524288000  # 500 MB
+log_level = "info"
+# log_file = "data/rustnzb.log"
+# history_retention = 100  # Number of NZBs to keep in history (omit for keep all)
+
+# NNTP servers — add as many as needed, ordered by priority
+# Use the web UI "Servers" tab to add/edit servers, or uncomment below:
+#
+# [[servers]]
+# id = "primary"
+# name = "My Primary Server"
+# host = "news.example.com"
+# port = 563
+# ssl = true
+# ssl_verify = true
+# username = "user"
+# password = "pass"
+# connections = 8
+# priority = 0  # 0 = highest priority
+# enabled = true
+# retention = 3000  # days
+# pipelining = 1
+# optional = false
+#
+# [[servers]]
+# id = "backup"
+# name = "Backup Server"
+# host = "backup.example.com"
+# port = 563
+# ssl = true
+# ssl_verify = true
+# username = "user2"
+# password = "pass2"
+# connections = 4
+# priority = 1
+# enabled = true
+# retention = 1000
+# pipelining = 1
+# optional = true
+
+# Download categories
+[[categories]]
+name = "Default"
+post_processing = 3  # 0=none, 1=repair, 2=unpack, 3=repair+unpack
+
+[[categories]]
+name = "movies"
+output_dir = "movies"
+post_processing = 3
+
+[[categories]]
+name = "tv"
+output_dir = "tv"
+post_processing = 3
+
+[[categories]]
+name = "software"
+output_dir = "software"
+post_processing = 2
+
+# OpenTelemetry (can also be set via env vars: OTEL_ENABLED, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME)
+# Sends logs+metrics via OTLP gRPC — requires an OTLP-compatible collector at the endpoint.
+[otel]
+enabled = false
+endpoint = "http://localhost:4317"  # OTLP gRPC endpoint
+service_name = "rustnzb"
+
+# --- Loki logging (alternative to OTEL) ---
+# A Promtail sidecar is included in docker-compose.yml behind the "logging" profile.
+# To enable: set LOKI_URL and activate the profile:
+#   LOKI_URL=http://your-loki:3100 COMPOSE_PROFILES=logging docker compose up -d

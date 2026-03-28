@@ -1,0 +1,21 @@
+[package]
+name = "nzb-decode"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+nzb-core = { workspace = true }
+bytes = { workspace = true }
+crc32fast = { workspace = true }
+yenc-simd = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+parking_lot = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

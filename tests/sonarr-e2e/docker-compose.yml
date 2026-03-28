@@ -1,0 +1,48 @@
+services:
+  rustnzb:
+    image: ${RUSTNZB_IMAGE:-ausagentsmith/rustnzb:latest}
+    container_name: sonarr-e2e-rustnzb
+    restart: unless-stopped
+    ports:
+      - "${RUSTNZB_PORT:-9091}:9090"
+    environment:
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      TZ: "${TZ:-Australia/Sydney}"
+      RUST_LOG: "info"
+    volumes:
+      - rustnzb-config:/config
+      - rustnzb-data:/data
+      - ${RUSTNZB_DOWNLOADS:-./data/rustnzb/downloads}:/downloads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9090/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  sonarr:
+    image: ${SONARR_IMAGE:-lscr.io/linuxserver/sonarr:develop}
+    container_name: sonarr-e2e-sonarr
+    restart: unless-stopped
+    environment:
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      TZ: "${TZ:-Australia/Sydney}"
+    ports:
+      - "${SONARR_PORT:-8989}:8989"
+    volumes:
+      - sonarr-config:/config
+      - ${SONARR_TV:-./data/sonarr/tv}:/tv
+      - ${RUSTNZB_DOWNLOADS:-./data/rustnzb/downloads}:/downloads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8989/ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+volumes:
+  rustnzb-config:
+  rustnzb-data:
+  sonarr-config:

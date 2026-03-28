@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv sh
+
+mkdir -p /config /data /downloads/incomplete /downloads/complete
+
+chown -R abc:abc /config /data
+chown abc:abc /downloads /downloads/incomplete /downloads/complete 2>/dev/null || true

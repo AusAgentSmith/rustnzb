@@ -1,0 +1,66 @@
+# benchnzb v2: Stress test (RustNZB or SABnzbd)
+#
+# Single Rust binary serves as:
+#   benchnzb synth-nntp  — synthetic NNTP server (generates articles on-the-fly)
+#   benchnzb stress      — stress test orchestrator (duration-based, continuous load)
+#
+# Set CLIENT=sabnzbd to test SABnzbd instead of RustNZB (default: rustnzb).
+
+services:
+  synth-nntp:
+    build: .
+    command: ["synth-nntp", "--port", "119", "--health-port", "8080"]
+    networks: [bench]
+
+  rustnzb:
+    build:
+      context: ${RUSTNZB_DIR:-..}
+      dockerfile: Dockerfile
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+    volumes:
+      - ./state/rustnzb:/config
+      - data-rnzb:/data
+      - downloads-rnzb:/downloads
+    networks: [bench]
+    depends_on: [synth-nntp]
+    profiles: ["rustnzb"]
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - ./state/sabnzbd:/config
+      - downloads-sab:/downloads
+    networks: [bench]
+    depends_on: [synth-nntp]
+    profiles: ["sabnzbd"]
+
+  stress-runner:
+    build: .
+    command:
+      - stress
+      - --client=${CLIENT:-rustnzb}
+      - --duration=${DURATION:-1h}
+      - --nzb-size=${NZB_SIZE:-5gb}
+      - --concurrency=${CONCURRENCY:-5}
+      - --poll-interval=${POLL_INTERVAL:-5}
+      - --cleanup-interval=${CLEANUP_INTERVAL:-30}
+    volumes:
+      - ./results:/results
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [bench]
+    depends_on:
+      - synth-nntp
+
+networks:
+  bench:
+    driver: bridge
+
+volumes:
+  data-rnzb:
+  downloads-rnzb:
+  downloads-sab:

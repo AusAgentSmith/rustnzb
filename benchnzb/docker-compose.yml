@@ -1,0 +1,62 @@
+# benchnzb: Usenet client benchmark
+#
+# Single Rust binary serves as:
+#   benchnzb mock-nntp  — mock NNTP server (serves yEnc articles)
+#   benchnzb run        — orchestrator (datagen + benchmark runner)
+
+services:
+  mock-nntp:
+    build: .
+    command: ["mock-nntp", "--port", "119", "--data-dir", "/data", "--health-port", "8080"]
+    volumes:
+      - benchdata:/data
+    networks: [bench]
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - ./state/sabnzbd:/config
+      - downloads-sab:/downloads
+    networks: [bench]
+    depends_on: [mock-nntp]
+
+  rustnzb:
+    build:
+      context: ${RUSTNZB_DIR:-..}
+      dockerfile: Dockerfile
+    command: ["rustnzb", "--config", "/config/config.toml"]
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+    volumes:
+      - ./state/rustnzb:/config
+      - downloads-rnzb:/downloads
+    networks: [bench]
+    depends_on: [mock-nntp]
+
+  orchestrator:
+    build: .
+    command:
+      - run
+      - --scenarios=${SCENARIOS:-quick}
+    volumes:
+      - benchdata:/data
+      - ./results:/results
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [bench]
+    depends_on:
+      - mock-nntp
+      - sabnzbd
+      - rustnzb
+
+networks:
+  bench:
+    driver: bridge
+
+volumes:
+  benchdata:
+  downloads-sab:
+  downloads-rnzb:
