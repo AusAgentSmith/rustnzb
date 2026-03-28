@@ -188,7 +188,15 @@ async fn test_all_connections_summary() {
     }
 
     if let Some((host, user, pass)) = get_backup_creds() {
-        configs.push(make_config("backup-ssl-563", &host, 563, true, &user, &pass, 1));
+        configs.push(make_config(
+            "backup-ssl-563",
+            &host,
+            563,
+            true,
+            &user,
+            &pass,
+            1,
+        ));
     }
 
     if configs.is_empty() {
