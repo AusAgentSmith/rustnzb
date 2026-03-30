@@ -174,7 +174,6 @@ pub async fn h_sabnzbd_api_post(
 
             match nzb_parser::parse_nzb(&job_name, &data) {
                 Ok(mut job) => {
-
                     if let Some(ref c) = cat
                         && !c.is_empty()
                     {
@@ -266,7 +265,6 @@ pub async fn h_sabnzbd_api_post(
 
             match nzb_parser::parse_nzb(&job_name, &data) {
                 Ok(mut job) => {
-
                     if let Some(ref c) = cat
                         && !c.is_empty()
                     {

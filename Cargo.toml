@@ -80,7 +80,7 @@ unicode-normalization = "0.1"
 nzb-web = { path = "crates/nzb-web" }
 # External NZB crates
 nzb-nntp = { path = "crates/nzb-nntp" }
-nzb-core = { git = "https://github.com/AusAgentSmith-org/nzb-core.git", tag = "v0.1.1", features = ["groups-db"] }
+nzb-core = { git = "https://github.com/AusAgentSmith-org/nzb-core.git", tag = "v0.1.2", features = ["groups-db"] }
 nzb-decode = { git = "https://github.com/AusAgentSmith-org/nzb-decode.git", tag = "v0.1.0" }
 nzb-postproc = { git = "https://github.com/AusAgentSmith-org/nzb-postproc.git", tag = "v0.1.2" }
 rust-par2 = "0.1.1"
@@ -119,6 +119,3 @@ arc-swap.workspace = true
 
 [patch."https://github.com/AusAgentSmith-org/nzb-nntp.git"]
 nzb-nntp = { path = "crates/nzb-nntp" }
-
-[patch."https://github.com/AusAgentSmith-org/nzb-core.git"]
-nzb-core = { path = "../../libs/nzb-core" }

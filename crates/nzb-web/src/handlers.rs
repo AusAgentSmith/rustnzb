@@ -217,7 +217,6 @@ pub async fn h_queue_add(
         let nzb_data = data.to_vec();
         let mut job = nzb_parser::parse_nzb(&name, &data).map_err(ApiError::from)?;
 
-
         // Apply category
         if let Some(ref cat) = q.category {
             job.category = cat.clone();
@@ -352,7 +351,6 @@ pub async fn h_queue_add_url(
 
     let nzb_data = data.to_vec();
     let mut job = nzb_parser::parse_nzb(&job_name, &data).map_err(ApiError::from)?;
-
 
     if let Some(ref cat) = body.category
         && !cat.is_empty()
@@ -1066,7 +1064,6 @@ pub async fn h_rss_item_download(
 
     let mut job = nzb_parser::parse_nzb(&item.title, &data)
         .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to parse NZB: {}", e)))?;
-
 
     // Use the item's category or feed category
     if let Some(ref cat) = item.category {
