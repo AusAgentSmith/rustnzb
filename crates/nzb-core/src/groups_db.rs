@@ -51,10 +51,7 @@ impl Database {
             sql.push_str(" AND g.subscribed = 1");
         }
         if let Some(s) = search {
-            sql.push_str(&format!(
-                " AND g.name LIKE '%{}%'",
-                s.replace('\'', "''")
-            ));
+            sql.push_str(&format!(" AND g.name LIKE '%{}%'", s.replace('\'', "''")));
         }
         sql.push_str(&format!(" ORDER BY g.name LIMIT {limit} OFFSET {offset}"));
 
@@ -118,10 +115,7 @@ impl Database {
             sql.push_str(" AND subscribed = 1");
         }
         if let Some(s) = search {
-            sql.push_str(&format!(
-                " AND name LIKE '%{}%'",
-                s.replace('\'', "''")
-            ));
+            sql.push_str(&format!(" AND name LIKE '%{}%'", s.replace('\'', "''")));
         }
         let count: i64 = self.conn.query_row(&sql, [], |row| row.get(0))?;
         Ok(count)
@@ -303,8 +297,10 @@ impl Database {
     }
 
     pub fn header_mark_read(&self, header_id: i64) -> Result<(), NzbError> {
-        self.conn
-            .execute("UPDATE headers SET read = 1 WHERE id = ?1", params![header_id])?;
+        self.conn.execute(
+            "UPDATE headers SET read = 1 WHERE id = ?1",
+            params![header_id],
+        )?;
         Ok(())
     }
 
@@ -363,10 +359,7 @@ impl Database {
                     .iter()
                     .find(|a| a.message_id == *root_id)
                     .unwrap_or(&articles[0]);
-                let last = articles
-                    .iter()
-                    .max_by_key(|a| &a.date)
-                    .unwrap_or(root);
+                let last = articles.iter().max_by_key(|a| &a.date).unwrap_or(root);
                 let mut subject = root.subject.as_str();
                 while let Some(rest) = subject
                     .strip_prefix("Re: ")

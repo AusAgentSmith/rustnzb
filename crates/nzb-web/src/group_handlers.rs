@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use axum::extract::{Path, Query, State};
 use axum::Json;
+use axum::extract::{Path, Query, State};
 use serde::Deserialize;
 
 use crate::error::ApiError;
@@ -68,8 +68,10 @@ pub async fn h_group_refresh(
         .map_err(|e| ApiError::from(anyhow::anyhow!("LIST ACTIVE failed: {e}")))?;
     let _ = conn.quit().await;
 
-    let groups: Vec<(String, u64, u64)> =
-        entries.into_iter().map(|e| (e.name, e.high, e.low)).collect();
+    let groups: Vec<(String, u64, u64)> = entries
+        .into_iter()
+        .map(|e| (e.name, e.high, e.low))
+        .collect();
 
     let count = state
         .queue_manager
@@ -105,8 +107,12 @@ pub async fn h_group_status(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::from(anyhow::anyhow!("Group not found")))?;
 
-    let total_headers = qm.with_db(|db| db.header_count(id, None)).map_err(ApiError::from)?;
-    let unread = qm.with_db(|db| db.header_unread_count(id)).map_err(ApiError::from)?;
+    let total_headers = qm
+        .with_db(|db| db.header_count(id, None))
+        .map_err(ApiError::from)?;
+    let unread = qm
+        .with_db(|db| db.header_unread_count(id))
+        .map_err(ApiError::from)?;
     let new_available = (group.last_article - group.last_scanned).max(0);
 
     Ok(Json(serde_json::json!({
@@ -397,8 +403,7 @@ pub async fn h_header_download(
 
     // Parse and queue
     let nzb_bytes = nzb.as_bytes();
-    let mut job =
-        nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
+    let mut job = nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
 
     if let Some(cat) = input.category {
         job.category = cat;
