@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBadgeModule } from '@angular/material/badge';
 import { ApiService } from './core/services/api.service';
-import { StatusResponse, QueueResponse } from './core/models/queue.model';
+import { AuthService } from './core/services/auth.service';
+import { StatusResponse } from './core/models/queue.model';
 
 @Component({
   selector: 'app-root',
@@ -18,29 +19,34 @@ import { StatusResponse, QueueResponse } from './core/models/queue.model';
         <span class="logo">⚡ rustnzbd</span>
       </div>
       <div class="topbar-right">
-        <div class="speed-display">
-          <span class="arrow">↓</span>
-          <span>{{ formatSpeed(speed()) }}</span>
-        </div>
-        <button class="topbar-btn primary" routerLink="/queue">＋ Add NZB</button>
-        <button class="topbar-btn" (click)="togglePause()">
-          {{ paused() ? '▶ Resume' : '⏸ Pause' }}
-        </button>
+        @if (authenticated()) {
+          <div class="speed-display">
+            <span class="arrow">↓</span>
+            <span>{{ formatSpeed(speed()) }}</span>
+          </div>
+          <button class="topbar-btn primary" routerLink="/queue">+ Add NZB</button>
+          <button class="topbar-btn" (click)="togglePause()">
+            {{ paused() ? 'Resume' : 'Pause' }}
+          </button>
+          <button class="topbar-btn" (click)="onLogout()">Logout</button>
+        }
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <a class="tab" routerLink="/queue" routerLinkActive="active">
-        Queue
-        @if (queueCount() > 0) { <span class="badge">{{ queueCount() }}</span> }
-      </a>
-      <a class="tab" routerLink="/groups" routerLinkActive="active">Groups</a>
-      <a class="tab" routerLink="/history" routerLinkActive="active">History</a>
-      <a class="tab" routerLink="/rss" routerLinkActive="active">RSS</a>
-      <a class="tab" routerLink="/settings" routerLinkActive="active">Settings</a>
-      <a class="tab" routerLink="/logs" routerLinkActive="active">Logs</a>
-    </div>
+    @if (authenticated()) {
+      <div class="tabs">
+        <a class="tab" routerLink="/queue" routerLinkActive="active">
+          Queue
+          @if (queueCount() > 0) { <span class="badge">{{ queueCount() }}</span> }
+        </a>
+        <a class="tab" routerLink="/groups" routerLinkActive="active">Groups</a>
+        <a class="tab" routerLink="/history" routerLinkActive="active">History</a>
+        <a class="tab" routerLink="/rss" routerLinkActive="active">RSS</a>
+        <a class="tab" routerLink="/settings" routerLinkActive="active">Settings</a>
+        <a class="tab" routerLink="/logs" routerLinkActive="active">Logs</a>
+      </div>
+    }
 
     <!-- Content -->
     <div class="main">
@@ -49,7 +55,7 @@ import { StatusResponse, QueueResponse } from './core/models/queue.model';
 
     <!-- Status bar -->
     <div class="statusbar">
-      <span class="status-ok">● Connected</span>
+      @if (authenticated()) { <span class="status-ok">● Connected</span> }
       <span class="sep">|</span>
       <span>Disk: {{ formatBytes(diskFree()) }} free</span>
       @if (queueCount() > 0) {
@@ -117,11 +123,17 @@ export class App implements OnInit, OnDestroy {
   paused = signal(false);
   queueCount = signal(0);
   diskFree = signal(0);
+  authenticated = signal(false);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(
+    private api: ApiService,
+    private authService: AuthService,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
+    this.authenticated.set(this.authService.isLoggedIn());
     this.pollStatus();
     this.pollTimer = setInterval(() => this.pollStatus(), 2000);
   }
@@ -131,6 +143,10 @@ export class App implements OnInit, OnDestroy {
   }
 
   pollStatus(): void {
+    this.authenticated.set(this.authService.isLoggedIn());
+    if (!this.authenticated()) {
+      return;
+    }
     this.api.get<StatusResponse>('/status').subscribe({
       next: (s) => {
         this.speed.set(s.speed_bps);
@@ -139,6 +155,14 @@ export class App implements OnInit, OnDestroy {
         this.diskFree.set(s.disk_free_bytes);
       },
       error: () => {},
+    });
+  }
+
+  onLogout(): void {
+    this.authenticated.set(false);
+    this.authService.logout().subscribe({
+      complete: () => this.router.navigate(['/login']),
+      error: () => this.router.navigate(['/login']),
     });
   }
 
