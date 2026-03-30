@@ -37,6 +37,7 @@ async fn h_root() -> Response {
 }
 
 /// SPA fallback: serve static file if it exists, otherwise index.html.
+#[allow(clippy::collapsible_if)]
 async fn h_spa_fallback(uri: axum::http::Uri) -> Response {
     let path = uri.path().trim_start_matches('/');
     // Try exact file first
