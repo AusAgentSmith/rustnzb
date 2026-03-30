@@ -139,6 +139,13 @@ impl Pipeline {
                 conn.state = ConnectionState::Error;
                 Err(NntpError::AuthRequired(status.message))
             }
+            481 | 482 => {
+                conn.state = ConnectionState::Error;
+                Err(NntpError::Auth(format!(
+                    "ARTICLE rejected ({}): {}",
+                    status.code, status.message
+                )))
+            }
             502 => {
                 conn.state = ConnectionState::Error;
                 Err(NntpError::ServiceUnavailable(status.message))
@@ -177,7 +184,8 @@ impl Pipeline {
                 // If the connection entered an error state, bail out
                 let is_fatal = matches!(
                     &result.result,
-                    Err(NntpError::AuthRequired(_))
+                    Err(NntpError::Auth(_))
+                        | Err(NntpError::AuthRequired(_))
                         | Err(NntpError::ServiceUnavailable(_))
                         | Err(NntpError::Connection(_))
                         | Err(NntpError::Io(_))
