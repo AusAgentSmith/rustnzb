@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use crate::util::normalize_job_names;
 use std::sync::Arc;
 
 use notify::{Event, EventKind, RecursiveMode, Watcher};
@@ -109,6 +110,7 @@ impl DirWatcher {
 
         match nzb_core::nzb_parser::parse_nzb(&name, &data) {
             Ok(mut job) => {
+                normalize_job_names(&mut job);
                 job.work_dir = self.queue_manager.incomplete_dir().join(&job.id);
                 job.output_dir = self.queue_manager.complete_dir().join(&job.name);
 

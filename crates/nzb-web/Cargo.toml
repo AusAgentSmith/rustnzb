@@ -36,6 +36,7 @@ nzb-postproc = { workspace = true }
 notify = { workspace = true }
 feed-rs = { workspace = true }
 regex = { workspace = true }
+unicode-normalization = { workspace = true }
 rust-embed = "8"
 mime_guess = "2"
 libc = "0.2"

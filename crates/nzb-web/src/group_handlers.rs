@@ -8,6 +8,7 @@ use serde::Deserialize;
 
 use crate::error::ApiError;
 use crate::state::AppState;
+use crate::util::normalize_job_names;
 
 #[derive(Deserialize, Default)]
 pub struct GroupListQuery {
@@ -404,6 +405,7 @@ pub async fn h_header_download(
     // Parse and queue
     let nzb_bytes = nzb.as_bytes();
     let mut job = nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
+    normalize_job_names(&mut job);
 
     if let Some(cat) = input.category {
         job.category = cat;
