@@ -302,7 +302,11 @@ impl DownloadEngine {
 
         for server in &sorted_servers {
             let num_conns = server.connections.min(50) as usize;
+            let ramp_delay = Duration::from_millis(server.ramp_up_delay_ms as u64);
             for conn_idx in 0..num_conns {
+                if conn_idx > 0 && !ramp_delay.is_zero() {
+                    tokio::time::sleep(ramp_delay).await;
+                }
                 let handle = tokio::spawn({
                     let server_config = server.clone();
                     let work_queue = Arc::clone(&work_queue);

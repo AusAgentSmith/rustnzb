@@ -12,8 +12,7 @@ use parking_lot::Mutex;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
-use nzb_core::Article;
-use nzb_core::config::ServerConfig;
+use crate::config::{Article, ServerConfig};
 
 use crate::error::{NntpError, NntpResult};
 use crate::pool::PooledConnection;

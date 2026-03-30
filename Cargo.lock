@@ -1114,7 +1114,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots",
+ "webpki-roots 1.0.6",
 ]
 
 [[package]]
@@ -1163,7 +1163,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -1726,7 +1726,6 @@ dependencies = [
 [[package]]
 name = "nzb-core"
 version = "0.1.1"
-source = "git+https://github.com/AusAgentSmith-org/nzb-core.git?tag=v0.1.1#eb3c62d6b947695d9720bf29fade9dc261654fc1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1761,7 +1760,6 @@ dependencies = [
 [[package]]
 name = "nzb-nntp"
 version = "0.1.0"
-source = "git+https://github.com/AusAgentSmith/nzb-nntp.git?tag=v0.1.0#4e25c4238b028ed15ad1f98f8a98db3df1f2e324"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1777,7 +1775,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-socks",
  "tracing",
- "webpki-roots",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -2177,7 +2175,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -2214,7 +2212,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -2419,7 +2417,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "webpki-roots",
+ "webpki-roots 1.0.6",
 ]
 
 [[package]]
@@ -3635,6 +3633,15 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "0.26.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
+dependencies = [
+ "webpki-roots 1.0.6",
 ]
 
 [[package]]
