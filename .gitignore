@@ -6,3 +6,6 @@ config.toml
 DEPLOY.local.md
 .env
 tests/sonarr-e2e/data/
+e2e/node_modules/
+e2e/test-data/
+e2e/test-results/
