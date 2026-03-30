@@ -16,6 +16,9 @@ rustnzb/
 │   ├── nzb-decode/                # yEnc decoder (SIMD via yenc-simd), file assembler
 │   ├── nzb-postproc/              # Post-processing: par2 verify/repair, RAR/7z/ZIP extraction
 │   └── (par2 handled by rust-par2 library — no external binary needed)
+├── frontend/                      # Angular 21 SPA (Material, dark theme, tab-based UI)
+├── e2e/                           # Playwright E2E tests (15 tests)
+├── build.rs                       # Auto-runs ng build during cargo build
 ├── benchnzb/                      # Benchmark suite: rustnzb vs SABnzbd (excluded from workspace)
 ├── tests/                         # Integration tests (e2e download, NNTP, post-processing)
 ├── config.example.toml            # Configuration reference
@@ -83,7 +86,7 @@ rustnzb/
 | Post-processing | par2cmdline-turbo (embedded), unrar, 7z (system) |
 | Observability | tracing + optional OpenTelemetry (OTLP gRPC) |
 | API docs | utoipa + Swagger UI |
-| Web UI | Embedded React SPA (rust-embed) |
+| Web UI | Angular 21 SPA (rust-embed, zoneless change detection) |
 
 ## Build & Run
 
@@ -175,6 +178,20 @@ See `config.example.toml` for the full configuration reference including servers
 | POST | `/api/history/{id}/retry` | Retry a failed job |
 | GET/PUT | `/api/config/*` | Read/update servers, categories, RSS feeds, settings |
 | GET | `/swagger-ui` | Interactive API documentation |
+
+### Newsgroup Browsing API (`/api/groups`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/groups` | List groups (subscribed, search) |
+| POST | `/api/groups/refresh` | Fetch LIST ACTIVE from NNTP server |
+| GET | `/api/groups/{id}/status` | Group stats (new available, unread) |
+| POST | `/api/groups/{id}/subscribe` | Subscribe to group |
+| GET | `/api/groups/{id}/headers` | List headers (FTS5 search) |
+| POST | `/api/groups/{id}/headers/fetch` | Background XOVER fetch |
+| POST | `/api/groups/{id}/headers/download` | Download selected → NZB → queue |
+| GET | `/api/groups/{id}/threads` | Threaded conversation view |
+| GET | `/api/articles/{message_id}` | Fetch article from NNTP |
 
 ### SABnzbd Compatible API (`/sabnzbd/api`)
 
