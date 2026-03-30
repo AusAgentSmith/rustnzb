@@ -12,7 +12,7 @@ const SCHEMA_VERSION: u32 = 1;
 
 /// Database handle for queue and history persistence.
 pub struct Database {
-    conn: Connection,
+    pub(crate) conn: Connection,
 }
 
 impl Database {
@@ -178,6 +178,59 @@ impl Database {
                 );
 
                 UPDATE schema_version SET version = 4;
+                ",
+            )?;
+        }
+
+        if version < 5 {
+            info!("Applying database migration v5: newsgroup browsing");
+            self.conn.execute_batch(
+                "
+                CREATE TABLE IF NOT EXISTS groups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    subscribed INTEGER NOT NULL DEFAULT 0,
+                    article_count INTEGER NOT NULL DEFAULT 0,
+                    first_article INTEGER NOT NULL DEFAULT 0,
+                    last_article INTEGER NOT NULL DEFAULT 0,
+                    last_scanned INTEGER NOT NULL DEFAULT 0,
+                    last_updated TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_groups_subscribed ON groups(subscribed);
+                CREATE INDEX IF NOT EXISTS idx_groups_name ON groups(name);
+
+                CREATE TABLE IF NOT EXISTS headers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+                    article_num INTEGER NOT NULL,
+                    subject TEXT NOT NULL,
+                    author TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    message_id TEXT NOT NULL,
+                    references_ TEXT NOT NULL DEFAULT '',
+                    bytes INTEGER NOT NULL DEFAULT 0,
+                    lines INTEGER NOT NULL DEFAULT 0,
+                    read INTEGER NOT NULL DEFAULT 0,
+                    downloaded_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+                CREATE INDEX IF NOT EXISTS idx_headers_group ON headers(group_id);
+                CREATE INDEX IF NOT EXISTS idx_headers_msgid ON headers(message_id);
+                CREATE INDEX IF NOT EXISTS idx_headers_artnum ON headers(group_id, article_num);
+
+                CREATE VIRTUAL TABLE IF NOT EXISTS headers_fts USING fts5(
+                    subject, author, content='headers', content_rowid='id',
+                    tokenize='porter unicode61'
+                );
+                CREATE TRIGGER IF NOT EXISTS headers_fts_ins AFTER INSERT ON headers BEGIN
+                    INSERT INTO headers_fts(rowid, subject, author) VALUES (new.id, new.subject, new.author);
+                END;
+                CREATE TRIGGER IF NOT EXISTS headers_fts_del AFTER DELETE ON headers BEGIN
+                    INSERT INTO headers_fts(headers_fts, rowid, subject, author) VALUES ('delete', old.id, old.subject, old.author);
+                END;
+
+                UPDATE schema_version SET version = 5;
                 ",
             )?;
         }

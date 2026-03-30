@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>rustnzbd - GUI Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117; color: #c9d1d9; font-size: 13px;
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  a { color: #58a6ff; text-decoration: none; }
+
+  /* Top bar */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: 48px; background: #161b22;
+    border-bottom: 1px solid #30363d;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .topbar-left .logo { font-size: 16px; font-weight: 700; color: #58a6ff; }
+  .topbar-left .version { font-size: 11px; color: #484f58; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .speed-display {
+    display: flex; align-items: center; gap: 6px;
+    background: #0d1117; padding: 4px 12px; border-radius: 4px;
+    font-family: 'Consolas', monospace; font-size: 14px; font-weight: 600;
+    color: #3fb950;
+  }
+  .speed-display .arrow { font-size: 16px; }
+  .btn {
+    padding: 5px 12px; border-radius: 4px; border: 1px solid #30363d;
+    background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .btn:hover { background: #30363d; }
+  .btn-primary { background: #238636; border-color: #2ea043; color: white; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-warn { background: #da3633; border-color: #f85149; color: white; }
+
+  /* Tabs */
+  .tabs {
+    display: flex; background: #161b22; border-bottom: 1px solid #30363d;
+    padding: 0 16px;
+  }
+  .tab {
+    padding: 10px 16px; cursor: pointer; color: #8b949e;
+    border-bottom: 2px solid transparent; font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab:hover { color: #c9d1d9; }
+  .tab.active { color: #c9d1d9; border-bottom-color: #58a6ff; }
+  .tab .badge {
+    background: #388bfd; color: white; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center;
+  }
+  .tab .badge-warn { background: #d29922; }
+
+  /* Main content */
+  .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .tab-content { display: none; flex: 1; overflow: auto; }
+  .tab-content.active { display: flex; flex-direction: column; }
+
+  /* ============= QUEUE TAB ============= */
+  .queue-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: #0d1117; border-bottom: 1px solid #21262d;
+  }
+  .queue-toolbar .spacer { flex: 1; }
+  .queue-stats { font-size: 11px; color: #8b949e; }
+
+  .job-list { flex: 1; overflow-y: auto; }
+  .job-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid #21262d;
+  }
+  .job-item:hover { background: #161b22; }
+  .job-icon { font-size: 20px; width: 24px; text-align: center; }
+  .job-info { flex: 1; min-width: 0; }
+  .job-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job-meta { display: flex; gap: 12px; font-size: 11px; color: #8b949e; }
+  .job-meta .tag {
+    padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;
+  }
+  .tag-downloading { background: #0d419d; color: #58a6ff; }
+  .tag-queued { background: #1c2128; color: #8b949e; }
+  .tag-paused { background: #3d1d00; color: #d29922; }
+  .tag-verifying { background: #1a3a1a; color: #3fb950; }
+  .tag-unpacking { background: #1a3a1a; color: #3fb950; }
+  .tag-completed { background: #1a3a1a; color: #3fb950; }
+  .tag-failed { background: #3d1418; color: #f85149; }
+  .job-progress { width: 200px; }
+  .progress-bar {
+    height: 6px; background: #21262d; border-radius: 3px; overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .progress-fill.blue { background: linear-gradient(90deg, #1f6feb, #58a6ff); }
+  .progress-fill.green { background: #3fb950; }
+  .progress-fill.yellow { background: #d29922; }
+  .progress-text { font-size: 11px; color: #8b949e; text-align: right; }
+  .job-actions { display: flex; gap: 4px; }
+  .job-actions .btn { padding: 3px 6px; font-size: 11px; }
+  .job-speed { font-family: monospace; font-size: 12px; color: #58a6ff; width: 80px; text-align: right; }
+
+  /* ============= GROUPS TAB ============= */
+  .groups-layout { display: flex; flex: 1; overflow: hidden; }
+  .groups-sidebar {
+    width: 240px; border-right: 1px solid #21262d;
+    display: flex; flex-direction: column; background: #0d1117;
+  }
+  .groups-sidebar-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px;
+    border-bottom: 1px solid #21262d;
+  }
+  .group-search {
+    padding: 8px 12px; border-bottom: 1px solid #21262d;
+  }
+  .group-search input {
+    width: 100%; padding: 5px 8px; background: #161b22; border: 1px solid #30363d;
+    border-radius: 4px; color: #c9d1d9; font-size: 12px; outline: none;
+  }
+  .group-search input:focus { border-color: #58a6ff; }
+  .group-list { flex: 1; overflow-y: auto; }
+  .group-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 12px; cursor: pointer; border-left: 3px solid transparent;
+  }
+  .group-item:hover { background: #161b22; }
+  .group-item.selected { background: rgba(56,139,253,0.1); border-left-color: #58a6ff; }
+  .group-item .name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .group-item .unread {
+    background: #388bfd; color: white; font-size: 10px; font-weight: 700;
+    padding: 1px 5px; border-radius: 8px; min-width: 16px; text-align: center;
+  }
+
+  .groups-right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .groups-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: #0d1117; border-bottom: 1px solid #21262d;
+  }
+  .groups-toolbar .group-name { font-weight: 600; font-size: 14px; color: #c9d1d9; }
+  .groups-toolbar .spacer { flex: 1; }
+  .toggle-group {
+    display: flex; border: 1px solid #30363d; border-radius: 4px; overflow: hidden;
+  }
+  .toggle-group .toggle {
+    padding: 3px 10px; background: #21262d; color: #8b949e;
+    cursor: pointer; font-size: 11px; border: none;
+  }
+  .toggle-group .toggle.active { background: #388bfd; color: white; }
+  .search-inline {
+    display: flex; align-items: center; gap: 4px;
+    background: #161b22; border: 1px solid #30363d; border-radius: 4px;
+    padding: 3px 8px;
+  }
+  .search-inline input {
+    background: none; border: none; color: #c9d1d9; font-size: 12px;
+    outline: none; width: 160px;
+  }
+  .search-inline .icon { color: #484f58; font-size: 14px; }
+
+  /* Header table */
+  .header-table { flex: 1; overflow-y: auto; min-height: 200px; }
+  .header-table table { width: 100%; border-collapse: collapse; }
+  .header-table th {
+    text-align: left; padding: 6px 12px; font-size: 11px; font-weight: 600;
+    color: #8b949e; background: #161b22; border-bottom: 1px solid #30363d;
+    position: sticky; top: 0; z-index: 1;
+  }
+  .header-table td {
+    padding: 5px 12px; border-bottom: 1px solid #21262d; font-size: 12px;
+  }
+  .header-table tr:hover td { background: #161b22; }
+  .header-table tr.selected td { background: rgba(56,139,253,0.1); }
+  .header-table tr.unread td { font-weight: 600; }
+  .header-table tr.read td { color: #8b949e; }
+  .header-table .cb { width: 30px; text-align: center; }
+  .header-table .subject { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-table .author { width: 180px; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-table .size { width: 70px; text-align: right; color: #8b949e; }
+  .header-table .date { width: 140px; color: #8b949e; }
+
+  /* Article preview */
+  .preview-pane {
+    border-top: 3px solid #30363d; background: #0d1117;
+    display: flex; flex-direction: column; height: 250px;
+  }
+  .preview-header {
+    padding: 8px 12px; background: #161b22; border-bottom: 1px solid #21262d;
+    font-size: 12px; line-height: 1.6;
+  }
+  .preview-header strong { color: #8b949e; }
+  .preview-body {
+    flex: 1; padding: 12px; overflow-y: auto;
+    font-family: 'Consolas', 'Roboto Mono', monospace; font-size: 12px;
+    line-height: 1.5; white-space: pre-wrap; color: #c9d1d9;
+  }
+  .preview-body .quoted { color: #388bfd; }
+
+  /* Download bar at bottom of groups */
+  .download-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: #161b22; border-top: 1px solid #30363d;
+  }
+  .download-bar .selected-count { font-size: 12px; color: #8b949e; }
+
+  /* ============= HISTORY TAB ============= */
+  .history-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid #21262d;
+  }
+  .history-item:hover { background: #161b22; }
+
+  /* ============= SETTINGS TAB ============= */
+  .settings-layout { display: flex; flex: 1; overflow: hidden; }
+  .settings-nav {
+    width: 180px; border-right: 1px solid #21262d; background: #0d1117;
+    padding: 8px 0;
+  }
+  .settings-nav-item {
+    padding: 8px 16px; cursor: pointer; font-size: 13px; color: #8b949e;
+  }
+  .settings-nav-item:hover { color: #c9d1d9; background: #161b22; }
+  .settings-nav-item.active { color: #c9d1d9; background: rgba(56,139,253,0.1); border-right: 2px solid #58a6ff; }
+  .settings-content { flex: 1; padding: 20px 24px; overflow-y: auto; }
+  .settings-section { margin-bottom: 24px; }
+  .settings-section h3 { font-size: 16px; margin-bottom: 12px; color: #c9d1d9; }
+  .server-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: #161b22; border: 1px solid #30363d;
+    border-radius: 6px; margin-bottom: 8px;
+  }
+  .server-card .server-info { flex: 1; }
+  .server-card .server-name { font-weight: 600; font-size: 14px; }
+  .server-card .server-host { font-size: 12px; color: #8b949e; }
+  .server-card .server-status { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: #3fb950; }
+  .dot-red { background: #f85149; }
+  .dot-gray { background: #484f58; }
+
+  /* ============= STATUS BAR ============= */
+  .statusbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 16px; height: 24px; background: #161b22;
+    border-top: 1px solid #30363d; font-size: 11px; color: #484f58;
+  }
+  .statusbar .sep { color: #30363d; }
+  .statusbar .disk { color: #8b949e; }
+  .statusbar .ok { color: #3fb950; }
+
+  /* Utility */
+  .spacer { flex: 1; }
+  input[type="checkbox"] { accent-color: #58a6ff; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="logo">⚡ rustnzbd</span>
+    <span class="version">v0.2.0</span>
+  </div>
+  <div class="topbar-right">
+    <div class="speed-display">
+      <span class="arrow">↓</span>
+      <span>45.2 MB/s</span>
+    </div>
+    <button class="btn btn-primary" onclick="showTab('queue')">＋ Add NZB</button>
+    <button class="btn" title="Pause All">⏸ Pause</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('queue')">
+    Queue <span class="badge">3</span>
+  </div>
+  <div class="tab" onclick="showTab('groups')">
+    Groups
+  </div>
+  <div class="tab" onclick="showTab('history')">
+    History <span class="badge" style="background:#21262d;color:#8b949e">12</span>
+  </div>
+  <div class="tab" onclick="showTab('rss')">
+    RSS <span class="badge badge-warn">2</span>
+  </div>
+  <div class="tab" onclick="showTab('settings')">
+    Settings
+  </div>
+  <div class="tab" onclick="showTab('logs')">
+    Logs
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ==================== QUEUE TAB ==================== -->
+  <div id="tab-queue" class="tab-content active">
+    <div class="queue-toolbar">
+      <button class="btn btn-primary">＋ Add NZB</button>
+      <button class="btn">⏸ Pause All</button>
+      <button class="btn">▶ Resume All</button>
+      <span class="spacer"></span>
+      <span class="queue-stats">3 items · 13.5 GB remaining · ETA 4:52</span>
+    </div>
+    <div class="job-list">
+
+      <!-- Job 1: Downloading -->
+      <div class="job-item">
+        <div class="job-icon">📥</div>
+        <div class="job-info">
+          <div class="job-name">Movie.2024.BluRay.1080p.x264-GROUP</div>
+          <div class="job-meta">
+            <span class="tag tag-downloading">DOWNLOADING</span>
+            <span>8.1 GB</span>
+            <span>High</span>
+            <span>Movies</span>
+            <span>ETA 3:42</span>
+          </div>
+        </div>
+        <div class="job-speed">45.2 MB/s</div>
+        <div class="job-progress">
+          <div class="progress-bar"><div class="progress-fill blue" style="width:62%"></div></div>
+          <div class="progress-text">62% · 5.0 / 8.1 GB</div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">⏸</button>
+          <button class="btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Job 2: Post-processing -->
+      <div class="job-item">
+        <div class="job-icon">🔧</div>
+        <div class="job-info">
+          <div class="job-name">TV.Show.S01E05.720p.WEB-DL</div>
+          <div class="job-meta">
+            <span class="tag tag-unpacking">UNPACKING</span>
+            <span>1.1 GB</span>
+            <span>Normal</span>
+            <span>TV</span>
+          </div>
+        </div>
+        <div class="job-speed" style="color:#3fb950">—</div>
+        <div class="job-progress">
+          <div class="progress-bar"><div class="progress-fill green" style="width:100%"></div></div>
+          <div class="progress-text">Extracting archives...</div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Job 3: Queued -->
+      <div class="job-item">
+        <div class="job-icon">⏳</div>
+        <div class="job-info">
+          <div class="job-name">Software.Package.v2.0.iso</div>
+          <div class="job-meta">
+            <span class="tag tag-queued">QUEUED</span>
+            <span>4.3 GB</span>
+            <span>Low</span>
+            <span>Software</span>
+          </div>
+        </div>
+        <div class="job-speed" style="color:#484f58">—</div>
+        <div class="job-progress">
+          <div class="progress-bar"><div class="progress-fill blue" style="width:0%"></div></div>
+          <div class="progress-text">Waiting...</div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">▲</button>
+          <button class="btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Job 4: Paused -->
+      <div class="job-item" style="opacity:0.6">
+        <div class="job-icon">⏸</div>
+        <div class="job-info">
+          <div class="job-name">Album.Discography.FLAC</div>
+          <div class="job-meta">
+            <span class="tag tag-paused">PAUSED</span>
+            <span>2.8 GB</span>
+            <span>Normal</span>
+            <span>Music</span>
+          </div>
+        </div>
+        <div class="job-speed" style="color:#484f58">—</div>
+        <div class="job-progress">
+          <div class="progress-bar"><div class="progress-fill yellow" style="width:34%"></div></div>
+          <div class="progress-text">34% · Paused</div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">▶</button>
+          <button class="btn">✕</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== GROUPS TAB ==================== -->
+  <div id="tab-groups" class="tab-content">
+    <div class="groups-layout">
+
+      <!-- Sidebar -->
+      <div class="groups-sidebar">
+        <div class="groups-sidebar-header">
+          <span>Subscribed Groups</span>
+          <button class="btn" style="padding:2px 6px;font-size:10px" title="Browse & subscribe">＋</button>
+        </div>
+        <div class="group-search">
+          <input placeholder="Filter groups..." />
+        </div>
+        <div class="group-list">
+          <div class="group-item selected">
+            <span class="name">alt.binaries.multimedia</span>
+            <span class="unread">847</span>
+          </div>
+          <div class="group-item">
+            <span class="name">alt.binaries.movies</span>
+            <span class="unread">234</span>
+          </div>
+          <div class="group-item">
+            <span class="name">alt.binaries.tv</span>
+            <span class="unread">156</span>
+          </div>
+          <div class="group-item">
+            <span class="name">alt.binaries.sounds.mp3</span>
+          </div>
+          <div class="group-item">
+            <span class="name">alt.binaries.ebook</span>
+            <span class="unread">42</span>
+          </div>
+          <div class="group-item">
+            <span class="name">alt.binaries.games</span>
+          </div>
+          <div class="group-item">
+            <span class="name">comp.lang.rust</span>
+            <span class="unread">8</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="groups-right">
+        <div class="groups-toolbar">
+          <span class="group-name">alt.binaries.multimedia</span>
+          <span style="font-size:11px;color:#8b949e;margin-left:8px">2,847 articles · 847 unread · 1,204 new available</span>
+          <span class="spacer"></span>
+          <div class="toggle-group">
+            <button class="toggle active">Flat</button>
+            <button class="toggle">Threaded</button>
+          </div>
+          <div class="search-inline">
+            <span class="icon">🔍</span>
+            <input placeholder="Search headers..." />
+          </div>
+          <button class="btn">↻ Fetch</button>
+          <button class="btn">✓ Mark All Read</button>
+        </div>
+
+        <!-- Header list -->
+        <div class="header-table">
+          <table>
+            <thead>
+              <tr>
+                <th class="cb"><input type="checkbox" /></th>
+                <th class="subject">Subject</th>
+                <th class="author">Author</th>
+                <th class="size">Size</th>
+                <th class="date">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="unread">
+                <td class="cb"><input type="checkbox" checked /></td>
+                <td class="subject">Movie.2024.BluRay.1080p.x264-GROUP [01/52] "movie.2024.part01.rar" yEnc (1/200)</td>
+                <td class="author">poster@news.com</td>
+                <td class="size">8.1 GB</td>
+                <td class="date">2026-03-30 09:42</td>
+              </tr>
+              <tr class="unread">
+                <td class="cb"><input type="checkbox" checked /></td>
+                <td class="subject">Movie.2024.BluRay.1080p.x264-GROUP [02/52] "movie.2024.part02.rar" yEnc (1/200)</td>
+                <td class="author">poster@news.com</td>
+                <td class="size">8.1 GB</td>
+                <td class="date">2026-03-30 09:42</td>
+              </tr>
+              <tr class="unread selected">
+                <td class="cb"><input type="checkbox" /></td>
+                <td class="subject">TV.Show.S01E05.720p.WEB-DL [1/20] "tv.show.s01e05.rar" yEnc (1/80)</td>
+                <td class="author">tvposter@news</td>
+                <td class="size">1.1 GB</td>
+                <td class="date">2026-03-30 08:15</td>
+              </tr>
+              <tr class="read">
+                <td class="cb"><input type="checkbox" /></td>
+                <td class="subject">Album.Discography.FLAC [1/8] "album.part1.rar" yEnc (1/150)</td>
+                <td class="author">music@post.net</td>
+                <td class="size">2.8 GB</td>
+                <td class="date">2026-03-29 22:30</td>
+              </tr>
+              <tr class="read">
+                <td class="cb"><input type="checkbox" /></td>
+                <td class="subject">Software.Package.v2.0 [1/3] "setup.iso" yEnc (1/500)</td>
+                <td class="author">uploader@net</td>
+                <td class="size">4.3 GB</td>
+                <td class="date">2026-03-29 18:00</td>
+              </tr>
+              <tr class="unread">
+                <td class="cb"><input type="checkbox" /></td>
+                <td class="subject">Game.2024.REPACK [01/45] "game.2024.part01.rar" yEnc (1/180)</td>
+                <td class="author">games@post.com</td>
+                <td class="size">12.4 GB</td>
+                <td class="date">2026-03-29 14:22</td>
+              </tr>
+              <tr class="read">
+                <td class="cb"><input type="checkbox" /></td>
+                <td class="subject">Documentary.Nature.2024 [1/12] "docu.part1.rar" yEnc (1/90)</td>
+                <td class="author">docs@upload.net</td>
+                <td class="size">3.2 GB</td>
+                <td class="date">2026-03-29 11:45</td>
+              </tr>
+              <tr class="unread">
+                <td class="cb"><input type="checkbox" /></td>
+                <td class="subject">Ebook.Collection.2024 [1/1] "ebooks.zip" yEnc (1/5)</td>
+                <td class="author">books@net</td>
+                <td class="size">48 MB</td>
+                <td class="date">2026-03-29 10:00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Download bar -->
+        <div class="download-bar">
+          <span class="selected-count">2 selected · 8.1 GB</span>
+          <span class="spacer"></span>
+          <select class="btn" style="padding:4px 8px">
+            <option>Category: Movies</option>
+            <option>Category: TV</option>
+            <option>Category: Music</option>
+            <option>Category: Software</option>
+          </select>
+          <button class="btn btn-primary" style="font-size:13px;padding:6px 16px">
+            ↓ Download Selected
+          </button>
+        </div>
+
+        <!-- Article preview -->
+        <div class="preview-pane">
+          <div class="preview-header">
+            <div><strong>From:</strong> tvposter@news &nbsp; <strong>Subject:</strong> TV.Show.S01E05.720p.WEB-DL [1/20] "tv.show.s01e05.rar" yEnc (1/80)</div>
+            <div><strong>Date:</strong> 2026-03-30 08:15 &nbsp; <strong>Message-ID:</strong> <span style="color:#484f58">&lt;abc123@news.example.com&gt;</span></div>
+          </div>
+          <div class="preview-body">=ybegin part=1 line=128 size=1153433600 name=tv.show.s01e05.rar
+=ypart begin=1 end=768000
+
+[Binary content - 1.1 GB across 20 parts]
+
+Part 1 of 20 · 768 KB encoded · CRC32 verified ✓</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== HISTORY TAB ==================== -->
+  <div id="tab-history" class="tab-content">
+    <div class="queue-toolbar">
+      <span style="font-size:14px;font-weight:600">Download History</span>
+      <span class="spacer"></span>
+      <button class="btn btn-warn">Clear All</button>
+    </div>
+    <div class="job-list">
+      <div class="history-item">
+        <div class="job-icon">✅</div>
+        <div class="job-info">
+          <div class="job-name">Movie.Classic.1999.Remastered.1080p</div>
+          <div class="job-meta">
+            <span class="tag tag-completed">COMPLETED</span>
+            <span>6.2 GB</span>
+            <span>Movies</span>
+            <span>Verified + Unpacked</span>
+            <span>Completed 2h ago</span>
+          </div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">📋 Logs</button>
+        </div>
+      </div>
+      <div class="history-item">
+        <div class="job-icon">✅</div>
+        <div class="job-info">
+          <div class="job-name">TV.Show.S01E04.720p.WEB-DL</div>
+          <div class="job-meta">
+            <span class="tag tag-completed">COMPLETED</span>
+            <span>980 MB</span>
+            <span>TV</span>
+            <span>Verified + Unpacked</span>
+            <span>Completed 5h ago</span>
+          </div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">📋 Logs</button>
+        </div>
+      </div>
+      <div class="history-item">
+        <div class="job-icon">❌</div>
+        <div class="job-info">
+          <div class="job-name">Broken.Upload.2024</div>
+          <div class="job-meta">
+            <span class="tag tag-failed">FAILED</span>
+            <span>3.4 GB</span>
+            <span>Movies</span>
+            <span style="color:#f85149">PAR2 repair failed: insufficient recovery blocks</span>
+          </div>
+        </div>
+        <div class="job-actions">
+          <button class="btn">🔄 Retry</button>
+          <button class="btn">📋 Logs</button>
+          <button class="btn">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== RSS TAB ==================== -->
+  <div id="tab-rss" class="tab-content">
+    <div class="queue-toolbar">
+      <span style="font-size:14px;font-weight:600">RSS Feeds</span>
+      <span class="spacer"></span>
+      <button class="btn btn-primary">＋ Add Feed</button>
+      <button class="btn">＋ Add Rule</button>
+    </div>
+    <div style="padding:16px;color:#8b949e;">
+      <div class="server-card">
+        <div class="server-info">
+          <div class="server-name">NZBGeek - Movies</div>
+          <div class="server-host">https://api.nzbgeek.info/rss?t=2000&dl=1&... · Polls every 15 min</div>
+        </div>
+        <div class="server-status"><span class="dot dot-green"></span> Active · 234 items</div>
+        <button class="btn">Edit</button>
+      </div>
+      <div class="server-card">
+        <div class="server-info">
+          <div class="server-name">DrunkenSlug - TV</div>
+          <div class="server-host">https://api.drunkenslug.com/rss?t=5000&... · Polls every 15 min</div>
+        </div>
+        <div class="server-status"><span class="dot dot-green"></span> Active · 89 items</div>
+        <button class="btn">Edit</button>
+      </div>
+      <h3 style="margin:20px 0 10px;color:#c9d1d9;font-size:14px">Download Rules</h3>
+      <div class="server-card">
+        <div class="server-info">
+          <div class="server-name">Auto-download 1080p movies</div>
+          <div class="server-host">Regex: <code style="color:#58a6ff">1080p.*BluRay</code> · Category: Movies · Priority: High</div>
+        </div>
+        <div class="server-status"><span class="dot dot-green"></span> Enabled</div>
+        <button class="btn">Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SETTINGS TAB ==================== -->
+  <div id="tab-settings" class="tab-content">
+    <div class="settings-layout">
+      <div class="settings-nav">
+        <div class="settings-nav-item active">Servers</div>
+        <div class="settings-nav-item">Categories</div>
+        <div class="settings-nav-item">General</div>
+        <div class="settings-nav-item">Security</div>
+        <div class="settings-nav-item">Scheduler</div>
+      </div>
+      <div class="settings-content">
+        <div class="settings-section">
+          <h3>News Servers</h3>
+          <div class="server-card">
+            <div class="server-info">
+              <div class="server-name">Viper News (Primary)</div>
+              <div class="server-host">viper.newsgroupdirect.com:563 · SSL · 4 connections · Pipelining: 20</div>
+            </div>
+            <div class="server-status"><span class="dot dot-green"></span> Connected</div>
+            <button class="btn">Test</button>
+            <button class="btn">Edit</button>
+          </div>
+          <div class="server-card">
+            <div class="server-info">
+              <div class="server-name">Frugal Usenet (Backup)</div>
+              <div class="server-host">aunews.frugalusenet.com:563 · SSL · 4 connections · Priority: 1</div>
+            </div>
+            <div class="server-status"><span class="dot dot-gray"></span> Idle</div>
+            <button class="btn">Test</button>
+            <button class="btn">Edit</button>
+          </div>
+          <button class="btn btn-primary" style="margin-top:12px">＋ Add Server</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== LOGS TAB ==================== -->
+  <div id="tab-logs" class="tab-content">
+    <div style="flex:1;padding:12px;font-family:Consolas,monospace;font-size:11px;overflow-y:auto;background:#0d1117;line-height:1.8">
+      <div><span style="color:#484f58">03:42:15</span> <span style="color:#3fb950">INFO</span> Download started: Movie.2024.BluRay.1080p.x264-GROUP (8.1 GB, 52 files)</div>
+      <div><span style="color:#484f58">03:42:15</span> <span style="color:#3fb950">INFO</span> Server viper.newsgroupdirect.com: 4 connections active</div>
+      <div><span style="color:#484f58">03:42:16</span> <span style="color:#3fb950">INFO</span> Pipelining 20 articles per connection</div>
+      <div><span style="color:#484f58">03:42:18</span> <span style="color:#3fb950">INFO</span> Speed: 45.2 MB/s (4 connections × ~11 MB/s each)</div>
+      <div><span style="color:#484f58">03:41:02</span> <span style="color:#3fb950">INFO</span> Post-processing complete: TV.Show.S01E05.720p.WEB-DL</div>
+      <div><span style="color:#484f58">03:40:58</span> <span style="color:#3fb950">INFO</span> Extracted: tv.show.s01e05.mkv (980 MB)</div>
+      <div><span style="color:#484f58">03:40:45</span> <span style="color:#3fb950">INFO</span> PAR2 verify: all files intact (0 damaged)</div>
+      <div><span style="color:#484f58">03:38:12</span> <span style="color:#d29922">WARN</span> Server frugal: Article &lt;abc@def&gt; not found (430), trying viper</div>
+      <div><span style="color:#484f58">03:35:00</span> <span style="color:#3fb950">INFO</span> RSS: Checked NZBGeek-Movies, 0 new items</div>
+      <div><span style="color:#484f58">03:20:00</span> <span style="color:#3fb950">INFO</span> RSS: Checked DrunkenSlug-TV, 2 new items matched rules</div>
+      <div><span style="color:#484f58">03:20:01</span> <span style="color:#3fb950">INFO</span> Auto-queued: TV.Show.S01E05.720p.WEB-DL (from RSS rule)</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <span class="ok">● Connected</span>
+  <span class="sep">|</span>
+  <span>Viper News: 4/4 connections</span>
+  <span class="sep">|</span>
+  <span class="disk">Disk: 234 GB free</span>
+  <span class="sep">|</span>
+  <span>Queue: 3 items · 13.5 GB</span>
+  <span class="sep">|</span>
+  <span>Uptime: 2d 14h</span>
+  <span class="spacer"></span>
+  <span style="color:#484f58">rustnzbd v0.2.0</span>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  // Find the tab element by matching text content
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.textContent.trim().toLowerCase().startsWith(name)) t.classList.add('active');
+  });
+}
+</script>
+
+</body>
+</html>

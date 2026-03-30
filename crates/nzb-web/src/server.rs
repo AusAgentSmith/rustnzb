@@ -18,6 +18,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::auth;
 use crate::error::ApiError;
+use crate::group_handlers;
 use crate::handlers;
 use crate::sabnzbd_compat;
 use crate::state::AppState;
@@ -174,7 +175,22 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         )
         .route("/config/speed-limit", get(handlers::h_get_speed_limit))
         .route("/config/speed-limit", put(handlers::h_set_speed_limit))
-        .route("/browse-directory", get(handlers::h_browse_directory));
+        .route("/browse-directory", get(handlers::h_browse_directory))
+        // Newsgroup browsing
+        .route("/groups", get(group_handlers::h_group_list))
+        .route("/groups/refresh", post(group_handlers::h_group_refresh))
+        .route("/groups/{id}", get(group_handlers::h_group_get))
+        .route("/groups/{id}/status", get(group_handlers::h_group_status))
+        .route("/groups/{id}/subscribe", post(group_handlers::h_group_subscribe))
+        .route("/groups/{id}/unsubscribe", post(group_handlers::h_group_unsubscribe))
+        .route("/groups/{id}/headers", get(group_handlers::h_header_list))
+        .route("/groups/{id}/headers/fetch", post(group_handlers::h_header_fetch))
+        .route("/groups/{id}/headers/mark-read", post(group_handlers::h_header_mark_read))
+        .route("/groups/{id}/headers/mark-all-read", post(group_handlers::h_header_mark_all_read))
+        .route("/groups/{id}/headers/download", post(group_handlers::h_header_download))
+        .route("/groups/{id}/threads", get(group_handlers::h_thread_list))
+        .route("/groups/{gid}/threads/{root_msg_id}", get(group_handlers::h_thread_get))
+        .route("/articles/{message_id}", get(group_handlers::h_article_get));
 
     // Arr-compatible API (Sonarr/Radarr) — uses its own API key auth
     // Sonarr/Radarr hit /api (the standard SABnzbd path), so register both.

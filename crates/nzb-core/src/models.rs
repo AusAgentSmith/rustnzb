@@ -237,6 +237,72 @@ pub struct RssRule {
     pub enabled: bool,
 }
 
+// ---------------------------------------------------------------------------
+// Newsgroup browsing
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupRow {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub subscribed: bool,
+    pub article_count: i64,
+    pub first_article: i64,
+    pub last_article: i64,
+    pub last_scanned: i64,
+    pub last_updated: Option<String>,
+    pub created_at: String,
+    #[serde(default)]
+    pub unread_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeaderRow {
+    pub id: i64,
+    pub group_id: i64,
+    pub article_num: i64,
+    pub subject: String,
+    pub author: String,
+    pub date: String,
+    pub message_id: String,
+    pub references_: String,
+    pub bytes: i64,
+    pub lines: i64,
+    pub read: bool,
+    pub downloaded_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThreadSummary {
+    pub root_message_id: String,
+    pub subject: String,
+    pub author: String,
+    pub date: String,
+    pub last_reply_date: String,
+    pub reply_count: i64,
+    pub unread_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThreadArticle {
+    #[serde(flatten)]
+    pub header: HeaderRow,
+    pub depth: i32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MarkReadInput {
+    pub header_ids: Vec<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DownloadSelectedInput {
+    pub message_ids: Vec<String>,
+    pub name: Option<String>,
+    pub category: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -3,6 +3,7 @@ pub mod bandwidth;
 pub mod dir_watcher;
 pub mod download_engine;
 pub mod error;
+pub mod group_handlers;
 pub mod handlers;
 pub mod log_buffer;
 pub mod queue_manager;

@@ -1266,6 +1266,15 @@ impl QueueManager {
         self.servers.lock().clone()
     }
 
+    /// Access the database for newsgroup browsing operations.
+    pub fn with_db<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&Database) -> R,
+    {
+        let db = self.db.lock();
+        f(&db)
+    }
+
     // -----------------------------------------------------------------------
     // Query methods (for API handlers)
     // -----------------------------------------------------------------------
