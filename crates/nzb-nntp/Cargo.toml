@@ -7,7 +7,6 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
-nzb-core = { workspace = true }
 tokio = { workspace = true }
 tokio-rustls = { workspace = true }
 rustls = { workspace = true }
@@ -21,4 +20,5 @@ webpki-roots = { workspace = true }
 rustls-pki-types = { workspace = true }
 parking_lot = { workspace = true }
 flate2 = { workspace = true }
+serde = { workspace = true }
 tokio-socks = { workspace = true }

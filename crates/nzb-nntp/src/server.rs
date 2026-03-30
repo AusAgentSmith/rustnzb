@@ -6,8 +6,7 @@ use std::time::{Duration, Instant};
 
 use tracing::warn;
 
-use nzb_core::config::ServerConfig;
-
+use crate::config::ServerConfig;
 use crate::error::NntpResult;
 use crate::pool::{ConnectionPool, PooledConnection};
 
@@ -215,6 +214,10 @@ impl ServerState {
         self.pool.idle_count()
     }
 
+    pub async fn wait_for_ramp_up(&self) {
+        self.pool.wait_for_ramp_up().await;
+    }
+
     /// Access the underlying pool directly.
     pub fn pool(&self) -> &ConnectionPool {
         &self.pool
@@ -224,7 +227,7 @@ impl ServerState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nzb_core::config::ServerConfig;
+    use crate::config::ServerConfig;
 
     fn make_config() -> ServerConfig {
         ServerConfig {
@@ -243,6 +246,7 @@ mod tests {
             pipelining: 1,
             optional: false,
             compress: false,
+            ramp_up_delay_ms: 0,
             proxy_url: None,
         }
     }

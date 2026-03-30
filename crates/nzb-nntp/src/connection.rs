@@ -17,7 +17,7 @@ use tokio_rustls::TlsConnector;
 use tokio_socks::tcp::Socks5Stream;
 use tracing::{debug, trace};
 
-use nzb_core::config::ServerConfig;
+use crate::config::ServerConfig;
 
 use crate::error::{NntpError, NntpResult};
 
@@ -761,6 +761,63 @@ impl NntpConnection {
     }
 
     // ------------------------------------------------------------------
+    // LIST ACTIVE
+    // ------------------------------------------------------------------
+
+    /// Fetch the list of active newsgroups from the server.
+    ///
+    /// Sends `LIST ACTIVE` and parses the multi-line response.
+    /// Each line: `groupname last first posting_flag`
+    /// Response code 215 means list follows (dot-terminated).
+    ///
+    /// Optionally pass a wildmat pattern to filter groups (e.g., "alt.binaries.*").
+    pub async fn list_active(
+        &mut self,
+        wildmat: Option<&str>,
+    ) -> NntpResult<Vec<crate::config::ListActiveEntry>> {
+        if self.state != ConnectionState::Ready {
+            return Err(NntpError::Protocol(format!(
+                "Cannot LIST ACTIVE in state {:?}",
+                self.state
+            )));
+        }
+        self.state = ConnectionState::Busy;
+
+        let cmd = match wildmat {
+            Some(pattern) => format!("LIST ACTIVE {pattern}"),
+            None => "LIST ACTIVE".to_string(),
+        };
+        self.send_command(&cmd).await?;
+        let status = self.read_response_line().await?;
+
+        match status.code {
+            215 => {
+                let data = self.read_multiline_body_maybe_decompress().await?;
+                self.state = ConnectionState::Ready;
+                Ok(parse_list_active_data(&data))
+            }
+            481 | 482 => {
+                self.state = ConnectionState::Error;
+                Err(NntpError::Auth(format!(
+                    "LIST ACTIVE rejected ({}): {}",
+                    status.code, status.message
+                )))
+            }
+            502 => {
+                self.state = ConnectionState::Error;
+                Err(NntpError::ServiceUnavailable(status.message))
+            }
+            _ => {
+                self.state = ConnectionState::Error;
+                Err(NntpError::Protocol(format!(
+                    "Unexpected LIST ACTIVE response {}: {}",
+                    status.code, status.message
+                )))
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
     // QUIT
     // ------------------------------------------------------------------
 
@@ -942,6 +999,30 @@ fn parse_xover_data(data: &[u8]) -> Vec<XoverEntry> {
             references: parts[5].to_string(),
             bytes: parts[6].parse().unwrap_or(0),
             lines: parts[7].trim().parse().unwrap_or(0),
+        });
+    }
+
+    entries
+}
+
+fn parse_list_active_data(data: &[u8]) -> Vec<crate::config::ListActiveEntry> {
+    let text = String::from_utf8_lossy(data);
+    let mut entries = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        if parts.len() < 4 {
+            continue;
+        }
+        entries.push(crate::config::ListActiveEntry {
+            name: parts[0].to_string(),
+            high: parts[1].parse().unwrap_or(0),
+            low: parts[2].parse().unwrap_or(0),
+            status: parts[3].to_string(),
         });
     }
 

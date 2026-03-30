@@ -9,9 +9,9 @@ use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
 use tokio::sync::Semaphore;
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 
-use nzb_core::config::ServerConfig;
+use crate::config::ServerConfig;
 
 use crate::connection::{ConnectionState, NntpConnection};
 use crate::error::{NntpError, NntpResult};
@@ -52,17 +52,24 @@ pub struct ConnectionPool {
     semaphore: Arc<Semaphore>,
     /// Total connections ever created (for naming/debug).
     created_count: Mutex<u32>,
+    /// Timestamp of the last connection creation (for ramp-up pacing).
+    last_connect: tokio::sync::Mutex<Instant>,
+    /// Delay between new connection opens (0 = no delay).
+    ramp_up_delay: Duration,
 }
 
 impl ConnectionPool {
     /// Create a new pool for the given server. No connections are opened yet.
     pub fn new(config: Arc<ServerConfig>) -> Self {
         let max_conns = config.connections as usize;
+        let ramp_up_delay = Duration::from_millis(config.ramp_up_delay_ms as u64);
         Self {
             config,
             idle: Mutex::new(Vec::with_capacity(max_conns)),
             semaphore: Arc::new(Semaphore::new(max_conns)),
             created_count: Mutex::new(0),
+            last_connect: tokio::sync::Mutex::new(Instant::now() - Duration::from_secs(60)),
+            ramp_up_delay,
         }
     }
 
@@ -198,12 +205,35 @@ impl ConnectionPool {
         self.semaphore.available_permits()
     }
 
+    pub async fn wait_for_ramp_up(&self) {
+        if self.ramp_up_delay.is_zero() {
+            return;
+        }
+        let mut last = self.last_connect.lock().await;
+        let elapsed = last.elapsed();
+        if elapsed < self.ramp_up_delay {
+            let wait = self.ramp_up_delay - elapsed;
+            trace!(
+                server = %self.config.name,
+                wait_ms = wait.as_millis(),
+                "Ramp-up: waiting before new connection"
+            );
+            tokio::time::sleep(wait).await;
+        }
+        *last = Instant::now();
+    }
+
+    pub fn ramp_up_delay(&self) -> Duration {
+        self.ramp_up_delay
+    }
+
     // ------------------------------------------------------------------
     // Internal
     // ------------------------------------------------------------------
 
     /// Create and connect a new NNTP connection.
     async fn create_connection(&self) -> NntpResult<NntpConnection> {
+        self.wait_for_ramp_up().await;
         let idx = {
             let mut count = self.created_count.lock();
             *count += 1;

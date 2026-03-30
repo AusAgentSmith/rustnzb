@@ -9,7 +9,7 @@ interface ServerConfig {
   id: string; name: string; host: string; port: number; ssl: boolean; ssl_verify: boolean;
   username: string | null; password: string | null; connections: number; priority: number;
   enabled: boolean; retention: number; pipelining: number; optional: boolean; compress: boolean;
-  proxy_url: string | null;
+  ramp_up_delay_ms: number; proxy_url: string | null;
 }
 
 interface CategoryConfig {
@@ -21,7 +21,7 @@ function emptyServer(): ServerConfig {
     id: '', name: '', host: '', port: 563, ssl: true, ssl_verify: true,
     username: null, password: null, connections: 8, priority: 0,
     enabled: true, retention: 0, pipelining: 16, optional: false, compress: false,
-    proxy_url: null,
+    ramp_up_delay_ms: 250, proxy_url: null,
   };
 }
 
