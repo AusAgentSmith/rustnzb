@@ -40,8 +40,8 @@ async fn h_root() -> Response {
 async fn h_spa_fallback(uri: axum::http::Uri) -> Response {
     let path = uri.path().trim_start_matches('/');
     // Try exact file first
-    if !path.is_empty()
-        && let Some(content) = StaticAssets::get(path) {
+    if !path.is_empty() {
+        if let Some(content) = StaticAssets::get(path) {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
             return (
                 StatusCode::OK,
@@ -50,6 +50,7 @@ async fn h_spa_fallback(uri: axum::http::Uri) -> Response {
             )
                 .into_response();
         }
+    }
     // SPA fallback to index.html
     serve_embedded_file("index.html")
 }
