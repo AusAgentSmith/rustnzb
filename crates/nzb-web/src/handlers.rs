@@ -754,7 +754,7 @@ pub async fn h_server_test_inline(
 }
 
 async fn test_server_connection(server: ServerConfig) -> Result<String, String> {
-    use nzb_nntp::connection::NntpConnection;
+    use nzb_core::nzb_nntp::connection::NntpConnection;
 
     let mut conn = NntpConnection::new(format!("test-{}", server.id));
     conn.connect(&server)

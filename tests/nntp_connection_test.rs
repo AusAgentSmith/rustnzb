@@ -7,7 +7,7 @@
 //! Tests are skipped on CI or when credentials are not set.
 
 use nzb_core::config::ServerConfig;
-use nzb_nntp::NntpConnection;
+use nzb_core::nzb_nntp::NntpConnection;
 
 /// Helper to build a ServerConfig for testing.
 fn make_config(

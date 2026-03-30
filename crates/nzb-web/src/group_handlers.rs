@@ -50,7 +50,7 @@ pub async fn h_group_list(
 pub async fn h_group_refresh(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    use nzb_nntp::connection::NntpConnection;
+    use nzb_core::nzb_nntp::connection::NntpConnection;
 
     let servers = state.queue_manager.get_servers();
     let server = servers
@@ -174,7 +174,7 @@ pub async fn h_header_fetch(
     State(state): State<Arc<AppState>>,
     Path(group_id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    use nzb_nntp::connection::NntpConnection;
+    use nzb_core::nzb_nntp::connection::NntpConnection;
 
     let group = state
         .queue_manager
@@ -322,7 +322,7 @@ pub async fn h_article_get(
     State(state): State<Arc<AppState>>,
     Path(message_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    use nzb_nntp::connection::NntpConnection;
+    use nzb_core::nzb_nntp::connection::NntpConnection;
 
     // Auto-mark as read
     state.queue_manager.with_db(|db| {

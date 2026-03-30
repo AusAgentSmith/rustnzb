@@ -94,7 +94,6 @@ edition.workspace = true
 [dependencies]
 nzb-core = { workspace = true }
 nzb-web = { workspace = true }
-nzb-nntp = { workspace = true }
 rustls = { workspace = true }
 nzb-decode = { workspace = true }
 nzb-postproc = { workspace = true }
@@ -119,3 +118,6 @@ arc-swap.workspace = true
 
 [patch."https://github.com/AusAgentSmith-org/nzb-nntp.git"]
 nzb-nntp = { path = "crates/nzb-nntp" }
+
+[patch."https://github.com/AusAgentSmith-org/nzb-core.git"]
+nzb-core = { path = "/home/sprooty/Working/libs/nzb-core" }

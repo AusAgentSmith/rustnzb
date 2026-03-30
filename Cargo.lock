@@ -1726,7 +1726,6 @@ dependencies = [
 [[package]]
 name = "nzb-core"
 version = "0.1.1"
-source = "git+https://github.com/AusAgentSmith-org/nzb-core.git?tag=v0.1.2#1c7a10d513963aca1026c27fd7ea0100cd6b0dea"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1812,7 +1811,6 @@ dependencies = [
  "notify",
  "nzb-core",
  "nzb-decode",
- "nzb-nntp",
  "nzb-postproc",
  "parking_lot",
  "rand 0.9.2",
@@ -2563,7 +2561,6 @@ dependencies = [
  "clap",
  "nzb-core",
  "nzb-decode",
- "nzb-nntp",
  "nzb-postproc",
  "nzb-web",
  "opentelemetry",
