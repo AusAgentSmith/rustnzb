@@ -1163,7 +1163,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -1759,7 +1759,7 @@ dependencies = [
 [[package]]
 name = "nzb-nntp"
 version = "0.1.0"
-source = "git+https://github.com/AusAgentSmith/nzb-nntp.git#cfe61488a9b420acf207f561d9056641780f14df"
+source = "git+https://github.com/AusAgentSmith/nzb-nntp.git#67c55a53889e207b10e35b9b4420f2ee789119be"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2174,7 +2174,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -2211,7 +2211,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.52.0",
 ]
