@@ -1,13 +1,23 @@
 FROM rust:1.88-alpine3.21 AS builder
 
-RUN apk add --no-cache musl-dev build-base protoc openssl-dev openssl-libs-static curl
+RUN apk add --no-cache musl-dev build-base protoc openssl-dev openssl-libs-static curl nodejs npm
 
 WORKDIR /build
 
-COPY Cargo.toml Cargo.lock ./
+# Install Angular dependencies first (cached layer)
+COPY frontend/package.json frontend/package-lock.json frontend/
+RUN cd frontend && npm ci
+
+# Copy frontend source and build
+COPY frontend frontend
+RUN cd frontend && npx ng build --configuration=production
+
+# Copy Rust source
+COPY Cargo.toml Cargo.lock build.rs ./
 COPY crates crates
 COPY src src
 
+# Build Rust binary (build.rs skips ng build since dist already exists)
 RUN cargo build --release
 
 
