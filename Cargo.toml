@@ -1,10 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/nzb-core",
     "crates/nzb-web",
-    "crates/nzb-decode",
-    "crates/nzb-postproc",
 ]
 exclude = ["benchnzb", "desktop"]
 
@@ -78,12 +75,13 @@ notify = "7"
 feed-rs = "2"
 
 # Internal crates
-nzb-core = { path = "crates/nzb-core" }
 nzb-web = { path = "crates/nzb-web" }
-nzb-nntp = { git = "https://github.com/AusAgentSmith/nzb-nntp.git" }
-nzb-decode = { path = "crates/nzb-decode" }
-nzb-postproc = { path = "crates/nzb-postproc" }
-rust-par2 = { git = "https://github.com/AusAgentSmith-org/Rust-PAR2" }
+# External NZB crates
+nzb-nntp = { git = "https://github.com/AusAgentSmith/nzb-nntp.git", tag = "v0.1.0" }
+nzb-core = { git = "https://github.com/AusAgentSmith-org/nzb-core.git", tag = "v0.1.0", features = ["groups-db"] }
+nzb-decode = { git = "https://github.com/AusAgentSmith-org/nzb-decode.git", tag = "v0.1.0" }
+nzb-postproc = { git = "https://github.com/AusAgentSmith-org/nzb-postproc.git", tag = "v0.1.0" }
+rust-par2 = "0.1"
 yenc-simd = "0.1"
 
 [package]

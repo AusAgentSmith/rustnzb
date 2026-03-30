@@ -1724,6 +1724,7 @@ dependencies = [
 [[package]]
 name = "nzb-core"
 version = "0.1.0"
+source = "git+https://github.com/AusAgentSmith-org/nzb-core.git?tag=v0.1.0#39aa4628b75390792f90bd2c32c722a78fc74d25"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1733,7 +1734,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror 2.0.18",
  "toml",
  "tracing",
@@ -1743,13 +1743,12 @@ dependencies = [
 [[package]]
 name = "nzb-decode"
 version = "0.1.0"
+source = "git+https://github.com/AusAgentSmith-org/nzb-decode.git?tag=v0.1.0#2c331c5c843d42fb979ac72d1a03226c3a39d678"
 dependencies = [
  "anyhow",
  "bytes",
  "crc32fast",
- "nzb-core",
  "parking_lot",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -1759,7 +1758,7 @@ dependencies = [
 [[package]]
 name = "nzb-nntp"
 version = "0.1.0"
-source = "git+https://github.com/AusAgentSmith/nzb-nntp.git#67c55a53889e207b10e35b9b4420f2ee789119be"
+source = "git+https://github.com/AusAgentSmith/nzb-nntp.git?tag=v0.1.0#4e25c4238b028ed15ad1f98f8a98db3df1f2e324"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1781,11 +1780,11 @@ dependencies = [
 [[package]]
 name = "nzb-postproc"
 version = "0.1.0"
+source = "git+https://github.com/AusAgentSmith-org/nzb-postproc.git?tag=v0.1.0#4f9bfa926fd11b0f0dd3695d6dcf0f3590486c49"
 dependencies = [
  "anyhow",
  "nzb-core",
  "rust-par2",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -2484,7 +2483,8 @@ dependencies = [
 [[package]]
 name = "rust-par2"
 version = "0.1.0"
-source = "git+https://github.com/AusAgentSmith-org/Rust-PAR2#176cbc2271b51752f635afd634cdf722daf0db67"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7b1b121bbc5e2f7b622361ed170de7f1881361b7a1093781e71e67ad6bbdb88"
 dependencies = [
  "crc32fast",
  "md-5",
