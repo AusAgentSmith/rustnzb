@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/nzb-core",
     "crates/nzb-web",
+    "crates/nzb-nntp",
     "crates/nzb-decode",
     "crates/nzb-postproc",
 ]
@@ -80,7 +81,7 @@ feed-rs = "2"
 # Internal crates
 nzb-core = { path = "crates/nzb-core" }
 nzb-web = { path = "crates/nzb-web" }
-nzb-nntp = { git = "https://github.com/AusAgentSmith/nzb-nntp.git" }
+nzb-nntp = { path = "crates/nzb-nntp" }
 nzb-decode = { path = "crates/nzb-decode" }
 nzb-postproc = { path = "crates/nzb-postproc" }
 rust-par2 = { git = "https://github.com/AusAgentSmith-org/Rust-PAR2" }

@@ -25,7 +25,6 @@ fn usenet_farm_config() -> ServerConfig {
         pipelining: 1,
         optional: false,
         compress: false,
-        proxy_url: None,
     }
 }
 

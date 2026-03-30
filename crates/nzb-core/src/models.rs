@@ -143,8 +143,28 @@ pub struct NzbFile {
     pub articles: Vec<Article>,
 }
 
-/// A single NNTP article (segment of a file) — re-exported from the `nzb-nntp` crate.
-pub use nzb_nntp::Article;
+/// A single NNTP article (segment of a file).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Article {
+    /// Message-ID (e.g., "abc123@example.com")
+    pub message_id: String,
+    /// Segment number (1-based part number)
+    pub segment_number: u32,
+    /// Encoded size in bytes
+    pub bytes: u64,
+    /// Has this article been downloaded?
+    pub downloaded: bool,
+    /// Byte offset in the final file (set after yEnc decode)
+    pub data_begin: Option<u64>,
+    /// Size of decoded data for this segment
+    pub data_size: Option<u64>,
+    /// CRC32 of decoded data
+    pub crc32: Option<u32>,
+    /// Servers that have been tried for this article
+    pub tried_servers: Vec<String>,
+    /// Number of fetch attempts
+    pub tries: u32,
+}
 
 // ---------------------------------------------------------------------------
 // History record (for completed/failed jobs)

@@ -117,8 +117,67 @@ impl Default for OtelConfig {
     }
 }
 
-/// NNTP server configuration — re-exported from the `nzb-nntp` crate.
-pub use nzb_nntp::ServerConfig;
+/// NNTP server configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerConfig {
+    /// Unique server identifier
+    pub id: String,
+    /// Display name
+    pub name: String,
+    /// Server hostname
+    pub host: String,
+    /// Server port
+    pub port: u16,
+    /// Use SSL/TLS
+    pub ssl: bool,
+    /// Verify SSL certificates
+    pub ssl_verify: bool,
+    /// Username for authentication
+    pub username: Option<String>,
+    /// Password for authentication
+    pub password: Option<String>,
+    /// Max simultaneous connections
+    pub connections: u16,
+    /// Server priority (0 = highest)
+    pub priority: u8,
+    /// Enable this server
+    pub enabled: bool,
+    /// Article retention in days (0 = unlimited)
+    pub retention: u32,
+    /// Number of pipelined requests per connection
+    pub pipelining: u8,
+    /// Server is optional (failure is non-fatal)
+    pub optional: bool,
+    /// Enable XFEATURE COMPRESS GZIP negotiation
+    #[serde(default)]
+    pub compress: bool,
+    /// Optional SOCKS5 proxy URL: socks5://[username:password@]host:port
+    #[serde(default)]
+    pub proxy_url: Option<String>,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: String::new(),
+            host: String::new(),
+            port: 563,
+            ssl: true,
+            ssl_verify: true,
+            username: None,
+            password: None,
+            connections: 8,
+            priority: 0,
+            enabled: true,
+            retention: 0,
+            pipelining: 1,
+            optional: false,
+            compress: false,
+            proxy_url: None,
+        }
+    }
+}
 
 /// Category configuration for organizing downloads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,12 +291,14 @@ mod tests {
         assert!(cfg.ssl_verify);
         assert!(cfg.username.is_none());
         assert!(cfg.password.is_none());
-        assert_eq!(cfg.connections, 4);
+        assert_eq!(cfg.connections, 8);
         assert_eq!(cfg.priority, 0);
         assert!(cfg.enabled);
         assert_eq!(cfg.retention, 0);
         assert_eq!(cfg.pipelining, 1);
         assert!(!cfg.optional);
+        // ID should be a valid UUID
+        assert!(uuid::Uuid::parse_str(&cfg.id).is_ok());
     }
 
     #[test]
