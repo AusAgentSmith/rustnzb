@@ -643,6 +643,9 @@ async fn download_worker_pipelined(
                     Ok(response) => {
                         consecutive_errors = 0;
                         let raw_data = response.data.unwrap_or_default();
+                        // Yield to the runtime so other tasks (HTTP server, etc.)
+                        // get scheduled between CPU-bound decode+assemble work.
+                        tokio::task::yield_now().await;
                         match decode_and_assemble(&item, &raw_data, assembler) {
                             Ok(process_result) => {
                                 total_decode_us
