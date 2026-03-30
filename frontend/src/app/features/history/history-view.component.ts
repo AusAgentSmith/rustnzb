@@ -5,6 +5,18 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/services/api.service';
 import { HistoryEntry } from '../../core/models/queue.model';
 
+interface LogEntry {
+  seq: number;
+  timestamp: string;
+  level: string;
+  message: string;
+}
+
+interface LogsResponse {
+  entries: LogEntry[];
+  latest_seq: number;
+}
+
 @Component({
   selector: 'app-history-view',
   standalone: true,
@@ -19,27 +31,46 @@ import { HistoryEntry } from '../../core/models/queue.model';
     </div>
     <div class="list">
       @for (e of entries(); track e.id) {
-        <div class="item">
-          <div class="icon">{{ e.status === 'completed' ? '✅' : '❌' }}</div>
-          <div class="info">
-            <div class="name">{{ e.name }}</div>
-            <div class="meta">
-              <span class="tag" [class]="'tag-' + e.status">{{ e.status | uppercase }}</span>
-              <span>{{ formatBytes(e.total_bytes) }}</span>
-              @if (e.category) { <span>{{ e.category }}</span> }
-              @for (s of e.stages; track s.name) {
-                <span>{{ s.name }}: {{ s.status }}</span>
+        <div class="item-wrapper">
+          <div class="item">
+            <div class="icon">{{ e.status === 'completed' ? '✅' : '❌' }}</div>
+            <div class="info">
+              <div class="name">{{ e.name }}</div>
+              <div class="meta">
+                <span class="tag" [class]="'tag-' + e.status">{{ e.status | uppercase }}</span>
+                <span>{{ formatBytes(e.total_bytes) }}</span>
+                @if (e.category) { <span>{{ e.category }}</span> }
+                @for (s of e.stages; track s.name) {
+                  <span>{{ s.name }}: {{ s.status }}</span>
+                }
+                @if (e.error_message) { <span class="error-msg">{{ e.error_message }}</span> }
+                <span>{{ e.completed_at }}</span>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn" (click)="toggleLogs(e.id)">Logs</button>
+              @if (e.status === 'failed') {
+                <button class="btn" (click)="retry(e.id)">🔄 Retry</button>
               }
-              @if (e.error_message) { <span class="error-msg">{{ e.error_message }}</span> }
-              <span>{{ e.completed_at }}</span>
+              <button class="btn" (click)="remove(e.id)">✕</button>
             </div>
           </div>
-          <div class="actions">
-            @if (e.status === 'failed') {
-              <button class="btn" (click)="retry(e.id)">🔄 Retry</button>
-            }
-            <button class="btn" (click)="remove(e.id)">✕</button>
-          </div>
+          @if (expandedLogs()[e.id]) {
+            <div class="log-viewer">
+              @if (expandedLogs()[e.id]!.loading) {
+                <div class="log-loading">Loading logs...</div>
+              } @else if (expandedLogs()[e.id]!.entries.length === 0) {
+                <div class="log-empty">No log entries</div>
+              } @else {
+                @for (log of expandedLogs()[e.id]!.entries; track log.seq) {
+                  <div class="log-line" [class]="'log-' + log.level.toLowerCase()">
+                    <span class="log-ts">{{ log.timestamp }}</span>
+                    <span class="log-msg">{{ log.message }}</span>
+                  </div>
+                }
+              }
+            </div>
+          }
         </div>
       }
       @if (entries().length === 0) {
@@ -56,7 +87,8 @@ import { HistoryEntry } from '../../core/models/queue.model';
     .btn:hover { background: #30363d; }
     .btn.warn { background: #da3633; border-color: #f85149; color: white; }
     .list { flex: 1; overflow-y: auto; }
-    .item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #21262d; }
+    .item-wrapper { border-bottom: 1px solid #21262d; }
+    .item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
     .item:hover { background: #161b22; }
     .icon { font-size: 18px; width: 24px; text-align: center; }
     .info { flex: 1; min-width: 0; }
@@ -68,10 +100,20 @@ import { HistoryEntry } from '../../core/models/queue.model';
     .error-msg { color: #f85149; }
     .actions { display: flex; gap: 4px; }
     .empty { text-align: center; padding: 48px; color: #484f58; }
+    .log-viewer { background: #0d1117; padding: 12px; font-family: monospace; font-size: 11px; max-height: 300px; overflow-y: auto; border-top: 1px solid #30363d; margin: 0 16px 8px 16px; border-radius: 4px; border: 1px solid #30363d; }
+    .log-loading, .log-empty { color: #484f58; padding: 8px 0; }
+    .log-line { display: flex; gap: 8px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+    .log-ts { color: #484f58; flex-shrink: 0; }
+    .log-msg { flex: 1; }
+    .log-info .log-msg { color: #8b949e; }
+    .log-warn .log-msg { color: #d29922; }
+    .log-error .log-msg { color: #f85149; }
+    .log-debug .log-msg { color: #6e7681; }
   `],
 })
 export class HistoryViewComponent implements OnInit {
   entries = signal<HistoryEntry[]>([]);
+  expandedLogs = signal<Record<string, { entries: LogEntry[]; loading: boolean }>>({});
 
   constructor(private api: ApiService, private snack: MatSnackBar) {}
 
@@ -94,6 +136,28 @@ export class HistoryViewComponent implements OnInit {
 
   clearAll(): void {
     this.api.delete('/history').subscribe(() => { this.load(); this.snack.open('History cleared', 'Close', { duration: 2000 }); });
+  }
+
+  toggleLogs(id: string): void {
+    const current = this.expandedLogs();
+    if (current[id]) {
+      const { [id]: _, ...rest } = current;
+      this.expandedLogs.set(rest);
+    } else {
+      this.expandedLogs.set({ ...current, [id]: { entries: [], loading: true } });
+      this.api.get<LogsResponse>(`/history/${id}/logs`).subscribe({
+        next: r => {
+          const updated = { ...this.expandedLogs() };
+          updated[id] = { entries: r.entries || [], loading: false };
+          this.expandedLogs.set(updated);
+        },
+        error: () => {
+          const updated = { ...this.expandedLogs() };
+          updated[id] = { entries: [], loading: false };
+          this.expandedLogs.set(updated);
+        },
+      });
+    }
   }
 
   formatBytes(b: number): string {
