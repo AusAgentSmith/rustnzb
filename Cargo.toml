@@ -108,6 +108,10 @@ opentelemetry-otlp = { workspace = true }
 tracing-opentelemetry = { workspace = true }
 opentelemetry-appender-tracing = { workspace = true }
 
+# Patch rust-par2 to conditionally enable md5-asm (GNU assembly doesn't compile on Windows MSVC)
+[patch.crates-io]
+rust-par2 = { path = "patches/rust-par2" }
+
 [dev-dependencies]
 reqwest = { workspace = true, features = ["multipart", "json"] }
 serde_json = { workspace = true }
