@@ -28,6 +28,7 @@ use nzb_nntp::connection::NntpConnection;
 use nzb_nntp::error::NntpError;
 
 use crate::bandwidth::BandwidthLimiter;
+use crate::util::normalize_nfc;
 
 /// Max times to retry an article on the SAME server before trying the next.
 const MAX_TRIES_PER_SERVER: u32 = 3;
@@ -657,7 +658,7 @@ async fn download_worker_pipelined(
                                     yenc_names
                                         .lock()
                                         .entry(item.file_id.clone())
-                                        .or_insert_with(|| yname.clone());
+                                        .or_insert_with(|| normalize_nfc(yname));
                                 }
                                 // Throttle via bandwidth limiter
                                 if let Some(n) =
@@ -919,7 +920,7 @@ async fn download_worker_serial(
                     yenc_names
                         .lock()
                         .entry(item.file_id.clone())
-                        .or_insert_with(|| yname.clone());
+                        .or_insert_with(|| normalize_nfc(yname));
                 }
                 // Throttle via bandwidth limiter
                 if let Some(n) = std::num::NonZeroU32::new(process_result.decoded_bytes as u32) {

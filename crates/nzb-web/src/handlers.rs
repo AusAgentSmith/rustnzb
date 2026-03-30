@@ -10,6 +10,7 @@ use nzb_core::config::{CategoryConfig, RssFeedConfig, ServerConfig};
 use nzb_core::models::*;
 use nzb_core::nzb_parser;
 use nzb_core::sabnzbd_import;
+use crate::util::normalize_job_names;
 
 use crate::error::ApiError;
 use crate::log_buffer::LogEntry;
@@ -216,6 +217,7 @@ pub async fn h_queue_add(
         // Store the raw NZB data for later retry
         let nzb_data = data.to_vec();
         let mut job = nzb_parser::parse_nzb(&name, &data).map_err(ApiError::from)?;
+        normalize_job_names(&mut job);
 
         // Apply category
         if let Some(ref cat) = q.category {
@@ -351,6 +353,7 @@ pub async fn h_queue_add_url(
 
     let nzb_data = data.to_vec();
     let mut job = nzb_parser::parse_nzb(&job_name, &data).map_err(ApiError::from)?;
+    normalize_job_names(&mut job);
 
     if let Some(ref cat) = body.category
         && !cat.is_empty()
@@ -529,6 +532,7 @@ pub async fn h_history_retry(
 
     // Re-parse the NZB
     let mut job = nzb_parser::parse_nzb(&entry.name, &nzb_data).map_err(ApiError::from)?;
+    normalize_job_names(&mut job);
     job.category = entry.category.clone();
 
     // Set working directories
@@ -1063,6 +1067,7 @@ pub async fn h_rss_item_download(
 
     let mut job = nzb_parser::parse_nzb(&item.title, &data)
         .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to parse NZB: {}", e)))?;
+    normalize_job_names(&mut job);
 
     // Use the item's category or feed category
     if let Some(ref cat) = item.category {

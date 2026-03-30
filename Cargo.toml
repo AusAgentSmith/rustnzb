@@ -73,6 +73,7 @@ flate2 = "1"
 tokio-socks = "0.5"
 notify = "7"
 feed-rs = "2"
+unicode-normalization = "0.1"
 
 # Internal crates
 nzb-web = { path = "crates/nzb-web" }

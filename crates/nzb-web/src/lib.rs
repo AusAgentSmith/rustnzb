@@ -12,6 +12,7 @@ pub mod sabnzbd_compat;
 pub mod server;
 pub mod startup;
 pub mod state;
+pub mod util;
 
 pub use log_buffer::{LogBuffer, LogBufferLayer};
 pub use queue_manager::QueueManager;

@@ -16,6 +16,7 @@ use nzb_core::nzb_parser;
 
 use crate::error::ApiError;
 use crate::state::AppState;
+use crate::util::normalize_job_names;
 
 /// Arr-compatible API request -- all parameters come as query strings.
 #[derive(Deserialize, Default)]
@@ -174,6 +175,7 @@ pub async fn h_sabnzbd_api_post(
 
             match nzb_parser::parse_nzb(&job_name, &data) {
                 Ok(mut job) => {
+                    normalize_job_names(&mut job);
                     if let Some(ref c) = cat
                         && !c.is_empty()
                     {
@@ -265,6 +267,7 @@ pub async fn h_sabnzbd_api_post(
 
             match nzb_parser::parse_nzb(&job_name, &data) {
                 Ok(mut job) => {
+                    normalize_job_names(&mut job);
                     if let Some(ref c) = cat
                         && !c.is_empty()
                     {
