@@ -2484,7 +2484,9 @@ dependencies = [
 
 [[package]]
 name = "rust-par2"
-version = "0.1.0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b3ed2f527a5f43e2b5e028b3802f137713222734fa494b93ed7680dd8c06aa9"
 dependencies = [
  "crc32fast",
  "md-5",
