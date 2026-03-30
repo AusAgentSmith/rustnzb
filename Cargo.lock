@@ -1726,6 +1726,7 @@ dependencies = [
 [[package]]
 name = "nzb-core"
 version = "0.1.1"
+source = "git+https://github.com/AusAgentSmith-org/nzb-core.git?tag=v0.1.2#1c7a10d513963aca1026c27fd7ea0100cd6b0dea"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1781,7 +1782,7 @@ dependencies = [
 [[package]]
 name = "nzb-postproc"
 version = "0.1.2"
-source = "git+https://github.com/AusAgentSmith-org/nzb-postproc.git?tag=v0.1.2#63ddc98234521c99771add2fc0160b84cb24f9c8"
+source = "git+https://github.com/AusAgentSmith-org/nzb-postproc.git?tag=v0.1.2#8487a62c425f5e2b95c4f8f28eb432f2d6c3000d"
 dependencies = [
  "anyhow",
  "nzb-core",
