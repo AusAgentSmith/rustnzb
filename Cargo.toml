@@ -92,7 +92,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-nzb-core = { workspace = true }
 nzb-web = { workspace = true }
 rustls = { workspace = true }
 nzb-decode = { workspace = true }

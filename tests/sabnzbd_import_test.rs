@@ -1,4 +1,4 @@
-use nzb_core::sabnzbd_import::*;
+use nzb_web::nzb_core::sabnzbd_import::*;
 
 // ---------------------------------------------------------------------------
 // INI parsing — using benchnzb/configs/sabnzbd.ini

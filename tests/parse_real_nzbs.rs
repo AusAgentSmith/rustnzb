@@ -1,4 +1,4 @@
-use nzb_core::nzb_parser;
+use nzb_web::nzb_core::nzb_parser;
 use std::path::Path;
 
 #[test]

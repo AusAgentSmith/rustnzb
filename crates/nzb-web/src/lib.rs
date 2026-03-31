@@ -1,4 +1,4 @@
-pub(crate) use nzb_postproc::nzb_core;
+pub use nzb_postproc::nzb_core;
 
 pub mod auth;
 pub mod bandwidth;

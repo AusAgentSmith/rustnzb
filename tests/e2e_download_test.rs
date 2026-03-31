@@ -3,10 +3,10 @@
 //! Uses the smallest NZB (We.Bury.The.Dead) and fetches a small par2 file (single article)
 //! plus the first few articles of a RAR file to verify the full pipeline.
 
-use nzb_core::config::ServerConfig;
-use nzb_core::nzb_parser;
+use nzb_web::nzb_core::config::ServerConfig;
+use nzb_web::nzb_core::nzb_parser;
 use nzb_decode::yenc;
-use nzb_core::nzb_nntp::NntpConnection;
+use nzb_web::nzb_core::nzb_nntp::NntpConnection;
 
 fn usenet_farm_config() -> ServerConfig {
     ServerConfig {

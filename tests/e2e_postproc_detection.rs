@@ -13,7 +13,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use nzb_core::models::StageStatus;
+use nzb_web::nzb_core::models::StageStatus;
 use nzb_postproc::detect::{ArchiveType, find_archives, find_cleanup_files, find_par2_files};
 use nzb_postproc::pipeline::{PostProcConfig, run_pipeline};
 

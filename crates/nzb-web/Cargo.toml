@@ -31,6 +31,7 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 nzb-postproc = { workspace = true }
+nzb-core = { workspace = true }
 notify = { workspace = true }
 feed-rs = { workspace = true }
 regex = { workspace = true }

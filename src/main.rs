@@ -7,7 +7,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use nzb_core::config::AppConfig;
+use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::{LogBuffer, LogBufferLayer, StartupConfig};
 
 #[derive(Parser, Debug)]
