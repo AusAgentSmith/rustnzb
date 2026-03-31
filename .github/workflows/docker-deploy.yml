@@ -47,7 +47,7 @@ jobs:
         run: cargo check --workspace
 
       - name: Run tests
-        run: cargo test --workspace --lib
+        run: cargo test --workspace
 
       - name: Clippy
         run: cargo clippy --workspace -- -D warnings
@@ -59,6 +59,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure git for private deps
+        run: git config --global url."https://x-access-token:${{ secrets.GHCR_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -76,7 +79,7 @@ jobs:
         run: cargo build --workspace --release
 
       - name: Run tests
-        run: cargo test --workspace --lib
+        run: cargo test --workspace
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
