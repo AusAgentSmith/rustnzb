@@ -15,10 +15,10 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use nzb_web::auth;
-use nzb_web::error::ApiError;
 use crate::group_handlers;
 use crate::handlers;
+use nzb_web::auth;
+use nzb_web::error::ApiError;
 use nzb_web::sabnzbd_compat;
 use nzb_web::state::AppState;
 

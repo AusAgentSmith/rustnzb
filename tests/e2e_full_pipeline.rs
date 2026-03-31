@@ -8,9 +8,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
+use nzb_web::auth::{CredentialStore, TokenStore};
 use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::nzb_core::db::Database;
-use nzb_web::auth::{CredentialStore, TokenStore};
 use nzb_web::server::build_router;
 use nzb_web::{AppState, QueueManager};
 
