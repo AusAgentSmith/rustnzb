@@ -6,10 +6,10 @@ use axum::response::IntoResponse;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use nzb_core::config::{CategoryConfig, RssFeedConfig, ServerConfig};
-use nzb_core::models::*;
-use nzb_core::nzb_parser;
-use nzb_core::sabnzbd_import;
+use crate::nzb_core::config::{CategoryConfig, RssFeedConfig, ServerConfig};
+use crate::nzb_core::models::*;
+use crate::nzb_core::nzb_parser;
+use crate::nzb_core::sabnzbd_import;
 
 use crate::error::ApiError;
 use crate::log_buffer::LogEntry;
@@ -610,7 +610,7 @@ pub async fn h_logs(
 /// GET /api/config -- Get current configuration.
 pub async fn h_config_get(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<nzb_core::config::AppConfig>, ApiError> {
+) -> Result<Json<crate::nzb_core::config::AppConfig>, ApiError> {
     Ok(Json((*state.config()).clone()))
 }
 
@@ -754,7 +754,7 @@ pub async fn h_server_test_inline(
 }
 
 async fn test_server_connection(server: ServerConfig) -> Result<String, String> {
-    use nzb_core::nzb_nntp::connection::NntpConnection;
+    use crate::nzb_core::nzb_nntp::connection::NntpConnection;
 
     let mut conn = NntpConnection::new(format!("test-{}", server.id));
     conn.connect(&server)
@@ -794,7 +794,7 @@ pub async fn h_history_logs(
 /// GET /api/config/categories -- List configured categories.
 pub async fn h_categories_list(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<nzb_core::config::CategoryConfig>>, ApiError> {
+) -> Result<Json<Vec<crate::nzb_core::config::CategoryConfig>>, ApiError> {
     Ok(Json(state.config().categories.clone()))
 }
 
@@ -1468,7 +1468,7 @@ pub async fn h_queue_bulk_action(
                 let cat = body.value.as_ref().and_then(|v| v.as_str()).unwrap_or("");
                 qm.change_job_category(id, cat)
             }
-            _ => Err(nzb_core::NzbError::Other(format!(
+            _ => Err(crate::nzb_core::NzbError::Other(format!(
                 "Unknown action: {}",
                 body.action
             ))),

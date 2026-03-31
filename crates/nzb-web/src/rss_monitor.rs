@@ -6,8 +6,8 @@ use arc_swap::ArcSwap;
 use chrono::Utc;
 use tracing::{info, warn};
 
-use nzb_core::config::{AppConfig, RssFeedConfig};
-use nzb_core::models::{Priority, RssItem};
+use crate::nzb_core::config::{AppConfig, RssFeedConfig};
+use crate::nzb_core::models::{Priority, RssItem};
 
 use crate::queue_manager::QueueManager;
 
@@ -327,7 +327,7 @@ impl RssMonitor {
         }
         let data = response.bytes().await?;
 
-        let mut job = nzb_core::nzb_parser::parse_nzb(name, &data)?;
+        let mut job = crate::nzb_core::nzb_parser::parse_nzb(name, &data)?;
 
         if let Some(cat) = category {
             job.category = cat.to_string();

@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
-use nzb_core::config::{CategoryConfig, ServerConfig};
-use nzb_core::db::Database;
-use nzb_core::models::*;
-use nzb_core::nzb_parser;
+use crate::nzb_core::config::{CategoryConfig, ServerConfig};
+use crate::nzb_core::db::Database;
+use crate::nzb_core::models::*;
+use crate::nzb_core::nzb_parser;
 use nzb_postproc::{PostProcConfig, run_pipeline};
 
 use crate::bandwidth::BandwidthLimiter;
@@ -306,7 +306,7 @@ impl QueueManager {
         self: &Arc<Self>,
         mut job: NzbJob,
         nzb_data: Option<Vec<u8>>,
-    ) -> nzb_core::Result<()> {
+    ) -> crate::nzb_core::Result<()> {
         // Ensure work directory exists
         std::fs::create_dir_all(&job.work_dir)?;
 
@@ -874,7 +874,7 @@ impl QueueManager {
         self: &Arc<Self>,
         id: &str,
         priority: Priority,
-    ) -> nzb_core::Result<()> {
+    ) -> crate::nzb_core::Result<()> {
         let max = self.max_active_downloads.load(Ordering::Relaxed);
 
         // 1. Update priority
@@ -882,7 +882,7 @@ impl QueueManager {
             let mut jobs = self.jobs.lock();
             let job_state = jobs
                 .get_mut(id)
-                .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
+                .ok_or_else(|| crate::nzb_core::NzbError::JobNotFound(id.to_string()))?;
             job_state.job.priority = priority;
             let db = self.db.lock();
             db.queue_update_priority(id, priority as i32)?;
@@ -1013,11 +1013,11 @@ impl QueueManager {
     }
 
     /// Pause a specific job.
-    pub fn pause_job(&self, id: &str) -> nzb_core::Result<()> {
+    pub fn pause_job(&self, id: &str) -> crate::nzb_core::Result<()> {
         let mut jobs = self.jobs.lock();
         let state = jobs
             .get_mut(id)
-            .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
+            .ok_or_else(|| crate::nzb_core::NzbError::JobNotFound(id.to_string()))?;
 
         state.job.status = JobStatus::Paused;
         state.engine.pause();
@@ -1037,11 +1037,11 @@ impl QueueManager {
     }
 
     /// Resume a specific job.
-    pub fn resume_job(self: &Arc<Self>, id: &str) -> nzb_core::Result<()> {
+    pub fn resume_job(self: &Arc<Self>, id: &str) -> crate::nzb_core::Result<()> {
         let needs_launch = {
             let mut jobs = self.jobs.lock();
             if !jobs.contains_key(id) {
-                return Err(nzb_core::NzbError::JobNotFound(id.to_string()));
+                return Err(crate::nzb_core::NzbError::JobNotFound(id.to_string()));
             }
 
             let active = jobs
@@ -1090,7 +1090,7 @@ impl QueueManager {
     }
 
     /// Remove a specific job from the queue.
-    pub fn remove_job(&self, id: &str) -> nzb_core::Result<()> {
+    pub fn remove_job(&self, id: &str) -> crate::nzb_core::Result<()> {
         let removed = self.jobs.lock().remove(id);
         if let Some(state) = removed {
             // Cancel the download
@@ -1117,7 +1117,7 @@ impl QueueManager {
     }
 
     /// Rename a job in the queue.
-    pub fn rename_job(&self, id: &str, new_name: &str) -> nzb_core::Result<()> {
+    pub fn rename_job(&self, id: &str, new_name: &str) -> crate::nzb_core::Result<()> {
         let mut jobs = self.jobs.lock();
         let state = jobs
             .iter_mut()
@@ -1128,12 +1128,12 @@ impl QueueManager {
                 info!(job_id = %id, new_name = %new_name, "Job renamed");
                 Ok(())
             }
-            None => Err(nzb_core::NzbError::JobNotFound(id.to_string())),
+            None => Err(crate::nzb_core::NzbError::JobNotFound(id.to_string())),
         }
     }
 
     /// Change a job's category in the queue.
-    pub fn change_job_category(&self, id: &str, category: &str) -> nzb_core::Result<()> {
+    pub fn change_job_category(&self, id: &str, category: &str) -> crate::nzb_core::Result<()> {
         let mut jobs = self.jobs.lock();
         let state = jobs
             .iter_mut()
@@ -1147,17 +1147,17 @@ impl QueueManager {
                 info!(job_id = %id, category = %category, "Job category changed");
                 Ok(())
             }
-            None => Err(nzb_core::NzbError::JobNotFound(id.to_string())),
+            None => Err(crate::nzb_core::NzbError::JobNotFound(id.to_string())),
         }
     }
 
     /// Move a job to a new position in the queue order.
-    pub fn move_job(&self, id: &str, position: usize) -> nzb_core::Result<()> {
+    pub fn move_job(&self, id: &str, position: usize) -> crate::nzb_core::Result<()> {
         let mut order = self.job_order.lock();
         let current_pos = order
             .iter()
             .position(|x| x == id)
-            .ok_or_else(|| nzb_core::NzbError::JobNotFound(id.to_string()))?;
+            .ok_or_else(|| crate::nzb_core::NzbError::JobNotFound(id.to_string()))?;
         let id_str = order.remove(current_pos);
         let new_pos = position.min(order.len());
         order.insert(new_pos, id_str);
@@ -1315,37 +1315,37 @@ impl QueueManager {
     // -----------------------------------------------------------------------
 
     /// List history entries.
-    pub fn history_list(&self, limit: usize) -> nzb_core::Result<Vec<HistoryEntry>> {
+    pub fn history_list(&self, limit: usize) -> crate::nzb_core::Result<Vec<HistoryEntry>> {
         let db = self.db.lock();
         db.history_list(limit)
     }
 
     /// Get a single history entry.
-    pub fn history_get(&self, id: &str) -> nzb_core::Result<Option<HistoryEntry>> {
+    pub fn history_get(&self, id: &str) -> crate::nzb_core::Result<Option<HistoryEntry>> {
         let db = self.db.lock();
         db.history_get(id)
     }
 
     /// Get raw NZB data for retry.
-    pub fn history_get_nzb_data(&self, id: &str) -> nzb_core::Result<Option<Vec<u8>>> {
+    pub fn history_get_nzb_data(&self, id: &str) -> crate::nzb_core::Result<Option<Vec<u8>>> {
         let db = self.db.lock();
         db.history_get_nzb_data(id)
     }
 
     /// Remove a history entry.
-    pub fn history_remove(&self, id: &str) -> nzb_core::Result<()> {
+    pub fn history_remove(&self, id: &str) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.history_remove(id)
     }
 
     /// Clear all history.
-    pub fn history_clear(&self) -> nzb_core::Result<()> {
+    pub fn history_clear(&self) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.history_clear()
     }
 
     /// Get persisted logs for a history entry.
-    pub fn history_get_logs(&self, id: &str) -> nzb_core::Result<Option<String>> {
+    pub fn history_get_logs(&self, id: &str) -> crate::nzb_core::Result<Option<String>> {
         let db = self.db.lock();
         db.history_get_logs(id)
     }
@@ -1359,13 +1359,13 @@ impl QueueManager {
         &self,
         feed_name: Option<&str>,
         limit: usize,
-    ) -> nzb_core::Result<Vec<RssItem>> {
+    ) -> crate::nzb_core::Result<Vec<RssItem>> {
         let db = self.db.lock();
         db.rss_items_list(feed_name, limit)
     }
 
     /// Get a single RSS item by ID.
-    pub fn rss_item_get(&self, id: &str) -> nzb_core::Result<Option<RssItem>> {
+    pub fn rss_item_get(&self, id: &str) -> crate::nzb_core::Result<Option<RssItem>> {
         let db = self.db.lock();
         db.rss_item_get(id)
     }
@@ -1375,61 +1375,61 @@ impl QueueManager {
         &self,
         id: &str,
         category: Option<&str>,
-    ) -> nzb_core::Result<()> {
+    ) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.rss_item_mark_downloaded(id, category)
     }
 
     /// Upsert an RSS feed item.
-    pub fn rss_item_upsert(&self, item: &RssItem) -> nzb_core::Result<()> {
+    pub fn rss_item_upsert(&self, item: &RssItem) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.rss_item_upsert(item)
     }
 
     /// Batch upsert RSS feed items (single DB lock + transaction).
-    pub fn rss_items_batch_upsert(&self, items: &[RssItem]) -> nzb_core::Result<usize> {
+    pub fn rss_items_batch_upsert(&self, items: &[RssItem]) -> crate::nzb_core::Result<usize> {
         let db = self.db.lock();
         db.rss_items_batch_upsert(items)
     }
 
     /// Check if an RSS item exists.
-    pub fn rss_item_exists(&self, id: &str) -> nzb_core::Result<bool> {
+    pub fn rss_item_exists(&self, id: &str) -> crate::nzb_core::Result<bool> {
         let db = self.db.lock();
         db.rss_item_exists(id)
     }
 
     /// Count total RSS items.
-    pub fn rss_item_count(&self) -> nzb_core::Result<usize> {
+    pub fn rss_item_count(&self) -> crate::nzb_core::Result<usize> {
         let db = self.db.lock();
         db.rss_item_count()
     }
 
     /// Prune RSS items to keep only N most recent.
-    pub fn rss_items_prune(&self, keep: usize) -> nzb_core::Result<usize> {
+    pub fn rss_items_prune(&self, keep: usize) -> crate::nzb_core::Result<usize> {
         let db = self.db.lock();
         db.rss_items_prune(keep)
     }
 
     /// List all RSS download rules.
-    pub fn rss_rule_list(&self) -> nzb_core::Result<Vec<RssRule>> {
+    pub fn rss_rule_list(&self) -> crate::nzb_core::Result<Vec<RssRule>> {
         let db = self.db.lock();
         db.rss_rule_list()
     }
 
     /// Insert a new RSS download rule.
-    pub fn rss_rule_insert(&self, rule: &RssRule) -> nzb_core::Result<()> {
+    pub fn rss_rule_insert(&self, rule: &RssRule) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.rss_rule_insert(rule)
     }
 
     /// Update an RSS download rule.
-    pub fn rss_rule_update(&self, rule: &RssRule) -> nzb_core::Result<()> {
+    pub fn rss_rule_update(&self, rule: &RssRule) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.rss_rule_update(rule)
     }
 
     /// Delete an RSS download rule.
-    pub fn rss_rule_delete(&self, id: &str) -> nzb_core::Result<()> {
+    pub fn rss_rule_delete(&self, id: &str) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
         db.rss_rule_delete(id)
     }
@@ -1442,7 +1442,7 @@ impl QueueManager {
     ///
     /// Re-parses NZB data for each job and applies any saved checkpoint to
     /// mark already-downloaded articles, so downloads resume where they left off.
-    pub fn restore_from_db(self: &Arc<Self>) -> nzb_core::Result<()> {
+    pub fn restore_from_db(self: &Arc<Self>) -> crate::nzb_core::Result<()> {
         let jobs = {
             let db = self.db.lock();
             db.queue_list()?

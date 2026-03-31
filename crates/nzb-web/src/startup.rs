@@ -4,8 +4,8 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use tracing::info;
 
-use nzb_core::config::AppConfig;
-use nzb_core::db::Database;
+use crate::nzb_core::config::AppConfig;
+use crate::nzb_core::db::Database;
 
 use crate::auth::{CredentialStore, TokenStore};
 use crate::log_buffer::LogBuffer;

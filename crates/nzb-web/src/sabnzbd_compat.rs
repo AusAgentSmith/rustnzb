@@ -11,8 +11,8 @@ use axum::extract::{Multipart, Query, State};
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 
-use nzb_core::models::*;
-use nzb_core::nzb_parser;
+use crate::nzb_core::models::*;
+use crate::nzb_core::nzb_parser;
 
 use crate::error::ApiError;
 use crate::state::AppState;

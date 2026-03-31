@@ -50,7 +50,7 @@ pub async fn h_group_list(
 pub async fn h_group_refresh(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    use nzb_core::nzb_nntp::connection::NntpConnection;
+    use crate::nzb_core::nzb_nntp::connection::NntpConnection;
 
     let servers = state.queue_manager.get_servers();
     let server = servers
@@ -174,7 +174,7 @@ pub async fn h_header_fetch(
     State(state): State<Arc<AppState>>,
     Path(group_id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    use nzb_core::nzb_nntp::connection::NntpConnection;
+    use crate::nzb_core::nzb_nntp::connection::NntpConnection;
 
     let group = state
         .queue_manager
@@ -295,7 +295,7 @@ pub async fn h_thread_get(
 pub async fn h_header_mark_read(
     State(state): State<Arc<AppState>>,
     Path(_group_id): Path<i64>,
-    Json(input): Json<nzb_core::models::MarkReadInput>,
+    Json(input): Json<crate::nzb_core::models::MarkReadInput>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let mut count = 0u64;
     for id in &input.header_ids {
@@ -322,7 +322,7 @@ pub async fn h_article_get(
     State(state): State<Arc<AppState>>,
     Path(message_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    use nzb_core::nzb_nntp::connection::NntpConnection;
+    use crate::nzb_core::nzb_nntp::connection::NntpConnection;
 
     // Auto-mark as read
     state.queue_manager.with_db(|db| {
@@ -362,7 +362,7 @@ pub async fn h_article_get(
 pub async fn h_header_download(
     State(state): State<Arc<AppState>>,
     Path(group_id): Path<i64>,
-    Json(input): Json<nzb_core::models::DownloadSelectedInput>,
+    Json(input): Json<crate::nzb_core::models::DownloadSelectedInput>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let group = state
         .queue_manager
@@ -403,7 +403,7 @@ pub async fn h_header_download(
 
     // Parse and queue
     let nzb_bytes = nzb.as_bytes();
-    let mut job = nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
+    let mut job = crate::nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
 
     if let Some(cat) = input.category {
         job.category = cat;
