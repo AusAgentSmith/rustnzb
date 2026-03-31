@@ -15,12 +15,12 @@ use tracing::info;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::auth;
-use crate::error::ApiError;
+use nzb_web::auth;
+use nzb_web::error::ApiError;
 use crate::group_handlers;
 use crate::handlers;
-use crate::sabnzbd_compat;
-use crate::state::AppState;
+use nzb_web::sabnzbd_compat;
+use nzb_web::state::AppState;
 
 #[derive(OpenApi)]
 #[openapi(info(title = "rustnzb API", version = env!("CARGO_PKG_VERSION")))]
@@ -28,7 +28,7 @@ struct ApiDoc;
 
 /// Embed the Angular SPA build at compile time.
 #[derive(Embed)]
-#[folder = "../../frontend/dist/frontend/browser"]
+#[folder = "frontend/dist/frontend/browser"]
 struct StaticAssets;
 
 /// Serve the root page (index.html) from embedded static assets.

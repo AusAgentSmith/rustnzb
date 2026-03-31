@@ -10,6 +10,10 @@ use tracing_subscriber::util::SubscriberInitExt;
 use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::{LogBuffer, LogBufferLayer, StartupConfig};
 
+mod group_handlers;
+mod handlers;
+mod server;
+
 #[derive(Parser, Debug)]
 #[command(name = "rustnzb", version, about = "Usenet NZB download client")]
 struct Args {
@@ -269,7 +273,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Start HTTP server
     info!("Starting HTTP API server");
-    nzb_web::run(result.state).await?;
+    crate::server::run(result.state).await?;
 
     Ok(())
 }
