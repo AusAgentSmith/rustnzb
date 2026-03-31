@@ -403,7 +403,8 @@ pub async fn h_header_download(
 
     // Parse and queue
     let nzb_bytes = nzb.as_bytes();
-    let mut job = nzb_web::nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
+    let mut job =
+        nzb_web::nzb_core::nzb_parser::parse_nzb(&name, nzb_bytes).map_err(ApiError::from)?;
 
     if let Some(cat) = input.category {
         job.category = cat;

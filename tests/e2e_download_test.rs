@@ -4,9 +4,9 @@
 //! plus the first few articles of a RAR file to verify the full pipeline.
 
 use nzb_web::nzb_core::config::ServerConfig;
+use nzb_web::nzb_core::nzb_nntp::NntpConnection;
 use nzb_web::nzb_core::nzb_parser;
 use nzb_web::nzb_decode::yenc;
-use nzb_web::nzb_core::nzb_nntp::NntpConnection;
 
 fn usenet_farm_config() -> ServerConfig {
     ServerConfig {
