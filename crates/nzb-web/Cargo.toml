@@ -7,7 +7,6 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
-nzb-core = { workspace = true }
 nzb-decode = { workspace = true }
 axum = { workspace = true, features = ["multipart"] }
 tower = { workspace = true }

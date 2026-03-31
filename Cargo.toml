@@ -121,3 +121,6 @@ nzb-nntp = { path = "crates/nzb-nntp" }
 
 [patch."https://github.com/AusAgentSmith-org/nzb-core.git"]
 nzb-core = { path = "/home/sprooty/Working/libs/nzb-core" }
+
+[patch."https://github.com/AusAgentSmith-org/nzb-postproc.git"]
+nzb-postproc = { path = "/home/sprooty/Working/libs/nzb-postproc" }

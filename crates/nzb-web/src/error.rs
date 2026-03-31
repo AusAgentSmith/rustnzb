@@ -87,7 +87,7 @@ pub enum ApiErrorKind {
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
     #[error(transparent)]
-    Core(#[from] nzb_core::NzbError),
+    Core(#[from] crate::nzb_core::NzbError),
 }
 
 impl From<&'static str> for ApiErrorKind {
@@ -137,8 +137,8 @@ impl From<anyhow::Error> for ApiError {
     }
 }
 
-impl From<nzb_core::NzbError> for ApiError {
-    fn from(e: nzb_core::NzbError) -> Self {
+impl From<crate::nzb_core::NzbError> for ApiError {
+    fn from(e: crate::nzb_core::NzbError) -> Self {
         Self {
             status: Some(StatusCode::INTERNAL_SERVER_ERROR),
             kind: ApiErrorKind::Core(e),

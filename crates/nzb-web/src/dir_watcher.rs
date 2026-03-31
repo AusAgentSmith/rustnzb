@@ -107,7 +107,7 @@ impl DirWatcher {
             .unwrap_or("unknown")
             .to_string();
 
-        match nzb_core::nzb_parser::parse_nzb(&name, &data) {
+        match crate::nzb_core::nzb_parser::parse_nzb(&name, &data) {
             Ok(mut job) => {
                 job.work_dir = self.queue_manager.incomplete_dir().join(&job.id);
                 job.output_dir = self.queue_manager.complete_dir().join(&job.name);

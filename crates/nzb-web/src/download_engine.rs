@@ -19,13 +19,13 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use nzb_core::config::ServerConfig;
-use nzb_core::models::NzbJob;
+use crate::nzb_core::config::ServerConfig;
+use crate::nzb_core::models::NzbJob;
 use nzb_decode::FileAssembler;
 use nzb_decode::yenc::decode_yenc;
-use nzb_core::nzb_nntp::Pipeline;
-use nzb_core::nzb_nntp::connection::NntpConnection;
-use nzb_core::nzb_nntp::error::NntpError;
+use crate::nzb_core::nzb_nntp::Pipeline;
+use crate::nzb_core::nzb_nntp::connection::NntpConnection;
+use crate::nzb_core::nzb_nntp::error::NntpError;
 
 use crate::bandwidth::BandwidthLimiter;
 use crate::util::normalize_nfc;
