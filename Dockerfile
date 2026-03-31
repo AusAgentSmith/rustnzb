@@ -14,8 +14,13 @@ RUN cd frontend && npx ng build --configuration=production
 
 # Copy Rust source
 COPY Cargo.toml Cargo.lock build.rs ./
-COPY crates crates
 COPY src src
+COPY tests tests
+
+# Configure git for private deps and strip local [patch] overrides
+ARG GITHUB_TOKEN
+RUN git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+RUN sed -i '/^\[patch\./,/^$/d' Cargo.toml
 
 # Build Rust binary (build.rs skips ng build since dist already exists)
 RUN cargo build --release
