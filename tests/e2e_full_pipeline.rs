@@ -11,8 +11,8 @@ use arc_swap::ArcSwap;
 use nzb_web::auth::{CredentialStore, TokenStore};
 use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::nzb_core::db::Database;
-use nzb_web::server::build_router;
 use nzb_web::{AppState, QueueManager};
+use rustnzb::server::build_router;
 
 /// Start the server on a random port and return the base URL.
 async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {

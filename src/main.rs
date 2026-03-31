@@ -10,9 +10,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::{LogBuffer, LogBufferLayer, StartupConfig};
 
-mod group_handlers;
-mod handlers;
-mod server;
+use rustnzb::server;
 
 #[derive(Parser, Debug)]
 #[command(name = "rustnzb", version, about = "Usenet NZB download client")]

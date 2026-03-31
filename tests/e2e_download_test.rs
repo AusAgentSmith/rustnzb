@@ -232,7 +232,7 @@ async fn test_article_not_found_handling() {
         .await;
 
     match &result {
-        Err(nzb_nntp::NntpError::ArticleNotFound(_)) => {
+        Err(nzb_web::nzb_core::nzb_nntp::NntpError::ArticleNotFound(_)) => {
             eprintln!("Correctly got ArticleNotFound for fake message-id");
         }
         Err(e) => {
