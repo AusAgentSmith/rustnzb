@@ -2558,8 +2558,6 @@ dependencies = [
  "arc-swap",
  "axum 0.8.8",
  "clap",
- "nzb-decode",
- "nzb-postproc",
  "nzb-web",
  "opentelemetry",
  "opentelemetry-appender-tracing",

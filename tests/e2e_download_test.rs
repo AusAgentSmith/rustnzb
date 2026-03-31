@@ -5,7 +5,7 @@
 
 use nzb_web::nzb_core::config::ServerConfig;
 use nzb_web::nzb_core::nzb_parser;
-use nzb_decode::yenc;
+use nzb_web::nzb_decode::yenc;
 use nzb_web::nzb_core::nzb_nntp::NntpConnection;
 
 fn usenet_farm_config() -> ServerConfig {
