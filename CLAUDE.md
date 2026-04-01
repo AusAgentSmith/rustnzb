@@ -2,24 +2,18 @@
 
 ## Project Overview
 
-**rustnzb** is a high-performance Usenet NZB download client written in Rust. It provides a REST API, embedded web UI, and SABnzbd-compatible API for integration with *arr applications (Sonarr, Radarr, etc.). The project is a Cargo workspace with 6 crates, deployed as a single Docker container.
+**rustnzb** is a high-performance Usenet NZB download client written in Rust. It provides a REST API, embedded web UI, and SABnzbd-compatible API for integration with *arr applications (Sonarr, Radarr, etc.). The project is a single-binary Cargo workspace (no local sub-crates), deployed as a Docker container. All nzb-* library crates are consumed as external git dependencies (see `~/Working/libs/`), with `[patch]` overrides for local dev.
 
 ## Repository Layout
 
 ```
 rustnzb/
 ├── src/main.rs                    # Binary entry point (CLI, config, tracing, startup)
-├── crates/
-│   ├── nzb-core/                  # Shared models, config, NZB parser, SQLite database
-│   ├── nzb-web/                   # Axum HTTP server, REST API, queue manager, download engine
-│   ├── nzb-nntp/                  # Async NNTP client, connection pool, pipelined downloader
-│   ├── nzb-decode/                # yEnc decoder (SIMD via yenc-simd), file assembler
-│   ├── nzb-postproc/              # Post-processing: par2 verify/repair, RAR/7z/ZIP extraction
-│   └── (par2 handled by rust-par2 library — no external binary needed)
 ├── frontend/                      # Angular 21 SPA (Material, dark theme, tab-based UI)
 ├── e2e/                           # Playwright E2E tests (15 tests)
 ├── build.rs                       # Auto-runs ng build during cargo build
 ├── benchnzb/                      # Benchmark suite: rustnzb vs SABnzbd (excluded from workspace)
+├── desktop/                       # Desktop app (excluded from workspace)
 ├── tests/                         # Integration tests (e2e download, NNTP, post-processing)
 ├── config.example.toml            # Configuration reference
 ├── root/                          # s6-overlay service definitions (copied into container)
@@ -28,6 +22,20 @@ rustnzb/
 └── .github/workflows/
     └── docker-deploy.yml          # CI/CD: build → smoke test → deploy
 ```
+
+### External Library Dependencies
+
+All nzb-* crates live in `~/Working/libs/` and are referenced via git tags in `Cargo.toml`. Local `[patch]` sections redirect to the local checkouts for dev builds.
+
+| Crate | Git Tag | Purpose |
+|-------|---------|---------|
+| nzb-web | v0.2.3 | Axum HTTP server, REST API, queue manager, download engine |
+| nzb-nntp | v0.2.0 | Async NNTP client, connection pool, pipelined downloader |
+| nzb-core | v0.2.0 | Shared models, config, NZB parser, SQLite database |
+| nzb-decode | v0.1.0 | yEnc decoder (SIMD via yenc-simd), file assembler |
+| nzb-postproc | v0.2.0 | Post-processing: par2 verify/repair, RAR/7z/ZIP extraction |
+| rust-par2 | 0.1.1 | PAR2 repair (crates.io) |
+| yenc-simd | 0.1 | SIMD yEnc decoder (crates.io) |
 
 ## Architecture
 
