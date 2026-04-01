@@ -74,7 +74,7 @@ feed-rs = "2"
 unicode-normalization = "0.1"
 
 # Shared NZB crates ([patch] sections redirect to local for dev)
-nzb-web = { git = "https://github.com/AusAgentSmith-org/nzb-web.git", tag = "v0.1.0", features = ["groups-db"] }
+nzb-web = { git = "https://github.com/AusAgentSmith-org/nzb-web.git", tag = "v0.2.3", features = ["groups-db"] }
 nzb-nntp = { git = "https://github.com/AusAgentSmith-org/nzb-nntp.git", tag = "v0.2.0" }
 nzb-core = { git = "https://github.com/AusAgentSmith-org/nzb-core.git", tag = "v0.2.0", features = ["groups-db"] }
 nzb-decode = { git = "https://github.com/AusAgentSmith-org/nzb-decode.git", tag = "v0.1.0" }
