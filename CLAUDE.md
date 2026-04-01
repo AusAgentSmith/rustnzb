@@ -29,7 +29,7 @@ All nzb-* crates live in `~/Working/libs/` and are referenced via git tags in `C
 
 | Crate | Git Tag | Purpose |
 |-------|---------|---------|
-| nzb-web | v0.2.3 | Axum HTTP server, REST API, queue manager, download engine |
+| nzb-web | v0.2.4 | Axum HTTP server, REST API, queue manager, download engine |
 | nzb-nntp | v0.2.0 | Async NNTP client, connection pool, pipelined downloader |
 | nzb-core | v0.2.0 | Shared models, config, NZB parser, SQLite database |
 | nzb-decode | v0.1.0 | yEnc decoder (SIMD via yenc-simd), file assembler |
