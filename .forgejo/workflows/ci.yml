@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Build & Test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure git for private deps
+        run: git config --global url."http://x-access-token:${{ secrets.GIT_AUTH_TOKEN }}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Compile check
+        run: cargo check --workspace
+
+      - name: Run tests
+        run: cargo test --workspace --lib
+
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+  build-and-publish:
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    name: Build & Push Docker Image
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure git for private deps
+        run: git config --global url."http://x-access-token:${{ secrets.GIT_AUTH_TOKEN }}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+
+      - name: Build Docker image
+        run: |
+          DOCKER_BUILDKIT=1 docker build \
+            -t ${{ secrets.REGISTRY }}/rustnzbd:latest \
+            -t ${{ secrets.REGISTRY }}/rustnzbd:${{ github.sha }} \
+            .
+        env:
+          GIT_AUTH_TOKEN: ${{ secrets.GIT_AUTH_TOKEN }}
+
+      - name: Push to registry
+        run: |
+          docker push ${{ secrets.REGISTRY }}/rustnzbd:latest
+          docker push ${{ secrets.REGISTRY }}/rustnzbd:${{ github.sha }}
