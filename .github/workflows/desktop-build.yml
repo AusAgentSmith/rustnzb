@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure git for private deps
         run: git config --global url."https://x-access-token:${{ secrets.GHCR_TOKEN }}@github.com/".insteadOf "https://github.com/"
