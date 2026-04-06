@@ -26,7 +26,7 @@ RUN sed -i '/^\[patch\./,/^$/d' Cargo.toml
 RUN cargo build --release
 
 
-FROM lscr.io/linuxserver/baseimage-alpine:3.21
+FROM lscr.io/linuxserver/baseimage-alpine:3.23
 
 RUN apk add --no-cache \
         ca-certificates \
