@@ -82,7 +82,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rustnzb-windows-x86_64
           path: target/release/rustnzb.exe
