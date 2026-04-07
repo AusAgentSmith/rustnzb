@@ -20,14 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure Forgejo cargo registry
-        run: |
-          mkdir -p ~/.cargo
-          echo '[registries.forgejo]' > ~/.cargo/config.toml
-          echo 'index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"' >> ~/.cargo/config.toml
-          echo 'credential-provider = "cargo:token"' >> ~/.cargo/config.toml
-          cargo login --registry forgejo "$CARGO_REGISTRIES_FORGEJO_TOKEN"
-
       - name: Configure git for private deps
         run: git config --global url."http://x-access-token:${{ secrets.GIT_AUTH_TOKEN }}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
 
