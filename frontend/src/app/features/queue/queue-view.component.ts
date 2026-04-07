@@ -642,7 +642,9 @@ export class QueueViewComponent implements OnInit, OnDestroy {
     if (this.addCategory) params.push(`category=${encodeURIComponent(this.addCategory)}`);
     if (this.addPriority !== 1) params.push(`priority=${this.addPriority}`);
     const qs = params.length > 0 ? '?' + params.join('&') : '';
-    this.http.post(`/api/queue/add${qs}`, formData).subscribe({
+    const token = localStorage.getItem('access_token');
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    this.http.post(`/api/queue/add${qs}`, formData, { headers }).subscribe({
       next: () => {
         const count = this.selectedFiles.length;
         this.snackBar.open(`${count} NZB${count > 1 ? 's' : ''} added to queue`, 'Close', { duration: 3000 });
