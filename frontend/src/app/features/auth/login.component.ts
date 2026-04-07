@@ -12,7 +12,7 @@ import { AuthService } from '../../core/services/auth.service';
     <div class="login-wrapper">
       <div class="login-card">
         <div class="login-header">
-          <span class="login-logo">rustnzb</span>
+          <img src="logo.png" alt="rustnzb" class="login-logo" />
           @if (isSetup()) {
             <p class="login-subtitle">Create your account to get started</p>
           } @else {
@@ -94,10 +94,7 @@ import { AuthService } from '../../core/services/auth.service';
 
     .login-header { text-align: center; margin-bottom: 24px; }
 
-    .login-logo {
-      font-size: 28px; font-weight: 700; color: #58a6ff;
-      letter-spacing: -0.5px;
-    }
+    .login-logo { width: 220px; height: auto; }
 
     .login-subtitle {
       color: #8b949e; font-size: 14px; margin: 8px 0 0;

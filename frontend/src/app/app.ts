@@ -21,8 +21,7 @@ import { AddNzbService } from './core/services/add-nzb.service';
         <nav class="sidebar">
           <div class="sidebar-header">
             <div class="logo">
-              <mat-icon class="logo-icon">bolt</mat-icon>
-              <span>rustnzbd</span>
+              <img src="logo.png" alt="rustnzb" class="logo-img" />
             </div>
             <div class="speed-widget">
               <div class="speed-value">{{ formatSpeed(speed()) }}</div>
@@ -119,11 +118,8 @@ import { AddNzbService } from './core/services/add-nzb.service';
       display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
     }
     .sidebar-header { padding: 16px 16px 16px; border-bottom: 1px solid #21262d; }
-    .logo {
-      font-size: 16px; font-weight: 700; color: #58a6ff;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .logo-icon { color: #f0883e; font-size: 22px; width: 22px; height: 22px; }
+    .logo { display: flex; align-items: center; justify-content: center; }
+    .logo-img { width: 180px; height: auto; }
     .speed-widget {
       margin-top: 14px; background: #161b22; border: 1px solid #21262d;
       border-radius: 8px; padding: 10px 12px; position: relative;
