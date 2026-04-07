@@ -26,7 +26,7 @@ interface LogEntry { seq: number; level: string; message: string; timestamp: str
     :host { display: flex; height: 100%; }
     .log-container {
       flex: 1; overflow-y: auto; padding: 8px 12px;
-      font-family: Consolas, 'Roboto Mono', monospace; font-size: 11px; line-height: 1.8;
+      font-family: 'JetBrains Mono', Consolas, monospace; font-size: 11px; line-height: 1.8;
       background: #0d1117;
     }
     .log-line { display: flex; gap: 8px; }

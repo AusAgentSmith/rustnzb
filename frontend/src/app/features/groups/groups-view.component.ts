@@ -183,7 +183,7 @@ import { GroupBrowserDialogComponent } from './group-browser-dialog.component';
     .preview-head strong { color: #8b949e; }
     .msgid { color: #484f58; font-size: 10px; }
     .preview-body { flex: 1; padding: 10px 12px; overflow-y: auto; }
-    .preview-body pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: Consolas, monospace; font-size: 12px; line-height: 1.5; }
+    .preview-body pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px; line-height: 1.5; }
     .preview-loading { display: flex; justify-content: center; padding: 24px; }
   `],
 })
