@@ -23,11 +23,9 @@ jobs:
       - name: Configure Forgejo cargo registry
         run: |
           mkdir -p ~/.cargo
-          cat > ~/.cargo/config.toml << 'EOF'
-          [registries.forgejo]
-          index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-          credential-provider = "cargo:token"
-          EOF
+          printf '[registries.forgejo]
+index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+' > ~/.cargo/config.toml
 
       - name: Configure git for private deps
         run: git config --global url."http://x-access-token:${{ secrets.GIT_AUTH_TOKEN }}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
