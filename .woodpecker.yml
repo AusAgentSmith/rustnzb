@@ -111,3 +111,43 @@ steps:
         - RELEASE_OPTIMIZED=true
       build_args_from_env:
         - PLUGIN_PASSWORD
+
+  - name: discord-success
+    image: alpine/curl
+    environment:
+      DISCORD_WEBHOOK_URL:
+        from_secret: discord_webhook_url
+    commands:
+      - |
+        HASH=$(echo $CI_COMMIT_SHA | head -c 7)
+        curl -sf -H "Content-Type: application/json" -d "{
+          \"embeds\": [{
+            \"title\": \"Build Successful\",
+            \"description\": \"**${CI_REPO}** — [$HASH]($CI_REPO_URL/commit/$CI_COMMIT_SHA)\",
+            \"color\": 5025616,
+            \"footer\": {\"text\": \"$CI_REPO • $CI_COMMIT_AUTHOR\"},
+            \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+          }]
+        }" "$DISCORD_WEBHOOK_URL" || true
+    when:
+      - status: [success]
+
+  - name: discord-failure
+    image: alpine/curl
+    environment:
+      DISCORD_WEBHOOK_URL:
+        from_secret: discord_webhook_url
+    commands:
+      - |
+        HASH=$(echo $CI_COMMIT_SHA | head -c 7)
+        curl -sf -H "Content-Type: application/json" -d "{
+          \"embeds\": [{
+            \"title\": \"Build Failed\",
+            \"description\": \"**${CI_REPO}** — [$HASH]($CI_REPO_URL/commit/$CI_COMMIT_SHA)\",
+            \"color\": 15548997,
+            \"footer\": {\"text\": \"$CI_REPO • $CI_COMMIT_AUTHOR\"},
+            \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+          }]
+        }" "$DISCORD_WEBHOOK_URL" || true
+    when:
+      - status: [failure]
