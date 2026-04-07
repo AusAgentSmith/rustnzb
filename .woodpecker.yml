@@ -49,3 +49,29 @@ steps:
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - rustup component add clippy
       - cargo clippy --workspace -- -D warnings
+
+  - name: build-linux
+    image: rust:1.88-bookworm
+    environment:
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
+    commands:
+      - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
+      - cargo build --release
+      - ls -lh target/release/rustnzb
+
+  - name: build-windows
+    image: rust:1.88-bookworm
+    environment:
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
+    commands:
+      - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
+      - apt-get update && apt-get install -y gcc-mingw-w64-x86-64
+      - rustup target add x86_64-pc-windows-gnu
+      - cargo build --release --target x86_64-pc-windows-gnu
+      - ls -lh target/x86_64-pc-windows-gnu/release/rustnzb.exe
