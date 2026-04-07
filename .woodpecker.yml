@@ -1,0 +1,60 @@
+when:
+  - event: push
+    branch: main
+  - event: manual
+
+steps:
+  - name: fmt
+    image: rust:1.88-bookworm
+    commands:
+      - rustup component add rustfmt
+      - cargo fmt --all -- --check
+
+  - name: check
+    image: rust:1.88-bookworm
+    secrets: [git_auth_token]
+    commands:
+      - git config --global url."http://x-access-token:$${GIT_AUTH_TOKEN}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+      - mkdir -p $CARGO_HOME
+      - |
+        cat > $CARGO_HOME/config.toml << CONF
+        [registries.forgejo]
+        index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+        [registry]
+        default = "forgejo"
+        CONF
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$${GIT_AUTH_TOKEN}" > $CARGO_HOME/credentials.toml
+      - cargo check --workspace
+
+  - name: test
+    image: rust:1.88-bookworm
+    secrets: [git_auth_token]
+    commands:
+      - git config --global url."http://x-access-token:$${GIT_AUTH_TOKEN}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+      - mkdir -p $CARGO_HOME
+      - |
+        cat > $CARGO_HOME/config.toml << CONF
+        [registries.forgejo]
+        index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+        [registry]
+        default = "forgejo"
+        CONF
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$${GIT_AUTH_TOKEN}" > $CARGO_HOME/credentials.toml
+      - cargo test --workspace
+
+  - name: clippy
+    image: rust:1.88-bookworm
+    secrets: [git_auth_token]
+    commands:
+      - rustup component add clippy
+      - git config --global url."http://x-access-token:$${GIT_AUTH_TOKEN}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+      - mkdir -p $CARGO_HOME
+      - |
+        cat > $CARGO_HOME/config.toml << CONF
+        [registries.forgejo]
+        index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+        [registry]
+        default = "forgejo"
+        CONF
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$${GIT_AUTH_TOKEN}" > $CARGO_HOME/credentials.toml
+      - cargo clippy --workspace -- -D warnings
