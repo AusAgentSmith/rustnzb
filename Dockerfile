@@ -17,9 +17,13 @@ COPY Cargo.toml Cargo.lock build.rs ./
 COPY src src
 COPY tests tests
 
-# Configure git for private deps and strip local [patch] overrides
-ARG GITHUB_TOKEN
-RUN git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+# Configure git + cargo registry for private Forgejo deps
+ARG GIT_AUTH_TOKEN
+ARG PLUGIN_PASSWORD
+RUN TOKEN="${GIT_AUTH_TOKEN:-$PLUGIN_PASSWORD}" && \
+    git config --global url."http://x-access-token:${TOKEN}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/" && \
+    printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml && \
+    printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$TOKEN" > $CARGO_HOME/credentials.toml
 RUN sed -i '/^\[patch\./,/^$/d' Cargo.toml
 
 # Build Rust binary (build.rs skips ng build since dist already exists)

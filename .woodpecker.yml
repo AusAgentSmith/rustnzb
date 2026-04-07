@@ -64,3 +64,16 @@ steps:
 
   # NOTE: Windows cross-compilation disabled — md5-asm crate doesn't support
   # x86_64-pc-windows-gnu target. Windows builds use Tauri (desktop/src-tauri).
+
+  - name: build-and-push
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      repo: repo.indexarr.net/indexarr/rustnzbd
+      registry: repo.indexarr.net
+      username:
+        from_secret: git_auth_token
+      password:
+        from_secret: git_auth_token
+      tag: latest
+      build_args_from_env:
+        - PLUGIN_PASSWORD
