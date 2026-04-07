@@ -2541,6 +2541,7 @@ dependencies = [
  "base64",
  "chrono",
  "clap",
+ "flate2",
  "http",
  "libc",
  "mime_guess",
@@ -2565,6 +2566,7 @@ dependencies = [
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",
+ "zip 2.4.2",
 ]
 
 [[package]]

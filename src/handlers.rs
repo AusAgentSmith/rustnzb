@@ -1,8 +1,10 @@
+use std::io::{Cursor, Read as _};
 use std::sync::Arc;
 
 use axum::Json;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::response::IntoResponse;
+use flate2::read::GzDecoder;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -183,7 +185,107 @@ pub async fn h_queue_list(
     }))
 }
 
-/// POST /api/queue/add -- Add an NZB file to the queue.
+/// Extract NZB files from an uploaded file. If it's an archive (zip, gz),
+/// returns all `.nzb` entries found inside. Otherwise returns the file as-is.
+fn extract_nzbs(file_name: &str, data: &[u8]) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+    let lower = file_name.to_lowercase();
+
+    // .nzb.gz or .gz containing an nzb
+    if lower.ends_with(".gz") {
+        let mut decoder = GzDecoder::new(data);
+        let mut decompressed = Vec::new();
+        decoder
+            .read_to_end(&mut decompressed)
+            .map_err(|e| anyhow::anyhow!("Failed to decompress gzip: {e}"))?;
+        let inner_name = file_name
+            .strip_suffix(".gz")
+            .or_else(|| file_name.strip_suffix(".GZ"))
+            .unwrap_or(file_name);
+        return Ok(vec![(inner_name.to_string(), decompressed)]);
+    }
+
+    // .zip archive — extract all .nzb files inside
+    if lower.ends_with(".zip") {
+        let cursor = Cursor::new(data);
+        let mut archive = zip::ZipArchive::new(cursor)
+            .map_err(|e| anyhow::anyhow!("Failed to read zip archive: {e}"))?;
+        let mut nzbs = Vec::new();
+        for i in 0..archive.len() {
+            let mut entry = archive
+                .by_index(i)
+                .map_err(|e| anyhow::anyhow!("Zip entry error: {e}"))?;
+            let entry_name = entry.name().to_string();
+            if entry_name.to_lowercase().ends_with(".nzb") {
+                let mut buf = Vec::new();
+                entry
+                    .read_to_end(&mut buf)
+                    .map_err(|e| anyhow::anyhow!("Failed to read zip entry '{entry_name}': {e}"))?;
+                nzbs.push((entry_name, buf));
+            }
+        }
+        if nzbs.is_empty() {
+            anyhow::bail!("No .nzb files found in zip archive '{file_name}'");
+        }
+        return Ok(nzbs);
+    }
+
+    // Plain .nzb or unrecognized — pass through as-is
+    Ok(vec![(file_name.to_string(), data.to_vec())])
+}
+
+/// Enqueue a single NZB from raw bytes, applying category/priority from query params.
+fn enqueue_nzb(
+    state: &AppState,
+    q: &AddNzbQuery,
+    file_name: &str,
+    data: Vec<u8>,
+) -> Result<String, ApiError> {
+    let name = q.name.clone().unwrap_or_else(|| {
+        file_name
+            .strip_suffix(".nzb")
+            .unwrap_or(file_name)
+            .to_string()
+    });
+
+    let nzb_data = data.clone();
+    let mut job = nzb_parser::parse_nzb(&name, &data).map_err(ApiError::from)?;
+
+    if let Some(ref cat) = q.category {
+        job.category = cat.clone();
+    }
+    if let Some(prio) = q.priority {
+        job.priority = match prio {
+            0 => Priority::Low,
+            2 => Priority::High,
+            3 => Priority::Force,
+            _ => Priority::Normal,
+        };
+    }
+
+    let qm = &state.queue_manager;
+    job.work_dir = qm.incomplete_dir().join(&job.id);
+    job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
+
+    std::fs::create_dir_all(&job.work_dir)
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to create work dir: {e}")))?;
+
+    let id = job.id.clone();
+
+    tracing::info!(
+        name = %job.name,
+        id = %job.id,
+        files = job.file_count,
+        articles = job.article_count,
+        "NZB added to queue"
+    );
+
+    qm.add_job(job, Some(nzb_data)).map_err(ApiError::from)?;
+    Ok(id)
+}
+
+/// POST /api/queue/add -- Add NZB file(s) to the queue.
+/// Accepts `.nzb` files directly, or `.zip`/`.gz` archives containing `.nzb` files.
+/// Multiple files can be uploaded in a single multipart request.
 pub async fn h_queue_add(
     State(state): State<Arc<AppState>>,
     Query(q): Query<AddNzbQuery>,
@@ -206,54 +308,13 @@ pub async fn h_queue_add(
             .await
             .map_err(|e| ApiError::from(anyhow::anyhow!("Read error: {e}")))?;
 
-        let name = q.name.clone().unwrap_or_else(|| {
-            file_name
-                .strip_suffix(".nzb")
-                .unwrap_or(&file_name)
-                .to_string()
-        });
+        // Extract NZBs (handles zip/gz archives or plain .nzb)
+        let nzbs = extract_nzbs(&file_name, &data).map_err(ApiError::from)?;
 
-        // Store the raw NZB data for later retry
-        let nzb_data = data.to_vec();
-        let mut job = nzb_parser::parse_nzb(&name, &data).map_err(ApiError::from)?;
-
-        // Apply category
-        if let Some(ref cat) = q.category {
-            job.category = cat.clone();
+        for (nzb_name, nzb_data) in nzbs {
+            let id = enqueue_nzb(&state, &q, &nzb_name, nzb_data)?;
+            nzo_ids.push(id);
         }
-
-        // Apply priority
-        if let Some(prio) = q.priority {
-            job.priority = match prio {
-                0 => Priority::Low,
-                2 => Priority::High,
-                3 => Priority::Force,
-                _ => Priority::Normal,
-            };
-        }
-
-        // Set working directories
-        let qm = &state.queue_manager;
-        job.work_dir = qm.incomplete_dir().join(&job.id);
-        job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
-
-        // Create work directory
-        std::fs::create_dir_all(&job.work_dir)
-            .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to create work dir: {e}")))?;
-
-        let id = job.id.clone();
-
-        tracing::info!(
-            name = %job.name,
-            id = %job.id,
-            files = job.file_count,
-            articles = job.article_count,
-            "NZB added to queue"
-        );
-
-        // Add to the queue manager (persists to DB and starts downloading)
-        qm.add_job(job, Some(nzb_data)).map_err(ApiError::from)?;
-        nzo_ids.push(id);
     }
 
     Ok((

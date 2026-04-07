@@ -2,119 +2,205 @@ import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatBadgeModule } from '@angular/material/badge';
 import { ApiService } from './core/services/api.service';
 import { AuthService } from './core/services/auth.service';
 import { StatusResponse } from './core/models/queue.model';
+import { AddNzbService } from './core/services/add-nzb.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatBadgeModule],
+  imports: [CommonModule, RouterModule, MatIconModule],
   template: `
-    <!-- Top bar -->
-    <div class="topbar">
-      <div class="topbar-left">
-        <span class="logo">⚡ rustnzbd</span>
-      </div>
-      <div class="topbar-right">
-        @if (authenticated()) {
-          <div class="speed-display">
-            <span class="arrow">↓</span>
-            <span>{{ formatSpeed(speed()) }}</span>
+    @if (!authenticated()) {
+      <!-- Full-screen login (no sidebar) -->
+      <router-outlet />
+    } @else {
+      <div class="shell">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+          <div class="sidebar-header">
+            <div class="logo">
+              <mat-icon class="logo-icon">bolt</mat-icon>
+              <span>rustnzbd</span>
+            </div>
+            <div class="speed-widget">
+              <div class="speed-value">{{ formatSpeed(speed()) }}</div>
+              <div class="speed-label">Download Speed</div>
+              <div class="speed-actions">
+                <button class="speed-btn" (click)="togglePause()" [title]="paused() ? 'Resume' : 'Pause'">
+                  <mat-icon>{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+                </button>
+              </div>
+            </div>
           </div>
-          <button class="topbar-btn primary" routerLink="/queue">+ Add NZB</button>
-          <button class="topbar-btn" (click)="togglePause()">
-            {{ paused() ? 'Resume' : 'Pause' }}
-          </button>
-          <button class="topbar-btn" (click)="onLogout()">Logout</button>
-        }
-      </div>
-    </div>
 
-    <!-- Tabs -->
-    @if (authenticated()) {
-      <div class="tabs">
-        <a class="tab" routerLink="/queue" routerLinkActive="active">
-          Queue
-          @if (queueCount() > 0) { <span class="badge">{{ queueCount() }}</span> }
-        </a>
-        <a class="tab" routerLink="/rss" routerLinkActive="active">RSS</a>
-        <a class="tab" routerLink="/groups" routerLinkActive="active">Groups</a>
-        <a class="tab" routerLink="/settings" routerLinkActive="active">Settings</a>
-        <a class="tab" routerLink="/logs" routerLinkActive="active">Logs</a>
+          <div class="sidebar-nav">
+            <div class="nav-section">Downloads</div>
+            <a class="nav-item" routerLink="/queue" routerLinkActive="active">
+              <mat-icon>download</mat-icon> Queue
+              @if (queueCount() > 0) { <span class="nav-badge">{{ queueCount() }}</span> }
+            </a>
+            <a class="nav-item" routerLink="/history" routerLinkActive="active">
+              <mat-icon>history</mat-icon> History
+            </a>
+
+            <div class="nav-section">Automation</div>
+            <a class="nav-item" routerLink="/rss" routerLinkActive="active">
+              <mat-icon>rss_feed</mat-icon> RSS Feeds
+            </a>
+            <a class="nav-item" routerLink="/groups" routerLinkActive="active">
+              <mat-icon>forum</mat-icon> Groups
+            </a>
+
+            <div class="nav-section">System</div>
+            <a class="nav-item" routerLink="/settings" routerLinkActive="active">
+              <mat-icon>settings</mat-icon> Settings
+            </a>
+            <a class="nav-item" routerLink="/logs" routerLinkActive="active">
+              <mat-icon>terminal</mat-icon> Logs
+            </a>
+          </div>
+
+          <div class="sidebar-footer">
+            <div class="sidebar-stats">
+              <div class="sidebar-stat">
+                <span>Disk Free</span>
+                <span class="sidebar-stat-value">{{ formatBytes(diskFree()) }}</span>
+              </div>
+              <div class="sidebar-stat">
+                <span>Status</span>
+                <span class="sidebar-stat-value connected">Connected</span>
+              </div>
+            </div>
+            <button class="logout-btn" (click)="onLogout()">
+              <mat-icon>logout</mat-icon> Sign out
+            </button>
+          </div>
+        </nav>
+
+        <!-- Main content -->
+        <div class="content">
+          <!-- Page header -->
+          <div class="page-header">
+            <div class="page-title">
+              <mat-icon class="page-icon">{{ pageIcon() }}</mat-icon>
+              {{ pageTitle() }}
+            </div>
+            <div class="page-actions">
+              @if (isQueuePage()) {
+                <button class="btn btn-primary" (click)="onAddNzb()">
+                  <mat-icon>add</mat-icon> Add NZB
+                </button>
+                <button class="btn btn-icon" (click)="togglePause()" [title]="paused() ? 'Resume All' : 'Pause All'">
+                  <mat-icon>{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Router outlet -->
+          <div class="page-content">
+            <router-outlet />
+          </div>
+        </div>
       </div>
     }
-
-    <!-- Content -->
-    <div class="main">
-      <router-outlet />
-    </div>
-
-    <!-- Status bar -->
-    <div class="statusbar">
-      @if (authenticated()) { <span class="status-ok">● Connected</span> }
-      <span class="sep">|</span>
-      <span>Disk: {{ formatBytes(diskFree()) }} free</span>
-      @if (queueCount() > 0) {
-        <span class="sep">|</span>
-        <span>Queue: {{ queueCount() }} items</span>
-      }
-      <span class="spacer"></span>
-      <span class="version">rustnzbd</span>
-    </div>
   `,
   styles: [`
-    :host { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    :host { display: block; height: 100vh; overflow: hidden; }
 
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px; height: 48px; background: #161b22;
-      border-bottom: 1px solid #30363d;
-    }
-    .topbar-left { display: flex; align-items: center; gap: 16px; }
-    .logo { font-size: 16px; font-weight: 700; color: #58a6ff; }
-    .topbar-right { display: flex; align-items: center; gap: 12px; }
-    .speed-display {
-      display: flex; align-items: center; gap: 4px;
-      background: #0d1117; padding: 4px 12px; border-radius: 4px;
-      font-family: Consolas, monospace; font-size: 14px; font-weight: 600; color: #3fb950;
-    }
-    .arrow { font-size: 16px; }
-    .topbar-btn {
-      padding: 5px 12px; border-radius: 4px; border: 1px solid #30363d;
-      background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 12px;
-    }
-    .topbar-btn:hover { background: #30363d; }
-    .topbar-btn.primary { background: #238636; border-color: #2ea043; color: white; }
+    /* Shell layout */
+    .shell { display: flex; height: 100vh; }
 
-    .tabs {
-      display: flex; background: #161b22; border-bottom: 1px solid #30363d; padding: 0 16px;
+    /* Sidebar */
+    .sidebar {
+      width: 220px; background: #010409; border-right: 1px solid #21262d;
+      display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
     }
-    .tab {
-      padding: 10px 16px; cursor: pointer; color: #8b949e;
-      border-bottom: 2px solid transparent; font-size: 13px;
-      display: flex; align-items: center; gap: 6px; text-decoration: none;
-    }
-    .tab:hover { color: #c9d1d9; }
-    .tab.active { color: #c9d1d9; border-bottom-color: #58a6ff; }
-    .badge {
-      background: #388bfd; color: white; font-size: 10px; font-weight: 700;
-      padding: 1px 6px; border-radius: 10px;
-    }
-
-    .main { flex: 1; overflow: auto; }
-
-    .statusbar {
+    .sidebar-header { padding: 16px 16px 16px; border-bottom: 1px solid #21262d; }
+    .logo {
+      font-size: 16px; font-weight: 700; color: #58a6ff;
       display: flex; align-items: center; gap: 8px;
-      padding: 4px 16px; height: 24px; background: #161b22;
-      border-top: 1px solid #30363d; font-size: 11px; color: #484f58;
     }
-    .status-ok { color: #3fb950; }
-    .sep { color: #30363d; }
-    .spacer { flex: 1; }
-    .version { color: #30363d; }
+    .logo-icon { color: #f0883e; font-size: 22px; width: 22px; height: 22px; }
+    .speed-widget {
+      margin-top: 14px; background: #161b22; border: 1px solid #21262d;
+      border-radius: 8px; padding: 10px 12px; position: relative;
+    }
+    .speed-value {
+      font-family: 'JetBrains Mono', Consolas, monospace;
+      font-size: 20px; font-weight: 700; color: #3fb950;
+    }
+    .speed-label { font-size: 11px; color: #484f58; margin-top: 2px; }
+    .speed-actions { position: absolute; top: 10px; right: 10px; }
+    .speed-btn {
+      background: none; border: 1px solid #30363d; color: #8b949e;
+      border-radius: 4px; cursor: pointer; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .speed-btn:hover { background: #21262d; color: #c9d1d9; }
+    .speed-btn mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    /* Nav */
+    .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+    .nav-section {
+      padding: 14px 16px 6px; font-size: 10px; font-weight: 600;
+      color: #484f58; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+      color: #8b949e; cursor: pointer; font-size: 13px; font-weight: 500;
+      text-decoration: none; border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .nav-item:hover { color: #c9d1d9; background: #161b22; text-decoration: none; }
+    .nav-item.active { color: #e6edf3; background: #161b22; border-left-color: #f0883e; }
+    .nav-item mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .nav-badge {
+      margin-left: auto; background: #f0883e; color: #0d1117;
+      font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+    }
+
+    /* Footer */
+    .sidebar-footer { padding: 12px 16px; border-top: 1px solid #21262d; }
+    .sidebar-stats { font-size: 11px; color: #484f58; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .sidebar-stat { display: flex; justify-content: space-between; }
+    .sidebar-stat-value { color: #8b949e; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 11px; }
+    .sidebar-stat-value.connected { color: #3fb950; }
+    .logout-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 6px 8px; border-radius: 4px; border: none;
+      background: transparent; color: #484f58; cursor: pointer; font-size: 12px;
+    }
+    .logout-btn:hover { background: #161b22; color: #c9d1d9; }
+    .logout-btn mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+    /* Main content area */
+    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid #21262d; background: #161b22; flex-shrink: 0;
+    }
+    .page-title {
+      font-size: 18px; font-weight: 700; color: #e6edf3;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .page-icon { font-size: 24px; width: 24px; height: 24px; color: #f0883e; }
+    .page-actions { display: flex; gap: 8px; }
+
+    .btn {
+      padding: 7px 16px; border-radius: 6px; border: 1px solid #30363d;
+      background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 13px;
+      font-weight: 500; display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: #238636; border-color: #2ea043; color: white; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-icon { padding: 7px 8px; }
+    .btn mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    .page-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
   `],
 })
 export class App implements OnInit, OnDestroy {
@@ -129,6 +215,7 @@ export class App implements OnInit, OnDestroy {
     private api: ApiService,
     private authService: AuthService,
     private router: Router,
+    private addNzbService: AddNzbService,
   ) {}
 
   ngOnInit(): void {
@@ -143,9 +230,7 @@ export class App implements OnInit, OnDestroy {
 
   pollStatus(): void {
     this.authenticated.set(this.authService.isLoggedIn());
-    if (!this.authenticated()) {
-      return;
-    }
+    if (!this.authenticated()) return;
     this.api.get<StatusResponse>('/status').subscribe({
       next: (s) => {
         this.speed.set(s.speed_bps);
@@ -165,9 +250,43 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  onAddNzb(): void {
+    if (this.router.url !== '/queue') {
+      this.router.navigate(['/queue']).then(() => this.addNzbService.togglePanel());
+    } else {
+      this.addNzbService.togglePanel();
+    }
+  }
+
   togglePause(): void {
     const action = this.paused() ? '/queue/resume' : '/queue/pause';
     this.api.post(action).subscribe(() => this.pollStatus());
+  }
+
+  isQueuePage(): boolean {
+    return this.router.url === '/queue';
+  }
+
+  pageTitle(): string {
+    const url = this.router.url;
+    if (url.startsWith('/queue')) return 'Queue';
+    if (url.startsWith('/history')) return 'History';
+    if (url.startsWith('/rss')) return 'RSS Feeds';
+    if (url.startsWith('/groups')) return 'Groups';
+    if (url.startsWith('/settings')) return 'Settings';
+    if (url.startsWith('/logs')) return 'Logs';
+    return 'Queue';
+  }
+
+  pageIcon(): string {
+    const url = this.router.url;
+    if (url.startsWith('/queue')) return 'download';
+    if (url.startsWith('/history')) return 'history';
+    if (url.startsWith('/rss')) return 'rss_feed';
+    if (url.startsWith('/groups')) return 'forum';
+    if (url.startsWith('/settings')) return 'settings';
+    if (url.startsWith('/logs')) return 'terminal';
+    return 'download';
   }
 
   formatSpeed(bps: number): string {

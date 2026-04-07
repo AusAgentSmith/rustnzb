@@ -117,6 +117,8 @@ base64 = { workspace = true }
 rust-embed = "8"
 mime_guess = "2"
 libc = "0.2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = { workspace = true }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["multipart", "json"] }
