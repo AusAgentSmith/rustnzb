@@ -20,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Strip local patch overrides
+        run: sed -i '/^\[patch/,$d' Cargo.toml
+
       - name: Configure git for private deps
         run: git config --global url."http://x-access-token:${{ secrets.GIT_AUTH_TOKEN }}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
 
