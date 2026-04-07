@@ -6,7 +6,18 @@ when:
 steps:
   - name: fmt
     image: rust:1.88-bookworm
+    secrets: [git_auth_token]
     commands:
+      - git config --global url."http://x-access-token:$${GIT_AUTH_TOKEN}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
+      - mkdir -p $CARGO_HOME
+      - |
+        cat > $CARGO_HOME/config.toml << CONF
+        [registries.forgejo]
+        index = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+        [registry]
+        default = "forgejo"
+        CONF
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$${GIT_AUTH_TOKEN}" > $CARGO_HOME/credentials.toml
       - rustup component add rustfmt
       - cargo fmt --all -- --check
 
@@ -46,7 +57,6 @@ steps:
     image: rust:1.88-bookworm
     secrets: [git_auth_token]
     commands:
-      - rustup component add clippy
       - git config --global url."http://x-access-token:$${GIT_AUTH_TOKEN}@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
       - mkdir -p $CARGO_HOME
       - |
@@ -57,4 +67,5 @@ steps:
         default = "forgejo"
         CONF
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$${GIT_AUTH_TOKEN}" > $CARGO_HOME/credentials.toml
+      - rustup component add clippy
       - cargo clippy --workspace -- -D warnings
