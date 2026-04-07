@@ -127,4 +127,7 @@ axum = { workspace = true }
 tempfile = "3"
 arc-swap.workspace = true
 
-
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
