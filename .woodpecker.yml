@@ -70,7 +70,7 @@ steps:
       GIT_AUTH_TOKEN:
         from_secret: git_auth_token
     commands:
-      - apt-get update && apt-get install -y --no-install-recommends clang lld
+      - apt-get update && apt-get install -y --no-install-recommends clang llvm lld
       - git config --global url."http://x-access-token:$GIT_AUTH_TOKEN@100.92.54.45:3002/".insteadOf "http://100.92.54.45:3002/"
       - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n\n[registry]\ndefault = "forgejo"\n' > $CARGO_HOME/config.toml
       - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
