@@ -379,8 +379,7 @@ pub async fn h_header_download(
     nzb.push_str("<!DOCTYPE nzb PUBLIC \"-//newzBin//DTD NZB 1.0//EN\" \"http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd\">\n");
     nzb.push_str("<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n");
     nzb.push_str(&format!(
-        "  <head><meta type=\"name\">{}</meta></head>\n",
-        name
+        "  <head><meta type=\"name\">{name}</meta></head>\n"
     ));
 
     for msg_id in &input.message_ids {

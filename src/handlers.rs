@@ -1042,13 +1042,13 @@ pub async fn h_rss_item_download(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
-        .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {e}")))?;
 
     let response = client
         .get(url)
         .send()
         .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to fetch NZB: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to fetch NZB: {e}")))?;
 
     if !response.status().is_success() {
         return Err(ApiError::from(anyhow::anyhow!(
@@ -1060,10 +1060,10 @@ pub async fn h_rss_item_download(
     let data = response
         .bytes()
         .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {e}")))?;
 
     let mut job = nzb_parser::parse_nzb(&item.title, &data)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to parse NZB: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to parse NZB: {e}")))?;
 
     // Use the item's category or feed category
     if let Some(ref cat) = item.category {
@@ -1078,7 +1078,7 @@ pub async fn h_rss_item_download(
     };
 
     std::fs::create_dir_all(&job.work_dir)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to create work dir: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to create work dir: {e}")))?;
 
     state
         .queue_manager
@@ -1125,7 +1125,7 @@ pub async fn h_rss_rule_add(
 ) -> Result<Json<SimpleResponse>, ApiError> {
     // Validate the regex
     regex::Regex::new(&body.match_regex)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {e}")))?;
 
     let rule = RssRule {
         id: uuid::Uuid::new_v4().to_string(),
@@ -1151,7 +1151,7 @@ pub async fn h_rss_rule_update(
 ) -> Result<Json<SimpleResponse>, ApiError> {
     // Validate the regex
     regex::Regex::new(&body.match_regex)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {}", e)))?;
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {e}")))?;
 
     let rule = RssRule {
         id,
@@ -1371,7 +1371,7 @@ pub async fn h_browse_directory(
     let dir = std::path::Path::new(&path);
 
     if !dir.is_dir() {
-        return Err(ApiError::from(anyhow::anyhow!("Not a directory: {}", path)));
+        return Err(ApiError::from(anyhow::anyhow!("Not a directory: {path}")));
     }
 
     let parent = dir.parent().map(|p| p.to_string_lossy().to_string());
