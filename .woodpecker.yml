@@ -93,7 +93,9 @@ steps:
       - echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
       - chmod 600 ~/.ssh/id_ed25519
       - ssh-keyscan -H 100.92.4.57 >> ~/.ssh/known_hosts 2>/dev/null
-      - TAG="$CI_COMMIT_TAG"
+      - TAG=$(echo "$CI_COMMIT_REF" | sed 's|refs/tags/||')
+      - echo "Publishing release $TAG"
+      - SSH="ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57"
       - DEST="root@100.92.4.57:/root/downloads/rustnzb"
       # Rename binaries with version and platform
       - cp target/release/rustnzb "rustnzb-${TAG}-linux-x86_64"
@@ -101,10 +103,10 @@ steps:
       # Generate checksums
       - sha256sum rustnzb-${TAG}-* > "SHA256SUMS-${TAG}.txt"
       # Upload versioned release
-      - ssh root@100.92.4.57 "mkdir -p /root/downloads/rustnzb/${TAG}"
-      - scp rustnzb-${TAG}-* SHA256SUMS-${TAG}.txt ${DEST}/${TAG}/
+      - $SSH "mkdir -p /root/downloads/rustnzb/${TAG}"
+      - scp -o StrictHostKeyChecking=accept-new rustnzb-${TAG}-* SHA256SUMS-${TAG}.txt ${DEST}/${TAG}/
       # Update latest/ symlinks
-      - ssh root@100.92.4.57 "rm -rf /root/downloads/rustnzb/latest && ln -s /root/downloads/rustnzb/${TAG} /root/downloads/rustnzb/latest"
+      - $SSH "rm -rf /root/downloads/rustnzb/latest && ln -s /root/downloads/rustnzb/${TAG} /root/downloads/rustnzb/latest"
 
   - name: build-and-push
     image: woodpeckerci/plugin-docker-buildx
