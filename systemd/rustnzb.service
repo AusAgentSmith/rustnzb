@@ -1,0 +1,17 @@
+[Unit]
+Description=rustnzb - Usenet NZB downloader
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/rustnzb --config /etc/rustnzb/config.toml
+Restart=on-failure
+RestartSec=5
+User=rustnzb
+Group=rustnzb
+StateDirectory=rustnzb
+CacheDirectory=rustnzb
+
+[Install]
+WantedBy=multi-user.target

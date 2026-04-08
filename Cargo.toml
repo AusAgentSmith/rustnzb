@@ -120,6 +120,21 @@ libc = "0.2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 flate2 = { workspace = true }
 
+[package.metadata.deb]
+maintainer = "AusAgentSmith <admin@rustnzb.dev>"
+copyright = "2024-2026 AusAgentSmith"
+extended-description = "A modern Usenet NZB downloader written in Rust. SABnzbd-compatible API, web UI, PAR2 repair, archive extraction."
+depends = "p7zip-full"
+recommends = "unrar | unrar-free"
+section = "net"
+priority = "optional"
+conf-files = ["/etc/rustnzb/config.toml"]
+assets = [
+    ["target/release/rustnzb", "usr/bin/", "755"],
+    ["config.example.toml", "etc/rustnzb/config.toml", "644"],
+    ["systemd/rustnzb.service", "lib/systemd/system/rustnzb.service", "644"],
+]
+
 [dev-dependencies]
 reqwest = { workspace = true, features = ["multipart", "json"] }
 serde_json = { workspace = true }
