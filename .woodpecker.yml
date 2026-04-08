@@ -99,7 +99,7 @@ steps:
       - sha256sum rustnzb-$CI_COMMIT_TAG-* > "SHA256SUMS-$CI_COMMIT_TAG.txt"
       - ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57 "mkdir -p /root/downloads/rustnzb/$CI_COMMIT_TAG"
       - scp -o StrictHostKeyChecking=accept-new rustnzb-$CI_COMMIT_TAG-* SHA256SUMS-$CI_COMMIT_TAG.txt root@100.92.4.57:/root/downloads/rustnzb/$CI_COMMIT_TAG/
-      - ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57 "rm -rf /root/downloads/rustnzb/latest && ln -s /root/downloads/rustnzb/$CI_COMMIT_TAG /root/downloads/rustnzb/latest"
+      - ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57 "cd /root/downloads/rustnzb && rm -rf latest && ln -s $CI_COMMIT_TAG latest"
       - echo "Published https://dl.rustnzb.dev/latest/"
 
   - name: build-and-push
