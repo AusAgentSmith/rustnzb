@@ -141,6 +141,9 @@ steps:
     image: woodpeckerci/plugin-docker-buildx
     when:
       - event: tag
+    environment:
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     settings:
       repo: ghcr.io/ausagentsmith-org/rustnzb
       registry: ghcr.io
@@ -151,7 +154,7 @@ steps:
       build_args:
         - RELEASE_OPTIMIZED=true
       build_args_from_env:
-        - PLUGIN_PASSWORD
+        - GIT_AUTH_TOKEN
 
   - name: discord-success
     image: alpine/curl
