@@ -138,23 +138,19 @@ steps:
         - PLUGIN_PASSWORD
 
   - name: push-ghcr
-    image: woodpeckerci/plugin-docker-buildx
+    image: docker:cli
     when:
       - event: tag
     environment:
-      GIT_AUTH_TOKEN:
-        from_secret: git_auth_token
-    settings:
-      repo: ghcr.io/ausagentsmith-org/rustnzb
-      registry: ghcr.io
-      username: AusAgentSmith
-      password:
+      GH_TOKEN:
         from_secret: gh_release_token
-      tag: ["${CI_COMMIT_TAG}", "latest", "alpha"]
-      build_args:
-        - RELEASE_OPTIMIZED=true
-      build_args_from_env:
-        - GIT_AUTH_TOKEN
+      FORGEJO_TOKEN:
+        from_secret: git_auth_token
+    commands:
+      - docker login repo.indexarr.net -u "$FORGEJO_TOKEN" -p "$FORGEJO_TOKEN"
+      - docker login ghcr.io -u AusAgentSmith -p "$GH_TOKEN"
+      - docker pull repo.indexarr.net/indexarr/rustnzbd:$CI_COMMIT_TAG
+      - for tag in $CI_COMMIT_TAG latest alpha; do docker tag repo.indexarr.net/indexarr/rustnzbd:$CI_COMMIT_TAG ghcr.io/ausagentsmith-org/rustnzb:$tag && docker push ghcr.io/ausagentsmith-org/rustnzb:$tag; done
 
   - name: discord-success
     image: alpine/curl
