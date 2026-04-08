@@ -101,6 +101,7 @@ steps:
       - sha256sum rustnzb-$CI_COMMIT_TAG-* > "SHA256SUMS-$CI_COMMIT_TAG.txt"
       - ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57 "mkdir -p /root/downloads/rustnzb/$CI_COMMIT_TAG"
       - scp -o StrictHostKeyChecking=accept-new rustnzb-$CI_COMMIT_TAG-* SHA256SUMS-$CI_COMMIT_TAG.txt root@100.92.4.57:/root/downloads/rustnzb/$CI_COMMIT_TAG/
+      - ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57 "cd /root/downloads/rustnzb/$CI_COMMIT_TAG && ln -sf rustnzb-$CI_COMMIT_TAG-linux-x86_64 rustnzb-linux-x86_64 && ln -sf rustnzb-$CI_COMMIT_TAG-windows-x86_64.exe rustnzb-windows-x86_64.exe"
       - ssh -o StrictHostKeyChecking=accept-new root@100.92.4.57 "cd /root/downloads/rustnzb && rm -rf latest && ln -s $CI_COMMIT_TAG latest"
       - echo "Published https://dl.rustnzb.dev/latest/"
 
