@@ -9,26 +9,14 @@ use nzb_web::nzb_core::nzb_parser;
 use nzb_web::nzb_decode::yenc;
 
 fn usenet_farm_config() -> ServerConfig {
-    ServerConfig {
-        id: "uf-test".to_string(),
-        name: "Usenet Farm Test".to_string(),
-        host: "news.usenet.farm".to_string(),
-        port: 563,
-        ssl: true,
-        ssl_verify: true,
-        username: Some("uf8ea2a82f370952aa92".to_string()),
-        password: Some("ff24a05910fd23cb0040ff".to_string()),
-        connections: 1,
-        priority: 0,
-        enabled: true,
-        retention: 0,
-        pipelining: 1,
-        optional: false,
-        compress: false,
-        ramp_up_delay_ms: 0,
-        recv_buffer_size: 0,
-        proxy_url: None,
-    }
+    let mut c = ServerConfig::new("uf-test", "news.usenet.farm");
+    c.name = "Usenet Farm Test".to_string();
+    c.username = Some("uf8ea2a82f370952aa92".to_string());
+    c.password = Some("ff24a05910fd23cb0040ff".to_string());
+    c.connections = 1;
+    c.ramp_up_delay_ms = 0;
+    c.recv_buffer_size = 0;
+    c
 }
 
 #[tokio::test]

@@ -19,26 +19,16 @@ fn make_config(
     password: &str,
     connections: u16,
 ) -> ServerConfig {
-    ServerConfig {
-        id: id.to_string(),
-        name: format!("{host}:{port} ({})", if ssl { "SSL" } else { "plain" }),
-        host: host.to_string(),
-        port,
-        ssl,
-        ssl_verify: true,
-        username: Some(username.to_string()),
-        password: Some(password.to_string()),
-        connections,
-        priority: 0,
-        enabled: true,
-        retention: 0,
-        pipelining: 1,
-        optional: false,
-        compress: false,
-        ramp_up_delay_ms: 0,
-        recv_buffer_size: 0,
-        proxy_url: None,
-    }
+    let mut c = ServerConfig::new(id, host);
+    c.name = format!("{host}:{port} ({})", if ssl { "SSL" } else { "plain" });
+    c.port = port;
+    c.ssl = ssl;
+    c.username = Some(username.to_string());
+    c.password = Some(password.to_string());
+    c.connections = connections;
+    c.ramp_up_delay_ms = 0;
+    c.recv_buffer_size = 0;
+    c
 }
 
 /// Test a single connection: connect, authenticate, then quit.
