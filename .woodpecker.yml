@@ -152,6 +152,53 @@ steps:
       - DST_CREDS="--dest-creds=AusAgentSmith:$GH_TOKEN"
       - for tag in $CI_COMMIT_TAG latest alpha; do skopeo copy $SRC_CREDS $DST_CREDS $SRC "docker://ghcr.io/ausagentsmith-org/rustnzb:$tag"; done
 
+  - name: github-release
+    image: alpine:3.23
+    when:
+      - event: tag
+    environment:
+      GH_TOKEN:
+        from_secret: gh_release_token
+    commands:
+      - apk add --no-cache git curl jq
+      - |
+        TAG="$CI_COMMIT_TAG"
+        REPO="AusAgentSmith-org/rustnzb"
+        echo "Creating GitHub release $TAG on $REPO"
+
+        # Push the tag to GitHub (force in case it exists)
+        git remote add github "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" 2>/dev/null || true
+        git push github "refs/tags/$TAG" --force
+
+        # Build release body
+        BODY="## Downloads\n\n"
+        BODY="$BODY- **Linux x86_64**: \`rustnzb-${TAG}-linux-x86_64\`\n"
+        BODY="$BODY- **Windows x86_64**: \`rustnzb-${TAG}-windows-x86_64.exe\`\n"
+        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-${TAG}-amd64.deb\`\n"
+        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:${TAG}\`\n"
+        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-${TAG}.txt\`"
+
+        # Create release via GitHub API
+        RELEASE_ID=$(curl -sf -X POST \
+          -H "Authorization: token $GH_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"tag_name\":\"$TAG\",\"name\":\"rustnzb $TAG\",\"body\":\"$(echo -e "$BODY")\",\"draft\":false,\"prerelease\":true}" \
+          "https://api.github.com/repos/$REPO/releases" | jq -r '.id')
+
+        echo "Release created: ID=$RELEASE_ID"
+
+        # Upload binaries
+        for file in "rustnzb-${TAG}-linux-x86_64" "rustnzb-${TAG}-windows-x86_64.exe" "rustnzb-${TAG}-amd64.deb" "SHA256SUMS-${TAG}.txt"; do
+          [ -f "$file" ] || continue
+          echo "Uploading $file"
+          curl -sf -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@$file" \
+            "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$file" > /dev/null
+        done
+        echo "GitHub release $TAG complete"
+
   - name: discord-success
     image: alpine/curl
     environment:
