@@ -74,11 +74,11 @@ feed-rs = "2"
 unicode-normalization = "0.1"
 
 # Shared NZB crates ([patch] sections redirect to local for dev)
-nzb-web = { version = "0.1.3", registry = "forgejo", features = ["groups-db"] }
-nzb-nntp = { version = "0.2.5", registry = "forgejo" }
-nzb-core = { version = "0.2.3", registry = "forgejo", features = ["groups-db"] }
+nzb-web = { version = "0.1.4", registry = "forgejo", features = ["groups-db"] }
+nzb-nntp = { version = "0.2.6", registry = "forgejo" }
+nzb-core = { version = "0.2.4", registry = "forgejo", features = ["groups-db"] }
 nzb-decode = { version = "0.1.2", registry = "forgejo" }
-nzb-postproc = { version = "0.2.2", registry = "forgejo" }
+nzb-postproc = { version = "0.2.3", registry = "forgejo" }
 rust-par2 = { version = "0.1.2", registry = "forgejo" }
 yenc-simd = { version = "0.1", registry = "forgejo" }
 

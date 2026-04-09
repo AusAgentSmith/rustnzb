@@ -8,8 +8,8 @@ description = "rustnzb desktop application"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-nzb-web = { version = "0.1.3", registry = "forgejo", features = ["groups-db"] }
-nzb-core = { version = "0.2.3", registry = "forgejo", features = ["groups-db"] }
+nzb-web = { version = "0.1.4", registry = "forgejo", features = ["groups-db"] }
+nzb-core = { version = "0.2.4", registry = "forgejo", features = ["groups-db"] }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-notification = "2"
 tauri-plugin-shell = "2"
