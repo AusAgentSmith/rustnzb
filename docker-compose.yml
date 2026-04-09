@@ -22,7 +22,7 @@ services:
       start_period: 10s
 
   promtail:
-    image: grafana/promtail:3.4.2
+    image: grafana/promtail:3.6.10
     profiles: [logging]
     network_mode: host
     volumes:
