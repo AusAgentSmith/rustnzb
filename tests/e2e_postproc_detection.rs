@@ -49,10 +49,10 @@ fn assembler_output_path(work_dir: &Path, nzb_filename: &str) -> PathBuf {
 /// importing private functions.
 fn extract_filename_from_subject(subject: &str) -> String {
     // Try to find quoted filename first
-    if let Some(start) = subject.find('"') {
-        if let Some(end) = subject[start + 1..].find('"') {
-            return subject[start + 1..start + 1 + end].to_string();
-        }
+    if let Some(start) = subject.find('"')
+        && let Some(end) = subject[start + 1..].find('"')
+    {
+        return subject[start + 1..start + 1 + end].to_string();
     }
 
     // Try to find filename before (xx/yy) pattern
@@ -158,6 +158,7 @@ async fn normal_subjects_pipeline_finds_files() {
         output_dir: None,
         articles_failed: 0,
         skip_extract: false,
+        password: None,
     };
     let result = run_pipeline(dir.path(), &config_zero).await;
     let verify = result.stages.iter().find(|s| s.name == "Verify").unwrap();
@@ -182,6 +183,7 @@ async fn normal_subjects_pipeline_finds_files() {
         output_dir: None,
         articles_failed: 1,
         skip_extract: false,
+        password: None,
     };
     let result = run_pipeline(dir.path(), &config_fail).await;
     let repair = result.stages.iter().find(|s| s.name == "Repair").unwrap();
@@ -314,6 +316,7 @@ async fn obfuscated_pipeline_skips_everything() {
         output_dir: None,
         articles_failed: 0,
         skip_extract: false,
+        password: None,
     };
 
     let result = run_pipeline(dir.path(), &config).await;
@@ -504,6 +507,7 @@ async fn deobfuscation_enables_full_pipeline() {
         output_dir: None,
         articles_failed: 0,
         skip_extract: false,
+        password: None,
     };
     let result = run_pipeline(dir.path(), &config).await;
     let verify = result.stages.iter().find(|s| s.name == "Verify").unwrap();
@@ -524,6 +528,7 @@ async fn deobfuscation_enables_full_pipeline() {
         output_dir: None,
         articles_failed: 1,
         skip_extract: false,
+        password: None,
     };
     let result = run_pipeline(dir.path(), &config_fail).await;
     let repair = result.stages.iter().find(|s| s.name == "Repair").unwrap();
@@ -687,6 +692,7 @@ async fn pipeline_with_only_archives_no_par2() {
         output_dir: Some(output_dir.path().to_path_buf()),
         articles_failed: 0,
         skip_extract: false,
+        password: None,
     };
 
     let result = run_pipeline(dir.path(), &config).await;

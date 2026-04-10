@@ -38,6 +38,10 @@ async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {
         config.general.min_free_space_bytes,
         config.general.speed_limit_bps,
         false,
+        config.general.abort_hopeless,
+        config.general.early_failure_check,
+        config.general.required_completion_pct,
+        config.general.article_timeout_secs,
     );
     let token_store = Arc::new(TokenStore::new());
     let credential_store = Arc::new(CredentialStore::new(tmp_dir.clone()));
