@@ -3,6 +3,7 @@ when:
     branch: main
   - event: tag
   - event: manual
+  - event: pull_request
 
 steps:
   - name: fmt
@@ -64,6 +65,9 @@ steps:
       - cargo build --release
       - ls -lh target/release/rustnzb
       - if [ -n "$CI_COMMIT_TAG" ]; then cargo install cargo-deb --registry crates-io && cargo deb --no-build --no-strip -o target/release/rustnzb_amd64.deb && ls -lh target/release/rustnzb_amd64.deb; fi
+    when:
+      - event: push
+        branch: main
 
   - name: build-windows
     image: rust:1.88-bookworm
@@ -80,6 +84,9 @@ steps:
       - if [ -n "$CI_COMMIT_TAG" ]; then export CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 CARGO_PROFILE_RELEASE_STRIP=symbols; fi
       - cargo xwin build --release --target x86_64-pc-windows-msvc
       - ls -lh target/x86_64-pc-windows-msvc/release/rustnzb.exe
+    when:
+      - event: push
+        branch: main
 
   - name: publish-release
     image: alpine:3.23
