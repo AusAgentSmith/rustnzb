@@ -133,11 +133,11 @@ steps:
         echo "Creating Forgejo release $TAG"
 
         BODY="## Downloads\n\n"
-        BODY="$BODY- **Linux x86_64**: \`rustnzb-${TAG}-linux-x86_64\`\n"
-        BODY="$BODY- **Windows x86_64**: \`rustnzb-${TAG}-windows-x86_64.exe\`\n"
-        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-${TAG}-amd64.deb\`\n"
-        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:${TAG}\`\n"
-        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-${TAG}.txt\`"
+        BODY="$BODY- **Linux x86_64**: \`rustnzb-$TAG-linux-x86_64\`\n"
+        BODY="$BODY- **Windows x86_64**: \`rustnzb-$TAG-windows-x86_64.exe\`\n"
+        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-$TAG-amd64.deb\`\n"
+        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:$TAG\`\n"
+        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-$TAG.txt\`"
 
         RELEASE_ID=$(curl -sf -X POST \
           -H "Authorization: token $FORGEJO_TOKEN" \
@@ -147,7 +147,7 @@ steps:
 
         echo "Forgejo release created: ID=$RELEASE_ID"
 
-        for file in "rustnzb-${TAG}-linux-x86_64" "rustnzb-${TAG}-windows-x86_64.exe" "rustnzb-${TAG}-amd64.deb" "SHA256SUMS-${TAG}.txt"; do
+        for file in "rustnzb-$TAG-linux-x86_64" "rustnzb-$TAG-windows-x86_64.exe" "rustnzb-$TAG-amd64.deb" "SHA256SUMS-$TAG.txt"; do
           [ -f "$file" ] || continue
           echo "Uploading $file"
           curl -sf -X POST \
@@ -220,11 +220,11 @@ steps:
 
         # Build release body
         BODY="## Downloads\n\n"
-        BODY="$BODY- **Linux x86_64**: \`rustnzb-${TAG}-linux-x86_64\`\n"
-        BODY="$BODY- **Windows x86_64**: \`rustnzb-${TAG}-windows-x86_64.exe\`\n"
-        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-${TAG}-amd64.deb\`\n"
-        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:${TAG}\`\n"
-        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-${TAG}.txt\`"
+        BODY="$BODY- **Linux x86_64**: \`rustnzb-$TAG-linux-x86_64\`\n"
+        BODY="$BODY- **Windows x86_64**: \`rustnzb-$TAG-windows-x86_64.exe\`\n"
+        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-$TAG-amd64.deb\`\n"
+        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:$TAG\`\n"
+        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-$TAG.txt\`"
 
         # Create release via GitHub API (target_commitish creates tag on README branch HEAD)
         RELEASE_ID=$(curl -sf -X POST \
@@ -236,7 +236,7 @@ steps:
         echo "Release created: ID=$RELEASE_ID"
 
         # Upload binaries
-        for file in "rustnzb-${TAG}-linux-x86_64" "rustnzb-${TAG}-windows-x86_64.exe" "rustnzb-${TAG}-amd64.deb" "SHA256SUMS-${TAG}.txt"; do
+        for file in "rustnzb-$TAG-linux-x86_64" "rustnzb-$TAG-windows-x86_64.exe" "rustnzb-$TAG-amd64.deb" "SHA256SUMS-$TAG.txt"; do
           [ -f "$file" ] || continue
           echo "Uploading $file"
           curl -sf -X POST \
