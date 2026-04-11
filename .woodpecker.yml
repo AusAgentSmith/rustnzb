@@ -68,6 +68,7 @@ steps:
     when:
       - event: push
         branch: main
+      - event: tag
 
   - name: build-windows
     image: rust:1.88-bookworm
@@ -87,6 +88,7 @@ steps:
     when:
       - event: push
         branch: main
+      - event: tag
 
   - name: publish-release
     image: alpine:3.23
@@ -167,16 +169,11 @@ steps:
       GH_TOKEN:
         from_secret: gh_release_token
     commands:
-      - apk add --no-cache git curl jq
+      - apk add --no-cache curl jq
       - |
         TAG="$CI_COMMIT_TAG"
         REPO="AusAgentSmith-org/rustnzb"
         echo "Creating GitHub release $TAG on $REPO"
-
-        # Push the tag to GitHub (force in case it exists)
-        git fetch --unshallow origin 2>/dev/null || true
-        git remote add github "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" 2>/dev/null || true
-        git push github "refs/tags/$TAG" --force
 
         # Build release body
         BODY="## Downloads\n\n"
@@ -186,11 +183,11 @@ steps:
         BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:${TAG}\`\n"
         BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-${TAG}.txt\`"
 
-        # Create release via GitHub API
+        # Create release via GitHub API (target_commitish creates tag on README branch HEAD)
         RELEASE_ID=$(curl -sf -X POST \
           -H "Authorization: token $GH_TOKEN" \
           -H "Content-Type: application/json" \
-          -d "{\"tag_name\":\"$TAG\",\"name\":\"rustnzb $TAG\",\"body\":\"$(echo -e "$BODY")\",\"draft\":false,\"prerelease\":true}" \
+          -d "{\"tag_name\":\"$TAG\",\"target_commitish\":\"main\",\"name\":\"rustnzb $TAG\",\"body\":\"$(echo -e "$BODY")\",\"draft\":false,\"prerelease\":true}" \
           "https://api.github.com/repos/$REPO/releases" | jq -r '.id')
 
         echo "Release created: ID=$RELEASE_ID"
@@ -206,22 +203,6 @@ steps:
             "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=$file" > /dev/null
         done
         echo "GitHub release $TAG complete"
-
-  - name: push-github
-    image: alpine/git
-    when:
-      - event: push
-        branch: main
-    environment:
-      GH_TOKEN:
-        from_secret: gh_release_token
-      FORGEJO_TOKEN:
-        from_secret: git_auth_token
-    commands:
-      - git clone --bare "https://x-access-token:$FORGEJO_TOKEN@repo.indexarr.net/indexarr/rustnzb.git" /tmp/repo.git
-      - cd /tmp/repo.git
-      - git push --force "https://x-access-token:$GH_TOKEN@github.com/AusAgentSmith-org/rustnzb.git" main:main
-      - git push --force "https://x-access-token:$GH_TOKEN@github.com/AusAgentSmith-org/rustnzb.git" --tags 2>/dev/null || true
 
   - name: discord-success
     image: alpine/curl
