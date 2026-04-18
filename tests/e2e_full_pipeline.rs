@@ -42,6 +42,7 @@ async fn start_test_server() -> (String, tokio::task::JoinHandle<()>) {
         config.general.early_failure_check,
         config.general.required_completion_pct,
         config.general.article_timeout_secs,
+        None,
     );
     let token_store = Arc::new(TokenStore::new());
     let credential_store = Arc::new(CredentialStore::new(tmp_dir.clone()));
@@ -251,9 +252,22 @@ async fn test_upload_nzb_and_verify_queue() {
     let sab_history: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(sab_history["history"]["slots"].as_array().unwrap().len(), 0);
 
-    // 10. Test SABnzbd addfile via multipart POST
-    let part2 = reqwest::multipart::Part::bytes(nzb_bytes.clone())
-        .file_name(nzb_filename.clone())
+    // 10. Test SABnzbd addfile via multipart POST.
+    // Use a DIFFERENT NZB — nzb-web ≥0.4.6 rejects duplicate content-hashes,
+    // and the first NZB is already in the queue from step 3.
+    let alt_nzb_path = std::fs::read_dir("TestData")
+        .unwrap()
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .find(|p| p.extension().map(|e| e == "nzb").unwrap_or(false) && *p != nzb_path)
+        .expect("need a second NZB in TestData for dedup test");
+    let alt_nzb_bytes = std::fs::read(&alt_nzb_path).expect("Failed to read alt NZB");
+    let alt_nzb_filename = alt_nzb_path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+    let part2 = reqwest::multipart::Part::bytes(alt_nzb_bytes)
+        .file_name(alt_nzb_filename)
         .mime_str("application/x-nzb")
         .unwrap();
     let form2 = reqwest::multipart::Form::new()
