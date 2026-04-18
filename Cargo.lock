@@ -91,7 +91,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -102,7 +102,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -668,7 +668,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -916,29 +916,6 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "governor"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be93b4ec2e4710b04d9264c0c7350cdd62a8c20e5e4ac732552ebb8f0debe8eb"
-dependencies = [
- "cfg-if",
- "dashmap",
- "futures-sink",
- "futures-timer",
- "futures-util",
- "getrandom 0.3.4",
- "no-std-compat",
- "nonzero_ext",
- "parking_lot",
- "portable-atomic",
- "quanta",
- "rand 0.9.2",
- "smallvec",
- "spinning_top",
- "web-time",
-]
-
-[[package]]
-name = "governor"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9efcab3c1958580ff1f25a2a41be1668f7603d849bb63af523b208a3cc1223b8"
@@ -1174,7 +1151,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -1656,12 +1633,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "no-std-compat"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b93853da6d84c2e3c7d730d6473e8817692dd89be387eb01b94d7f108ecb5b8c"
-
-[[package]]
 name = "nonzero_ext"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1700,7 +1671,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1756,20 +1727,54 @@ dependencies = [
 ]
 
 [[package]]
-name = "nzb-nntp"
-version = "0.2.8"
+name = "nzb-dispatch"
+version = "0.2.3"
 source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-checksum = "a9212c9ddacb61298a69ea6458d27350b8325ad8dfb26a3b197d2b22207200af"
+checksum = "7afb405401c68cb9bf46060f35b13be33d813b5a192906aa774b95279acd092a"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "async-trait",
+ "governor",
+ "nzb-core",
+ "nzb-decode",
+ "nzb-news",
+ "nzb-nntp",
+ "parking_lot",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "nzb-news"
+version = "0.1.8"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "7e9fa54d813e71555c470c072c5959c8386182c0e8c2beef99ed7126dbe31450"
+dependencies = [
+ "nzb-nntp",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "nzb-nntp"
+version = "0.2.17"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "bb1bdf6543c035c236f56e40495cc2d1bd8e0a60d48e872b2ab1357952ec0143"
 dependencies = [
  "anyhow",
  "arc-swap",
  "bytes",
  "flate2",
- "governor 0.10.4",
+ "governor",
  "parking_lot",
  "rustls",
  "rustls-pki-types",
  "serde",
+ "sha2",
  "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
@@ -1798,22 +1803,25 @@ dependencies = [
 
 [[package]]
 name = "nzb-web"
-version = "0.1.9"
+version = "0.4.10"
 source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-checksum = "07625ff608284e1de9b129357ed1103623aeae2f8f0aa4854ffe2e695cbec978"
+checksum = "2992a70d0142349951a555ab1438fb9e893bf86c165b37b1e5b067ad8e6eae9a"
 dependencies = [
  "anyhow",
  "arc-swap",
+ "async-trait",
  "axum 0.8.8",
  "base64",
  "chrono",
  "feed-rs",
- "governor 0.8.1",
+ "governor",
  "hex",
  "http",
  "libc",
  "notify",
  "nzb-decode",
+ "nzb-dispatch",
+ "nzb-nntp",
  "nzb-postproc",
  "parking_lot",
  "rand 0.9.2",
@@ -1821,6 +1829,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.18",
  "tokio",
  "tower 0.5.3",
@@ -2164,7 +2173,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -2201,7 +2210,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -2464,9 +2473,9 @@ dependencies = [
 
 [[package]]
 name = "rust-par2"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b3ed2f527a5f43e2b5e028b3802f137713222734fa494b93ed7680dd8c06aa9"
+checksum = "316a361ebfb34b398e72eb31a4f366d51c9c0c8d7e60f70b1904c025175c2d6b"
 dependencies = [
  "crc32fast",
  "md-5",
@@ -2491,7 +2500,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2798,7 +2807,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2896,7 +2905,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3656,7 +3665,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
