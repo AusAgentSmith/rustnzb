@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { ApiService } from './core/services/api.service';
 import { AuthService } from './core/services/auth.service';
@@ -9,7 +10,7 @@ import { AddNzbService } from './core/services/add-nzb.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
     @if (!authenticated()) {
       <!-- Full-screen login (no chrome) -->
@@ -40,9 +41,27 @@ import { AddNzbService } from './core/services/add-nzb.service';
           <a routerLink="/settings" routerLinkActive="active">Settings</a>
           <div class="spacer"></div>
           <button class="action primary" (click)="onAddNzb()">+ Upload NZB</button>
-          <button class="action" (click)="togglePause()">
-            {{ paused() ? '▶ Resume all' : '❚❚ Pause all' }}
-          </button>
+          <div class="pause-group">
+            <button class="action" (click)="togglePause()">
+              {{ paused() ? '▶ Resume all' : '❚❚ Pause all' }}
+            </button>
+            @if (!paused()) {
+              <button class="action pause-caret" (click)="pauseMenuOpen = !pauseMenuOpen" title="Pause for…">▾</button>
+              @if (pauseMenuOpen) {
+                <div class="pause-menu" (click)="$event.stopPropagation()">
+                  <div class="pm-title">Pause for…</div>
+                  @for (opt of pauseTimerOptions; track opt.secs) {
+                    <button class="pm-item" (click)="pauseFor(opt.secs)">{{ opt.label }}</button>
+                  }
+                  <div class="pm-custom">
+                    <input type="number" min="1" placeholder="min" [(ngModel)]="customPauseMin"
+                           (keydown.enter)="pauseForCustom()" />
+                    <button class="pm-go" (click)="pauseForCustom()">Go</button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
           <button class="action muted" (click)="onLogout()" title="Sign out">Sign out</button>
         </nav>
 
@@ -103,6 +122,50 @@ import { AddNzbService } from './core/services/add-nzb.service';
     nav.top .action.primary { color: var(--accent2); font-weight: 600; }
     nav.top .action.muted { color: var(--mute); font-size: 12px; }
 
+    /* Pause split-button + dropdown */
+    .pause-group { position: relative; display: flex; align-items: center; }
+    .pause-caret {
+      padding: 10px 6px !important;
+      font-size: 11px !important;
+      margin-left: -6px;
+    }
+    .pause-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      padding: 6px;
+      min-width: 160px;
+      z-index: 40;
+    }
+    .pm-title { font-size: 11px; color: var(--mute); padding: 4px 8px 6px; text-transform: uppercase; letter-spacing: .4px; }
+    .pm-item {
+      display: block; width: 100%; text-align: left;
+      background: none; border: none; color: var(--text);
+      padding: 6px 10px; border-radius: 4px; cursor: pointer;
+      font: inherit; font-size: 13px;
+    }
+    .pm-item:hover { background: var(--panel2); }
+    .pm-custom {
+      display: flex; gap: 4px; padding: 6px 4px 2px;
+      border-top: 1px solid var(--line); margin-top: 4px;
+    }
+    .pm-custom input {
+      flex: 1; min-width: 0; background: var(--panel2);
+      border: 1px solid var(--line); color: var(--text);
+      padding: 5px 8px; border-radius: 4px; font: inherit; font-size: 12px;
+      outline: none;
+    }
+    .pm-go {
+      background: var(--accent); color: #fff; border: none;
+      padding: 5px 10px; border-radius: 4px; cursor: pointer;
+      font: inherit; font-size: 12px;
+    }
+
     /* ---- Main area ---- */
     main {
       flex: 1;
@@ -124,7 +187,21 @@ export class App implements OnInit, OnDestroy {
   queueCount = signal(0);
   diskFree = signal(0);
   authenticated = signal(false);
+  pauseMenuOpen = false;
+  customPauseMin: number | null = null;
+  readonly pauseTimerOptions = [
+    { label: '5 minutes', secs: 5 * 60 },
+    { label: '15 minutes', secs: 15 * 60 },
+    { label: '30 minutes', secs: 30 * 60 },
+    { label: '1 hour', secs: 60 * 60 },
+    { label: '2 hours', secs: 2 * 60 * 60 },
+  ];
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private docClickHandler = (e: MouseEvent) => {
+    if (!this.pauseMenuOpen) return;
+    const el = (e.target as HTMLElement).closest('.pause-group');
+    if (!el) this.pauseMenuOpen = false;
+  };
 
   constructor(
     private api: ApiService,
@@ -137,10 +214,12 @@ export class App implements OnInit, OnDestroy {
     this.authenticated.set(this.authService.isLoggedIn());
     this.pollStatus();
     this.pollTimer = setInterval(() => this.pollStatus(), 2000);
+    document.addEventListener('click', this.docClickHandler);
   }
 
   ngOnDestroy(): void {
     if (this.pollTimer) clearInterval(this.pollTimer);
+    document.removeEventListener('click', this.docClickHandler);
   }
 
   pollStatus(): void {
@@ -176,6 +255,19 @@ export class App implements OnInit, OnDestroy {
   togglePause(): void {
     const action = this.paused() ? '/queue/resume' : '/queue/pause';
     this.api.post(action).subscribe(() => this.pollStatus());
+    this.pauseMenuOpen = false;
+  }
+
+  pauseFor(secs: number): void {
+    this.api.post(`/queue/pause-for?duration_secs=${secs}`).subscribe(() => this.pollStatus());
+    this.pauseMenuOpen = false;
+  }
+
+  pauseForCustom(): void {
+    const mins = this.customPauseMin;
+    if (!mins || mins <= 0) return;
+    this.pauseFor(Math.round(mins * 60));
+    this.customPauseMin = null;
   }
 
   formatSpeed(bps: number): string {

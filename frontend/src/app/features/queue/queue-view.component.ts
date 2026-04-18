@@ -64,7 +64,7 @@ interface PipelineStep {
     </div>
 
     <!-- ============ Per-server connection pool ============ -->
-    <div class="panel">
+    <div class="panel pool-panel">
       <h3>NNTP connection pool
         <span class="hint">priority failover · TLS via rustls · live</span>
       </h3>
@@ -297,23 +297,46 @@ interface PipelineStep {
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    /* Compact queue page — roughly 20% smaller than app default. */
+    :host {
+      display: block;
+      font-size: 11.2px;
+    }
+    :host ::ng-deep .cards4 { gap: 12px; margin-bottom: 14px; }
+    :host ::ng-deep .card { padding: 10px; border-radius: 6px; }
+    :host ::ng-deep .card .label { font-size: 10px; }
+    :host ::ng-deep .card .val { font-size: 17px; margin-top: 4px; }
+    :host ::ng-deep .card .val .unit { font-size: 11px; }
+    :host ::ng-deep .card .sub { font-size: 10px; margin-top: 3px; }
+    :host ::ng-deep .panel { margin-bottom: 12px; border-radius: 6px; }
+    :host ::ng-deep .panel h3 { padding: 9px 13px; font-size: 12px; }
+    :host ::ng-deep .panel h3 .hint { font-size: 10px; }
+    :host ::ng-deep .panel .body { padding: 11px 13px; }
+    :host ::ng-deep table.data { font-size: 11.5px; }
+    :host ::ng-deep table.data th { font-size: 10px; padding: 6px 10px; }
+    :host ::ng-deep table.data td { padding: 6px 10px; }
+    :host ::ng-deep .status-pill { font-size: 10px; padding: 1px 6px; }
+    :host ::ng-deep .tag { font-size: 10px; padding: 0 5px; }
+    :host ::ng-deep .progress { width: 112px; height: 5px; }
 
-    /* Connection pool */
-    .srv-block { padding: 12px 0; border-bottom: 1px solid var(--line); }
+    /* Connection pool — heavily compacted per design feedback. */
+    .panel.pool-panel { font-size: 10.5px; }
+    .panel.pool-panel h3 { padding: 6px 10px; font-size: 11px; }
+    .panel.pool-panel .body { padding: 8px 10px; }
+    .srv-block { padding: 6px 0; border-bottom: 1px solid var(--line); }
     .srv-block:last-of-type { border: none; padding-bottom: 0; }
     .srv-block:first-of-type { padding-top: 0; }
-    .srv-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .srv-name { font-weight: 600; }
+    .srv-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .srv-name { font-weight: 600; font-size: 11px; }
     .srv-name.dim { color: var(--mute); }
-    .prio { color: var(--mute); font-weight: 400; font-size: 11px; margin-left: 8px; }
-    .srv-meta { color: var(--mute); font-size: 11px; }
-    .conn-grid { display: grid; grid-template-columns: repeat(30, 1fr); gap: 3px; }
-    .conn-grid .c { height: 16px; border-radius: 2px; background: var(--panel2); }
+    .prio { color: var(--mute); font-weight: 400; font-size: 10px; margin-left: 6px; }
+    .srv-meta { color: var(--mute); font-size: 10px; }
+    .conn-grid { display: grid; grid-template-columns: repeat(40, 1fr); gap: 2px; }
+    .conn-grid .c { height: 8px; border-radius: 1px; background: var(--panel2); }
     .conn-grid .c.active { background: var(--accent2); }
     .conn-grid .c.idle   { background: var(--accent); }
     .conn-grid .c.err    { background: var(--danger); opacity: .6; }
-    .legend { display: flex; gap: 14px; font-size: 11px; color: var(--mute); margin-top: 10px; align-items: center; }
+    .legend { display: flex; gap: 10px; font-size: 10px; color: var(--mute); margin-top: 6px; align-items: center; }
     .legend .sw { display: inline-flex; align-items: center; }
     .legend .sw::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
     .legend .a::before { background: var(--accent2); }

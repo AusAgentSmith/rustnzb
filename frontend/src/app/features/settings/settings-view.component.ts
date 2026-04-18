@@ -179,9 +179,7 @@ function emptyCategory(): CategoryConfig {
 
                 <div class="form-actions">
                   <button class="btn primary" (click)="saveServer()">Save</button>
-                  @if (editingServerId) {
-                    <button class="btn" (click)="testServer(editingServerId)">Test connection</button>
-                  }
+                  <button class="btn" (click)="testEditingServer()">Test connection</button>
                   <button class="btn" (click)="cancelServerEdit()">Cancel</button>
                 </div>
               </div>
@@ -630,6 +628,20 @@ export class SettingsViewComponent implements OnInit {
   testServer(id: string): void {
     this.api.post<{ success: boolean; message: string }>(`/config/servers/${id}/test`).subscribe({
       next: r => this.snack.open(r.message, 'Close', { duration: 3000 }),
+      error: () => this.snack.open('Test failed', 'Close', { duration: 3000 }),
+    });
+  }
+
+  // Test the current (possibly unsaved) form values against the NNTP server.
+  // Uses the inline test endpoint so users don't have to Save before verifying edits.
+  testEditingServer(): void {
+    if (!this.editingServer) return;
+    const body = { ...this.editingServer };
+    if (!body.username) body.username = null;
+    if (!body.password) body.password = null;
+    this.snack.open('Testing…', '', { duration: 1500 });
+    this.api.post<{ success: boolean; message: string }>(`/config/servers/test-config`, body).subscribe({
+      next: r => this.snack.open(r.message, 'Close', { duration: 4000 }),
       error: () => this.snack.open('Test failed', 'Close', { duration: 3000 }),
     });
   }
