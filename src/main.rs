@@ -10,7 +10,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::{LogBuffer, LogBufferLayer, StartupConfig};
 
-use rustnzb::server;
+use rustnzb::{handlers, server};
 
 #[derive(Parser, Debug)]
 #[command(name = "rustnzb", version, about = "Usenet NZB download client")]
@@ -180,7 +180,13 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Load config early to check OTEL settings before initializing tracing
-    let config = AppConfig::load(&args.config)?;
+    let mut config = AppConfig::load(&args.config)?;
+    // Strip incidental whitespace from user-supplied server fields. Guards
+    // against pasted hostnames carrying a trailing newline/space, which
+    // surfaces as a misleading "Name does not resolve" from getaddrinfo.
+    for srv in config.servers.iter_mut() {
+        handlers::sanitize_server_config(srv);
+    }
 
     // Initialize logging (must happen before startup::initialize)
     let log_buffer = LogBuffer::new();

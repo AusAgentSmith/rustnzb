@@ -691,6 +691,7 @@ pub async fn h_server_add(
     if server.id.is_empty() {
         server.id = uuid::Uuid::new_v4().to_string();
     }
+    sanitize_server_config(&mut server);
 
     let mut config = (*state.config()).clone();
     config.servers.push(server);
@@ -706,8 +707,9 @@ pub async fn h_server_add(
 pub async fn h_server_update(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
-    Json(server): Json<ServerConfig>,
+    Json(mut server): Json<ServerConfig>,
 ) -> Result<Json<SimpleResponse>, ApiError> {
+    sanitize_server_config(&mut server);
     let mut config = (*state.config()).clone();
 
     let idx = config
@@ -814,7 +816,33 @@ pub async fn h_server_test_inline(
     }
 }
 
-async fn test_server_connection(server: ServerConfig) -> Result<String, String> {
+/// Strip whitespace from user-supplied string fields before persisting or
+/// connecting. Paste-in-hostname with a trailing `\n` or space makes
+/// `getaddrinfo` fail with a misleading "Name does not resolve" even for
+/// literal IPs — trimming on the server side defeats that class of bug
+/// regardless of what the frontend sent.
+pub fn sanitize_server_config(s: &mut ServerConfig) {
+    fn trim_in_place(v: &mut String) {
+        let t = v.trim();
+        if t.len() != v.len() {
+            *v = t.to_string();
+        }
+    }
+    fn trim_opt(v: &mut Option<String>) {
+        if let Some(inner) = v.as_mut() {
+            trim_in_place(inner);
+        }
+    }
+    trim_in_place(&mut s.host);
+    trim_in_place(&mut s.name);
+    trim_opt(&mut s.username);
+    trim_opt(&mut s.password);
+    trim_opt(&mut s.proxy_url);
+    trim_opt(&mut s.trusted_fingerprint);
+}
+
+async fn test_server_connection(mut server: ServerConfig) -> Result<String, String> {
+    sanitize_server_config(&mut server);
     use nzb_web::nzb_core::nzb_nntp::connection::NntpConnection;
 
     let mut conn = NntpConnection::new(format!("test-{}", server.id));
