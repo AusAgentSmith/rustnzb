@@ -112,7 +112,7 @@ steps:
         set -ex
         TAG="$CI_COMMIT_TAG"
         echo "=== Artifacts in workspace ==="
-        ls -lh rustnzb-${TAG}-linux-x86_64.tar.gz rustnzb-${TAG}-windows-x86_64-setup.exe rustnzb-${TAG}-amd64.deb
+        ls -lh "rustnzb-$TAG-linux-x86_64.tar.gz" "rustnzb-$TAG-windows-x86_64-setup.exe" "rustnzb-$TAG-amd64.deb"
         echo "Publishing release $TAG"
         sha256sum "rustnzb-$TAG-linux-x86_64.tar.gz" "rustnzb-$TAG-windows-x86_64-setup.exe" "rustnzb-$TAG-amd64.deb" > "SHA256SUMS-$TAG.txt"
         ls -lh "SHA256SUMS-$TAG.txt"
@@ -139,11 +139,11 @@ steps:
         echo "Creating Forgejo release $TAG (prerelease=$PRERELEASE)"
 
         BODY="## Downloads\n\n"
-        BODY="${BODY}- **Linux x86_64**: \`rustnzb-$TAG-linux-x86_64.tar.gz\`\n"
-        BODY="${BODY}- **Windows x86_64 installer**: \`rustnzb-$TAG-windows-x86_64-setup.exe\`\n"
-        BODY="${BODY}- **Debian/Ubuntu**: \`rustnzb-$TAG-amd64.deb\`\n"
-        BODY="${BODY}- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:$TAG\`\n"
-        BODY="${BODY}\nSHA256 checksums in \`SHA256SUMS-$TAG.txt\`"
+        BODY="$BODY- **Linux x86_64**: \`rustnzb-$TAG-linux-x86_64.tar.gz\`\n"
+        BODY="$BODY- **Windows x86_64 installer**: \`rustnzb-$TAG-windows-x86_64-setup.exe\`\n"
+        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-$TAG-amd64.deb\`\n"
+        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:$TAG\`\n"
+        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-$TAG.txt\`"
 
         EXISTING_ID=$(curl -s -H "Authorization: token $FORGEJO_TOKEN" \
           "$API/repos/$REPO/releases/tags/$TAG" | jq -r '.id // empty')
@@ -242,11 +242,11 @@ steps:
         echo "Creating GitHub release $TAG (prerelease=$PRERELEASE)"
 
         BODY="## Downloads\n\n"
-        BODY="${BODY}- **Linux x86_64**: \`rustnzb-$TAG-linux-x86_64.tar.gz\`\n"
-        BODY="${BODY}- **Windows x86_64 installer**: \`rustnzb-$TAG-windows-x86_64-setup.exe\`\n"
-        BODY="${BODY}- **Debian/Ubuntu**: \`rustnzb-$TAG-amd64.deb\`\n"
-        BODY="${BODY}- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:$TAG\`\n"
-        BODY="${BODY}\nSHA256 checksums in \`SHA256SUMS-$TAG.txt\`"
+        BODY="$BODY- **Linux x86_64**: \`rustnzb-$TAG-linux-x86_64.tar.gz\`\n"
+        BODY="$BODY- **Windows x86_64 installer**: \`rustnzb-$TAG-windows-x86_64-setup.exe\`\n"
+        BODY="$BODY- **Debian/Ubuntu**: \`rustnzb-$TAG-amd64.deb\`\n"
+        BODY="$BODY- **Docker**: \`ghcr.io/ausagentsmith-org/rustnzb:$TAG\`\n"
+        BODY="$BODY\nSHA256 checksums in \`SHA256SUMS-$TAG.txt\`"
 
         EXISTING_ID=$(curl -s -H "Authorization: token $GH_TOKEN" \
           "https://api.github.com/repos/$REPO/releases/tags/$TAG" | jq -r '.id // empty')
