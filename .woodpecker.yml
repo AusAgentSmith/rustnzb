@@ -87,10 +87,9 @@ steps:
     commands:
       - apt-get update && apt-get install -y --no-install-recommends nsis
       - TAG="$CI_COMMIT_TAG"
-      - cp target/x86_64-pc-windows-msvc/release/rustnzb.exe .
-      - makensis -DVERSION="$TAG" installer/windows.nsi
-      - rm -f rustnzb.exe
-      - ls -lh "rustnzb-$TAG-windows-x86_64-setup.exe"
+      - cp target/x86_64-pc-windows-msvc/release/rustnzb.exe installer/
+      - cd installer && makensis -DVERSION="$TAG" windows.nsi
+      - ls -lh "../rustnzb-$TAG-windows-x86_64-setup.exe"
     when:
       - event: tag
 
