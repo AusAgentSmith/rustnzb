@@ -1,0 +1,29 @@
+# Add this block to ~/Caddy/Caddyfile on the VPS (46.250.255.234)
+# Place alongside the existing indexarr.net, notetakerapp.dev, and rusttorrent.dev blocks
+
+rustnzb.dev, www.rustnzb.dev {
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
+
+    root * /srv/rustnzb
+    file_server
+
+    encode gzip zstd
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Cache-Control "public, max-age=3600"
+    }
+
+    header /css/* Cache-Control "public, max-age=86400"
+    header /js/* Cache-Control "public, max-age=86400"
+    header /img/* Cache-Control "public, max-age=604800"
+
+    handle_errors {
+        rewrite * /index.html
+        file_server
+    }
+}

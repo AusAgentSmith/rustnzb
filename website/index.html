@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="rustnzb - A fast, modern Usenet binary downloader written in Rust with yEnc decoding, PAR2 repair, and a clean web UI.">
+    <meta name="keywords" content="rustnzb, usenet, nzb, downloader, rust, nntp, yenc, par2, docker, self-hosted">
+    <title>rustnzb - A Modern Usenet Downloader in Rust</title>
+    <link rel="icon" href="img/logo.png" type="image/png">
+    <link rel="stylesheet" href="css/style.css?v=2">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="#" class="nav-brand">
+                <img src="img/logo.png" alt="rustnzb" class="nav-logo-img" width="28" height="28">
+                <span class="nav-logo-text">rust</span><span class="nav-logo-accent">nzb</span>
+            </a>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#download">Download</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#benchmarks">Benchmarks</a></li>
+                <li><a href="#demo-section">Demo</a></li>
+                <li><a href="#getting-started">Get Started</a></li>
+                <li><a href="#arr-integration">Arr Integration</a></li>
+                <li><a href="https://github.com/AusAgentSmith-org/rustnzb" target="_blank" rel="noopener">GitHub</a></li>
+                <li><a href="https://discord.gg/pu6chSqpnJ" target="_blank" rel="noopener">Discord</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div class="hero-content">
+                <img src="img/logo.png" alt="rustnzb" class="hero-logo" width="120" height="120">
+                <h1 class="hero-title"><span class="accent-text">rust</span>nzb</h1>
+                <p class="hero-subtitle">A Modern Usenet Binary Downloader, Rewritten From the Ground Up in Rust</p>
+                <p class="hero-description">
+                    Built from scratch with zero legacy dependencies. Fast, efficient, and designed for self-hosters.
+                    Full NNTP pipeline with yEnc decoding, PAR2 verification &amp; repair, archive extraction, and a clean web UI.
+                    No inherited technical debt &mdash; just modern Rust with async I/O, connection pooling, and NNTP pipelining for maximum throughput.
+                </p>
+                <div class="hero-badges">
+                    <span class="badge badge-rust">Rust</span>
+                    <span class="badge badge-proto">NNTP</span>
+                    <span class="badge badge-docker">Docker</span>
+                    <span class="badge badge-api">REST API</span>
+                    <span class="badge badge-web">Web UI</span>
+                    <span class="badge badge-desktop">Desktop App</span>
+                </div>
+                <div class="hero-buttons">
+                    <a href="#download" class="btn btn-primary btn-large">Download Alpha</a>
+                    <a href="demo/" class="btn btn-outline">Live Demo</a>
+                    <a href="https://github.com/AusAgentSmith-org/rustnzb" class="btn btn-outline" target="_blank" rel="noopener">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status Banner -->
+    <section class="status-banner alpha-banner">
+        <div class="container">
+            <div class="status-card alpha-card">
+                <div class="status-icon alpha-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <div class="status-text">
+                    <strong>Alpha Software</strong>
+                    <span>rustnzb is in early alpha. Expect bugs, breaking changes, and incomplete features. Not recommended for production use. <a href="https://github.com/AusAgentSmith-org/rustnzb/issues" target="_blank">Report issues on GitHub</a>.</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Features</h2>
+            <p class="section-subtitle">Everything you need for Usenet downloads &mdash; no legacy code, no inherited dependencies, built from scratch in Rust</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                    </div>
+                    <h3>NNTP Pipelining</h3>
+                    <p>Send multiple ARTICLE commands per connection before reading responses. Configurable pipeline depth per server eliminates round-trip latency.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M22 12H2M22 12l-4-4m4 4l-4 4M2 12l4-4m-4 4l4 4"/>
+                        </svg>
+                    </div>
+                    <h3>Multi-Server Failover</h3>
+                    <p>Priority-ordered server list with automatic failover. Articles not found on one server are retried on the next. Optional servers for fill providers.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                    </div>
+                    <h3>yEnc Decoding</h3>
+                    <p>Fast, correct yEnc decoder with CRC32 validation. Handles multi-part articles, escape sequences, and assembles files from decoded segments.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h3>PAR2 Verify &amp; Repair</h3>
+                    <p>Automatic PAR2 verification after download. Damaged files are repaired using recovery blocks before extraction. Full pipeline automation.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                        </svg>
+                    </div>
+                    <h3>Archive Extraction</h3>
+                    <p>Automatic extraction of RAR, 7z, and ZIP archives after download and repair. Supports multi-part RAR (new and old naming) with cleanup.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <h3>Clean Web UI</h3>
+                    <p>Responsive single-page web interface. Queue management, download history, server configuration, real-time logs, and drag-and-drop NZB upload.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M8 21h8M12 17v4"/>
+                        </svg>
+                    </div>
+                    <h3>Desktop App</h3>
+                    <p>Native desktop application for Windows, macOS, and Linux powered by Tauri. System tray with queue count and speed, lightweight and fast.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M18 20V10M12 20V4M6 20v-6"/>
+                        </svg>
+                    </div>
+                    <h3>REST API</h3>
+                    <p>Full HTTP API with Swagger/OpenAPI documentation. Queue, history, server management, status, and log endpoints. SABnzbd-compatible API layer.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                    </div>
+                    <h3>SABnzbd Migration</h3>
+                    <p>Import your SABnzbd configuration with one click. Upload your <code>sabnzbd.ini</code> or connect to a live instance &mdash; servers, categories, and settings are imported automatically.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32">
+                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        </svg>
+                    </div>
+                    <h3>OpenTelemetry</h3>
+                    <p>Built-in tracing and metrics export via OpenTelemetry. Ship logs and metrics to Grafana, Jaeger, or any OTLP-compatible backend.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="architecture" id="architecture">
+        <div class="container">
+            <h2 class="section-title">Architecture</h2>
+            <p class="section-subtitle">A modular Rust workspace with clean separation of concerns</p>
+            <div class="arch-grid">
+                <div class="arch-card">
+                    <div class="arch-label">nzb-core</div>
+                    <div class="arch-items">
+                        <span>NZB Parser</span>
+                        <span>Config</span>
+                        <span>Database (SQLite)</span>
+                        <span>Models</span>
+                    </div>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-label">nzb-nntp</div>
+                    <div class="arch-items">
+                        <span>NNTP Protocol</span>
+                        <span>Connection Pool</span>
+                        <span>TLS (rustls)</span>
+                        <span>Pipelining</span>
+                        <span>Server Failover</span>
+                    </div>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-label">nzb-decode</div>
+                    <div class="arch-items">
+                        <span>yEnc Decoder</span>
+                        <span>CRC32 Validation</span>
+                        <span>File Assembler</span>
+                        <span>Caching</span>
+                    </div>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-label">nzb-postproc</div>
+                    <div class="arch-items">
+                        <span>PAR2 Verify</span>
+                        <span>PAR2 Repair</span>
+                        <span>RAR / 7z / ZIP</span>
+                        <span>Cleanup</span>
+                    </div>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-label">nzb-web</div>
+                    <div class="arch-items">
+                        <span>Axum HTTP</span>
+                        <span>REST API</span>
+                        <span>Web UI</span>
+                        <span>Queue Manager</span>
+                        <span>Log Buffer</span>
+                    </div>
+                </div>
+                <div class="arch-card">
+                    <div class="arch-label">Infrastructure</div>
+                    <div class="arch-items">
+                        <span>Tokio Runtime</span>
+                        <span>SQLite (WAL)</span>
+                        <span>OpenTelemetry</span>
+                        <span>Docker</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Benchmarks Section -->
+    <section class="benchmarks" id="benchmarks">
+        <div class="container">
+            <h2 class="section-title">Benchmarks</h2>
+            <p class="section-subtitle">Head-to-head comparison with SABnzbd under identical conditions</p>
+
+            <!-- Headline stats from 1-hour stress test -->
+            <div class="bench-stats-grid">
+                <div class="bench-stat-card">
+                    <div class="bench-stat-value accent-text">5,059</div>
+                    <div class="bench-stat-label">Mbps avg speed</div>
+                    <div class="bench-stat-compare">vs 1,002 Mbps (SABnzbd)</div>
+                </div>
+                <div class="bench-stat-card">
+                    <div class="bench-stat-value accent-text">401</div>
+                    <div class="bench-stat-label">NZBs completed / hour</div>
+                    <div class="bench-stat-compare">vs 37 (SABnzbd)</div>
+                </div>
+                <div class="bench-stat-card">
+                    <div class="bench-stat-value accent-text">2,287 GB</div>
+                    <div class="bench-stat-label">downloaded in 1 hour</div>
+                    <div class="bench-stat-compare">vs 455 GB (SABnzbd)</div>
+                </div>
+                <div class="bench-stat-card">
+                    <div class="bench-stat-value" style="color: var(--green);">Stable</div>
+                    <div class="bench-stat-label">memory over time</div>
+                    <div class="bench-stat-compare">+2 MB/hr vs +2,412 MB/hr</div>
+                </div>
+            </div>
+
+            <!-- Stress test chart -->
+            <div class="bench-chart-section">
+                <h3 class="bench-detail-title">1-Hour Stress Test</h3>
+                <p class="bench-detail-subtitle">Sustained load with continuous NZB submission &mdash; 50 NNTP connections, 5 concurrent jobs</p>
+                <div class="bench-chart-container">
+                    <img src="img/stress_comparison_1hr.svg" alt="1-hour stress test: rustnzb vs SABnzbd speed and memory comparison" loading="lazy">
+                </div>
+            </div>
+
+            <!-- Scenario comparison results -->
+            <h3 class="bench-detail-title">Scenario Comparisons</h3>
+            <p class="bench-detail-subtitle">Sequential benchmarks &mdash; same mock NNTP server, same data, same connections</p>
+
+            <div class="bench-scenarios">
+                <details class="bench-scenario">
+                    <summary>
+                        <span class="bench-scenario-name">5 GB &mdash; Raw Download</span>
+                        <span class="bench-scenario-badge">+21% faster</span>
+                    </summary>
+                    <div class="bench-scenario-body">
+                        <table class="bench-compare-table">
+                            <thead><tr><th>Metric</th><th>rustnzb</th><th>SABnzbd</th></tr></thead>
+                            <tbody>
+                                <tr><td>Total time</td><td class="bench-winner">4.2s</td><td>5.0s</td></tr>
+                                <tr><td>Avg speed</td><td class="bench-winner">10,316 Mbps</td><td>8,535 Mbps</td></tr>
+                                <tr><td>Peak speed</td><td class="bench-winner">12,366 Mbps</td><td>10,114 Mbps</td></tr>
+                                <tr><td>Memory avg</td><td class="bench-winner">159 MB</td><td>187 MB</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="bench-scenario">
+                    <summary>
+                        <span class="bench-scenario-name">10 GB &mdash; Raw Download</span>
+                        <span class="bench-scenario-badge">+38% faster</span>
+                    </summary>
+                    <div class="bench-scenario-body">
+                        <table class="bench-compare-table">
+                            <thead><tr><th>Metric</th><th>rustnzb</th><th>SABnzbd</th></tr></thead>
+                            <tbody>
+                                <tr><td>Total time</td><td class="bench-winner">10.2s</td><td>14.1s</td></tr>
+                                <tr><td>Avg speed</td><td class="bench-winner">8,394 Mbps</td><td>6,098 Mbps</td></tr>
+                                <tr><td>Peak speed</td><td class="bench-winner">9,402 Mbps</td><td>7,575 Mbps</td></tr>
+                                <tr><td>Memory avg</td><td>281 MB</td><td>282 MB</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="bench-scenario">
+                    <summary>
+                        <span class="bench-scenario-name">10 GB &mdash; Download + 7z Extraction</span>
+                        <span class="bench-scenario-badge">+47% faster</span>
+                    </summary>
+                    <div class="bench-scenario-body">
+                        <table class="bench-compare-table">
+                            <thead><tr><th>Metric</th><th>rustnzb</th><th>SABnzbd</th></tr></thead>
+                            <tbody>
+                                <tr><td>Total time</td><td class="bench-winner">19.9s</td><td>29.2s</td></tr>
+                                <tr><td>Avg speed</td><td class="bench-winner">4,324 Mbps</td><td>2,941 Mbps</td></tr>
+                                <tr><td>Download time</td><td class="bench-winner">11.9s</td><td>15.2s</td></tr>
+                                <tr><td>Unpack time</td><td class="bench-winner">8.0s</td><td>14.0s</td></tr>
+                                <tr><td>Disk write avg</td><td class="bench-winner">887 MB/s</td><td>579 MB/s</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="bench-scenario">
+                    <summary>
+                        <span class="bench-scenario-name">5 GB &mdash; Download + PAR2 Repair</span>
+                        <span class="bench-scenario-badge">57% faster download</span>
+                    </summary>
+                    <div class="bench-scenario-body">
+                        <table class="bench-compare-table">
+                            <thead><tr><th>Metric</th><th>rustnzb</th><th>SABnzbd</th></tr></thead>
+                            <tbody>
+                                <tr><td>Download time</td><td class="bench-winner">4.0s</td><td>9.4s</td></tr>
+                                <tr><td>Par2 repair time</td><td>29.4s</td><td class="bench-winner">21.0s</td></tr>
+                                <tr><td>Total time</td><td>33.5s</td><td class="bench-winner">30.4s</td></tr>
+                                <tr><td>Memory peak</td><td class="bench-winner">502 MB</td><td>1,250 MB</td></tr>
+                            </tbody>
+                        </table>
+                        <p style="margin-top: 12px;">rustnzb downloads 2.4x faster, but SABnzbd's par2cmdline-turbo binary currently edges out the pure-Rust PAR2 implementation on repair. Memory usage is 60% lower in rustnzb.</p>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Methodology -->
+            <div class="bench-info">
+                <div class="bench-info-card">
+                    <h3>Test Methodology</h3>
+                    <p>
+                        All benchmarks run on the same machine (48 vCPUs, 252 GB RAM) using Docker containers with no resource limits.
+                        Both clients configured identically: 50 NNTP connections, no speed limits, post-processing disabled for raw tests.
+                        Data served by a mock NNTP server (comparison tests) or synthetic NNTP server (stress tests) running locally to eliminate network variability.
+                        Full methodology and raw data available in the
+                        <a href="https://github.com/AusAgentSmith-org/rustnzb/tree/main/benchnzb" target="_blank" rel="noopener">benchnzb directory</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section class="demo-section" id="demo-section">
+        <div class="container">
+            <h2 class="section-title">See It in Action</h2>
+            <p class="section-subtitle">Interactive demo with simulated download queue</p>
+            <div class="demo-preview">
+                <div class="demo-bar">
+                    <div class="demo-dots"><span></span><span></span><span></span></div>
+                    <div class="demo-url">localhost:8080</div>
+                </div>
+                <div class="demo-body">
+                    <div class="demo-header-row">
+                        <span class="demo-title-text">rustnzb</span>
+                        <span class="demo-stats-text">Speed: 48.2 MB/s &middot; Queue: 3 &middot; Free: 1.2 TB</span>
+                    </div>
+                    <div class="demo-tabs-row">
+                        <span class="demo-tab demo-tab-active">Queue</span>
+                        <span class="demo-tab">History</span>
+                        <span class="demo-tab">Servers</span>
+                        <span class="demo-tab">Settings</span>
+                        <span class="demo-tab">Logs</span>
+                    </div>
+                    <table class="demo-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Speed</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="demo-name">Ubuntu.24.04.Desktop.x64</td>
+                                <td><span class="demo-status demo-status-downloading">Downloading</span></td>
+                                <td><div class="demo-progress"><div class="demo-progress-bar demo-downloading" style="width:67%"></div></div><span class="demo-pct">67%</span></td>
+                                <td class="demo-speed">32.1 MB/s</td>
+                                <td>4.7 GB</td>
+                            </tr>
+                            <tr>
+                                <td class="demo-name">LibreOffice.7.6.Full.Pack</td>
+                                <td><span class="demo-status demo-status-verifying">Verifying</span></td>
+                                <td><div class="demo-progress"><div class="demo-progress-bar demo-verifying" style="width:45%"></div></div><span class="demo-pct">45%</span></td>
+                                <td class="demo-speed demo-muted">&mdash;</td>
+                                <td>2.1 GB</td>
+                            </tr>
+                            <tr>
+                                <td class="demo-name">Blender.4.0.Benchmark.Scenes</td>
+                                <td><span class="demo-status demo-status-downloading">Downloading</span></td>
+                                <td><div class="demo-progress"><div class="demo-progress-bar demo-downloading" style="width:23%"></div></div><span class="demo-pct">23%</span></td>
+                                <td class="demo-speed">16.1 MB/s</td>
+                                <td>8.3 GB</td>
+                            </tr>
+                            <tr>
+                                <td class="demo-name">PostgreSQL.16.Docs.Pack</td>
+                                <td><span class="demo-status demo-status-completed">Completed</span></td>
+                                <td><div class="demo-progress"><div class="demo-progress-bar demo-completed" style="width:100%"></div></div><span class="demo-pct">100%</span></td>
+                                <td class="demo-speed demo-muted">&mdash;</td>
+                                <td>892 MB</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="demo-cta">
+                <a href="demo/" class="btn btn-primary">Open Interactive Demo</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="download-section" id="download">
+        <div class="container">
+            <h2 class="section-title">Download</h2>
+            <p class="section-subtitle">Alpha builds — Linux and Windows. Docker image available.</p>
+
+            <div class="download-hero-grid">
+                <a href="https://dl.rustnzb.dev/latest/rustnzb-linux-x86_64" class="download-card download-card-primary" id="dl-linux" data-file-prefix="rustnzb" data-file-suffix="linux-x86_64">
+                    <div class="download-icon">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M12.504 0c-.155 0-.311.003-.467.013A11.18 11.18 0 005.8 2.544a.643.643 0 00.18 1.16 10.81 10.81 0 013.89.842.642.642 0 00.679-.09 8.59 8.59 0 011.836-1.14.644.644 0 00.047-1.074A4.363 4.363 0 0012.504 0zM8.416 5.228a.643.643 0 00-.636.328 7.7 7.7 0 00-.974 3.74c0 4.27 3.467 7.728 7.744 7.728a7.76 7.76 0 005.084-1.9.642.642 0 00-.162-1.054 6.928 6.928 0 01-4.922-6.63.643.643 0 00-.37-.557 9.666 9.666 0 00-5.764-1.655z"/></svg>
+                    </div>
+                    <div class="download-info">
+                        <span class="download-platform">Linux x86_64</span>
+                        <span class="download-type dl-version">Static binary</span>
+                    </div>
+                </a>
+                <a href="https://dl.rustnzb.dev/latest/rustnzb-windows-x86_64.exe" class="download-card" id="dl-windows" data-file-prefix="rustnzb" data-file-suffix="windows-x86_64.exe">
+                    <div class="download-icon">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                    </div>
+                    <div class="download-info">
+                        <span class="download-platform">Windows x86_64</span>
+                        <span class="download-type dl-version">.exe binary</span>
+                    </div>
+                </a>
+                <div class="download-card download-card-docker">
+                    <div class="download-icon">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.186m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.186.186 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.185-.186H5.136a.186.186 0 00-.186.185v1.888c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.186v1.887c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288z"/></svg>
+                    </div>
+                    <div class="download-info">
+                        <span class="download-platform">Docker</span>
+                        <pre class="docker-pull">docker run -d --name rustnzb \
+  -p 9090:9090 \
+  -v rustnzb-config:/config \
+  -v rustnzb-data:/data \
+  -v ~/downloads:/downloads \
+  ghcr.io/ausagentsmith-org/rustnzb:alpha</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="download-checksums">
+                <a href="https://dl.rustnzb.dev/latest/" target="_blank">All files + SHA256 checksums</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Getting Started Section -->
+    <section class="getting-started" id="getting-started">
+        <div class="container">
+            <h2 class="section-title">Getting Started</h2>
+            <div class="start-tabs">
+                <button class="start-tab active" data-tab="docker" onclick="switchTab('docker')">Docker</button>
+                <button class="start-tab" data-tab="desktop" onclick="switchTab('desktop')">Desktop</button>
+            </div>
+
+            <div class="start-pane active" id="pane-docker">
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <div class="terminal-dots"><span></span><span></span><span></span></div>
+                        <span class="terminal-title">Terminal</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-line"><span class="terminal-prompt">$</span> docker pull ghcr.io/ausagentsmith-org/rustnzb:alpha</div>
+                        <div class="terminal-line"><span class="terminal-prompt">$</span> docker run -d --name rustnzb \</div>
+                        <div class="terminal-line">    -p 8080:8080 \</div>
+                        <div class="terminal-line">    -v rustnzb-config:/config \</div>
+                        <div class="terminal-line">    -v rustnzb-data:/data \</div>
+                        <div class="terminal-line">    ghcr.io/ausagentsmith-org/rustnzb:alpha</div>
+                        <div class="terminal-line terminal-output">
+                            <span class="terminal-success">&#10003;</span> Pulling image...<br>
+                            <span class="terminal-success">&#10003;</span> Starting rustnzb container<br>
+                            <span class="terminal-success">&#10003;</span> Web UI available at <span class="terminal-link">http://localhost:8080</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="start-notes">
+                    <p><strong>Port:</strong> 8080 (Web UI + API)</p>
+                    <p><strong>Config:</strong> Configure your Usenet server(s) via the web UI on first launch</p>
+                </div>
+            </div>
+
+            <div class="start-pane" id="pane-desktop">
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <div class="terminal-dots"><span></span><span></span><span></span></div>
+                        <span class="terminal-title">Download</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-line terminal-output">Download the latest alpha binary for your platform:</div>
+                        <div class="terminal-line">&nbsp;</div>
+                        <div class="terminal-line"><span class="terminal-success">Linux</span> &nbsp;&nbsp;&nbsp; <a href="https://dl.rustnzb.dev/latest/rustnzb-linux-x86_64" style="color:var(--blue);">x86_64 binary</a></div>
+                        <div class="terminal-line"><span class="terminal-success">Windows</span> &nbsp; <a href="https://dl.rustnzb.dev/latest/rustnzb-windows-x86_64.exe" style="color:var(--blue);">x86_64 .exe</a></div>
+                        <div class="terminal-line">&nbsp;</div>
+                        <div class="terminal-line"><span class="terminal-prompt">$</span> chmod +x rustnzb-*-linux-x86_64</div>
+                        <div class="terminal-line"><span class="terminal-prompt">$</span> ./rustnzb-*-linux-x86_64 --port 9090</div>
+                        <div class="terminal-line terminal-output">
+                            <span class="terminal-success">&#10003;</span> Web UI available at <span class="terminal-link">http://localhost:9090</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="start-notes">
+                    <p><strong>All files:</strong> <a href="https://dl.rustnzb.dev/latest/">dl.rustnzb.dev/latest/</a> (includes SHA256 checksums)</p>
+                    <p><strong>Config:</strong> Configure your Usenet server(s) via the web UI on first launch</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Arr Integration Section -->
+    <section class="arr-integration" id="arr-integration">
+        <div class="container">
+            <h2 class="section-title">Sonarr &amp; Radarr Integration</h2>
+            <p class="section-subtitle">rustnzb is a drop-in replacement for SABnzbd &mdash; use the SABnzbd download client type in your *arr apps</p>
+
+            <div class="arr-guide">
+                <div class="arr-steps">
+                    <div class="arr-step">
+                        <div class="arr-step-num">1</div>
+                        <div class="arr-step-content">
+                            <h3>Add Download Client</h3>
+                            <p>In Sonarr or Radarr, go to <strong>Settings &rarr; Download Clients &rarr; Add</strong> and select <strong>SABnzbd</strong>.</p>
+                        </div>
+                    </div>
+                    <div class="arr-step">
+                        <div class="arr-step-num">2</div>
+                        <div class="arr-step-content">
+                            <h3>Configure Connection</h3>
+                            <p>Set the <strong>Host</strong> and <strong>Port</strong> to your rustnzb instance. If running in the same Docker network, use the container hostname and internal port (default <code>9090</code>).</p>
+                        </div>
+                    </div>
+                    <div class="arr-step">
+                        <div class="arr-step-num">3</div>
+                        <div class="arr-step-content">
+                            <h3>API Key</h3>
+                            <p>If you have set an <code>api_key</code> in your rustnzb <code>config.toml</code>, enter it here. If no key is configured, any value will work.</p>
+                        </div>
+                    </div>
+                    <div class="arr-step">
+                        <div class="arr-step-num">4</div>
+                        <div class="arr-step-content">
+                            <h3>Set Category</h3>
+                            <p>Set the <strong>Category</strong> to match one configured in rustnzb (e.g. <code>tv</code> for Sonarr, <code>movies</code> for Radarr). This controls the output directory.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="arr-config-example">
+                    <div class="terminal">
+                        <div class="terminal-bar">
+                            <div class="terminal-dots"><span></span><span></span><span></span></div>
+                            <span class="terminal-title">config.toml</span>
+                        </div>
+                        <div class="terminal-body">
+                            <div class="terminal-line"><span class="terminal-muted"># Optional: set an API key for arr app auth</span></div>
+                            <div class="terminal-line">[general]</div>
+                            <div class="terminal-line">api_key = <span class="terminal-string">"your-secret-key"</span></div>
+                            <div class="terminal-line">&nbsp;</div>
+                            <div class="terminal-line"><span class="terminal-muted"># Categories map to output directories</span></div>
+                            <div class="terminal-line">[[categories]]</div>
+                            <div class="terminal-line">name = <span class="terminal-string">"tv"</span></div>
+                            <div class="terminal-line">output_dir = <span class="terminal-string">"tv"</span></div>
+                            <div class="terminal-line">&nbsp;</div>
+                            <div class="terminal-line">[[categories]]</div>
+                            <div class="terminal-line">name = <span class="terminal-string">"movies"</span></div>
+                            <div class="terminal-line">output_dir = <span class="terminal-string">"movies"</span></div>
+                        </div>
+                    </div>
+                    <div class="start-notes">
+                        <p><strong>Protocol:</strong> rustnzb speaks the full SABnzbd API protocol &mdash; queue, history, categories, pause/resume, and file upload all work out of the box.</p>
+                        <p><strong>Prowlarr:</strong> Also supports SABnzbd download client type for NZB indexer integration.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <h2 class="section-title">Download Pipeline</h2>
+            <p class="section-subtitle">From NZB file to extracted content &mdash; fully automated</p>
+            <div class="pipeline">
+                <div class="pipeline-step">
+                    <div class="pipeline-number">1</div>
+                    <div class="pipeline-content">
+                        <h3>Parse NZB</h3>
+                        <p>XML parsing extracts article message IDs, file segments, groups, and metadata. Password support via <code>&lt;meta&gt;</code> tags.</p>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-number">2</div>
+                    <div class="pipeline-content">
+                        <h3>Download</h3>
+                        <p>NNTP connections fetch articles with pipelining. Multi-server failover retries missing articles on backup servers.</p>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-number">3</div>
+                    <div class="pipeline-content">
+                        <h3>Decode</h3>
+                        <p>yEnc-encoded article bodies are decoded with CRC32 validation. Segments are assembled into complete files.</p>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-number">4</div>
+                    <div class="pipeline-content">
+                        <h3>Verify &amp; Repair</h3>
+                        <p>PAR2 checks file integrity. If blocks are missing, recovery data is used to reconstruct damaged files.</p>
+                    </div>
+                </div>
+                <div class="pipeline-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-number">5</div>
+                    <div class="pipeline-content">
+                        <h3>Extract &amp; Clean</h3>
+                        <p>Archives (RAR, 7z, ZIP) are extracted. Temporary files (par2, rar volumes) are cleaned up. Output moved to final directory.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-inner">
+            <div class="footer-left">
+                <span class="footer-brand"><span class="accent-text">rust</span>nzb</span>
+                <span class="footer-sep">&mdash;</span>
+                <span>MIT License</span>
+            </div>
+            <div class="footer-right">
+                <a href="https://discord.gg/pu6chSqpnJ" target="_blank" rel="noopener" aria-label="Discord">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+                </a>
+                <a href="https://github.com/AusAgentSmith-org/rustnzb" target="_blank" rel="noopener" aria-label="GitHub">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                </a>
+            </div>
+        </div>
+        <div class="container footer-related">
+            Also by AusAgentSmith &middot; <a href="https://indexarr.net/" target="_blank" rel="noopener">Indexarr</a> &middot; <a href="https://rusttorrent.dev/" target="_blank" rel="noopener">rustTorrent</a>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+    (function() {
+        var BASE = 'https://dl.rustnzb.dev/latest/';
+        fetch(BASE).then(function(r) { return r.text(); }).then(function(html) {
+            var m = html.match(/rustnzb-(v[\d.]+-[a-z]+\.\d+)-linux-x86_64/);
+            if (!m) return;
+            var ver = m[1];
+            document.querySelectorAll('.dl-version').forEach(function(el) {
+                el.textContent = ver;
+            });
+            var linux = document.getElementById('dl-linux');
+            if (linux) linux.href = BASE + 'rustnzb-' + ver + '-linux-x86_64';
+            var win = document.getElementById('dl-windows');
+            if (win) win.href = BASE + 'rustnzb-' + ver + '-windows-x86_64.exe';
+        }).catch(function() {});
+    })();
+    </script>
+</body>
+</html>

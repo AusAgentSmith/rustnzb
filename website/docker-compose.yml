@@ -1,0 +1,9 @@
+services:
+  website:
+    build: .
+    container_name: rustnzb-website
+    ports:
+      - "8080:8080"
+    environment:
+      - SITE_ADDRESS=localhost:8080
+    restart: unless-stopped

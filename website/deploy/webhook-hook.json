@@ -1,0 +1,22 @@
+[
+  {
+    "id": "deploy-rustnzb-website",
+    "execute-command": "/scripts/deploy-rustnzb.sh",
+    "command-working-directory": "/tmp",
+    "response-message": "rustnzb website deploy triggered",
+    "trigger-rule": {
+      "and": [
+        {
+          "match": {
+            "type": "payload-hmac-sha256",
+            "secret": "d951290d1720a988ec66711cc74c8b0e60b2a416359548098ff2fec03c294adc",
+            "parameter": {
+              "source": "header",
+              "name": "X-Gitea-Signature"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

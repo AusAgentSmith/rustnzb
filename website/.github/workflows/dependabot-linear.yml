@@ -1,0 +1,41 @@
+name: Dependabot Linear Integration
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  create-linear-issue:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Linear Issue
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          DESCRIPTION="**Dependabot PR:** ${PR_URL}
+
+          **Repository:** ${REPO_NAME}
+
+          ${PR_BODY}"
+
+          # Escape for JSON
+          TITLE=$(echo "$PR_TITLE" | jq -Rs '.')
+          DESC=$(echo "$DESCRIPTION" | jq -Rs '.')
+
+          curl -s -X POST https://api.linear.app/graphql \
+            -H "Content-Type: application/json" \
+            -H "Authorization: ${LINEAR_API_KEY}" \
+            -d "{
+              \"query\": \"mutation { issueCreate(input: { title: ${TITLE}, description: ${DESC},
+              teamId: \"c2acb063-92b9-4d9f-ab23-0ced91983a97\",
+              labelIds: [\"ea6dd801-2b05-42dc-b629-29271bd47356\"]
+              }) { success issue { id identifier url } } }"
+            }'

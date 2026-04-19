@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560">
+  <defs>
+    <linearGradient id="tbg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2540"/>
+      <stop offset="100%" style="stop-color:#141c30"/>
+    </linearGradient>
+  </defs>
+  <!-- Window frame -->
+  <rect width="900" height="560" rx="12" fill="#0e1525"/>
+  <rect width="900" height="36" rx="12" fill="url(#tbg)"/>
+  <rect y="24" width="900" height="12" fill="url(#tbg)"/>
+  <!-- Window controls -->
+  <circle cx="20" cy="18" r="6" fill="#ff5f57"/>
+  <circle cx="40" cy="18" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="18" r="6" fill="#28c840"/>
+  <!-- Title bar text -->
+  <text x="450" y="23" font-family="system-ui,sans-serif" font-size="12" fill="#8890a8" text-anchor="middle">rustnzb Desktop</text>
+  <!-- App header bar -->
+  <rect y="36" width="900" height="44" fill="#161e34"/>
+  <rect x="16" y="44" width="28" height="28" rx="5" fill="#e87a1e" opacity="0.9"/>
+  <text x="30" y="62" font-family="Arial,sans-serif" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">U</text>
+  <text x="56" y="63" font-family="system-ui,sans-serif" font-size="14" fill="#4ea8de" font-weight="700">rust</text>
+  <text x="88" y="63" font-family="system-ui,sans-serif" font-size="14" fill="#e0e4ef" font-weight="700">nzb</text>
+  <text x="120" y="63" font-family="system-ui,sans-serif" font-size="9" fill="#555e78">v0.1.0</text>
+  <!-- Speed & stats -->
+  <text x="650" y="63" font-family="system-ui,sans-serif" font-size="11" fill="#4caf50">48.2 MB/s</text>
+  <text x="740" y="63" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">Queue: 3</text>
+  <text x="820" y="63" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">Free: 1.2 TB</text>
+  <!-- Tabs -->
+  <rect y="80" width="900" height="32" fill="#141c30"/>
+  <rect x="16" y="84" width="60" height="24" rx="4" fill="#4ea8de" opacity="0.15"/>
+  <text x="46" y="100" font-family="system-ui,sans-serif" font-size="11" fill="#4ea8de" text-anchor="middle" font-weight="600">Queue</text>
+  <text x="110" y="100" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">History</text>
+  <text x="180" y="100" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">Servers</text>
+  <text x="250" y="100" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">Settings</text>
+  <text x="315" y="100" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">Logs</text>
+  <!-- Table header -->
+  <rect y="112" width="900" height="28" fill="#1a2540"/>
+  <text x="30" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8" font-weight="600">Name</text>
+  <text x="420" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8" font-weight="600">Status</text>
+  <text x="540" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8" font-weight="600">Progress</text>
+  <text x="730" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8" font-weight="600">Speed</text>
+  <text x="830" y="130" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8" font-weight="600">Size</text>
+  <!-- Row 1 - Downloading -->
+  <rect y="140" width="900" height="44" fill="#0e1525"/>
+  <text x="30" y="167" font-family="system-ui,sans-serif" font-size="12" fill="#e0e4ef">Ubuntu.24.04.Desktop.x64</text>
+  <rect x="410" y="155" width="90" height="20" rx="4" fill="rgba(76,175,80,0.12)"/>
+  <text x="455" y="169" font-family="system-ui,sans-serif" font-size="10" fill="#4caf50" text-anchor="middle" font-weight="600">Downloading</text>
+  <rect x="540" y="159" width="160" height="8" rx="4" fill="#222e48"/>
+  <rect x="540" y="159" width="107" height="8" rx="4" fill="#4caf50"/>
+  <text x="710" y="168" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">67%</text>
+  <text x="730" y="167" font-family="system-ui,sans-serif" font-size="12" fill="#4caf50">32.1 MB/s</text>
+  <text x="830" y="167" font-family="system-ui,sans-serif" font-size="12" fill="#8890a8">4.7 GB</text>
+  <!-- Row 2 - Verifying -->
+  <rect y="184" width="900" height="44" fill="#161e34"/>
+  <text x="30" y="211" font-family="system-ui,sans-serif" font-size="12" fill="#e0e4ef">LibreOffice.7.6.Full.Pack</text>
+  <rect x="410" y="199" width="90" height="20" rx="4" fill="rgba(255,152,0,0.12)"/>
+  <text x="455" y="213" font-family="system-ui,sans-serif" font-size="10" fill="#ff9800" text-anchor="middle" font-weight="600">Verifying</text>
+  <rect x="540" y="203" width="160" height="8" rx="4" fill="#222e48"/>
+  <rect x="540" y="203" width="72" height="8" rx="4" fill="#ff9800"/>
+  <text x="710" y="212" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">45%</text>
+  <text x="730" y="211" font-family="system-ui,sans-serif" font-size="12" fill="#555e78">&mdash;</text>
+  <text x="830" y="211" font-family="system-ui,sans-serif" font-size="12" fill="#8890a8">2.1 GB</text>
+  <!-- Row 3 - Downloading -->
+  <rect y="228" width="900" height="44" fill="#0e1525"/>
+  <text x="30" y="255" font-family="system-ui,sans-serif" font-size="12" fill="#e0e4ef">Blender.4.0.Benchmark.Scenes</text>
+  <rect x="410" y="243" width="90" height="20" rx="4" fill="rgba(76,175,80,0.12)"/>
+  <text x="455" y="257" font-family="system-ui,sans-serif" font-size="10" fill="#4caf50" text-anchor="middle" font-weight="600">Downloading</text>
+  <rect x="540" y="247" width="160" height="8" rx="4" fill="#222e48"/>
+  <rect x="540" y="247" width="37" height="8" rx="4" fill="#4caf50"/>
+  <text x="710" y="256" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">23%</text>
+  <text x="730" y="255" font-family="system-ui,sans-serif" font-size="12" fill="#4caf50">16.1 MB/s</text>
+  <text x="830" y="255" font-family="system-ui,sans-serif" font-size="12" fill="#8890a8">8.3 GB</text>
+  <!-- Row 4 - Extracting -->
+  <rect y="272" width="900" height="44" fill="#161e34"/>
+  <text x="30" y="299" font-family="system-ui,sans-serif" font-size="12" fill="#e0e4ef">PostgreSQL.16.Docs.Pack</text>
+  <rect x="410" y="287" width="90" height="20" rx="4" fill="rgba(156,39,176,0.12)"/>
+  <text x="455" y="301" font-family="system-ui,sans-serif" font-size="10" fill="#9c27b0" text-anchor="middle" font-weight="600">Extracting</text>
+  <rect x="540" y="291" width="160" height="8" rx="4" fill="#222e48"/>
+  <rect x="540" y="291" width="120" height="8" rx="4" fill="#9c27b0"/>
+  <text x="710" y="300" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">75%</text>
+  <text x="730" y="299" font-family="system-ui,sans-serif" font-size="12" fill="#555e78">&mdash;</text>
+  <text x="830" y="299" font-family="system-ui,sans-serif" font-size="12" fill="#8890a8">892 MB</text>
+  <!-- Row 5 - Completed -->
+  <rect y="316" width="900" height="44" fill="#0e1525"/>
+  <text x="30" y="343" font-family="system-ui,sans-serif" font-size="12" fill="#e0e4ef">Fedora.40.Workstation.x86_64</text>
+  <rect x="410" y="331" width="90" height="20" rx="4" fill="rgba(33,150,243,0.12)"/>
+  <text x="455" y="345" font-family="system-ui,sans-serif" font-size="10" fill="#2196f3" text-anchor="middle" font-weight="600">Completed</text>
+  <rect x="540" y="335" width="160" height="8" rx="4" fill="#222e48"/>
+  <rect x="540" y="335" width="160" height="8" rx="4" fill="#2196f3"/>
+  <text x="710" y="344" font-family="system-ui,sans-serif" font-size="11" fill="#8890a8">100%</text>
+  <text x="730" y="343" font-family="system-ui,sans-serif" font-size="12" fill="#555e78">&mdash;</text>
+  <text x="830" y="343" font-family="system-ui,sans-serif" font-size="12" fill="#8890a8">2.2 GB</text>
+  <!-- System tray mockup -->
+  <rect y="520" width="900" height="40" fill="#0a0f1a"/>
+  <rect x="16" y="528" width="140" height="24" rx="4" fill="#161e34"/>
+  <rect x="22" y="533" width="14" height="14" rx="3" fill="#e87a1e"/>
+  <text x="29" y="543" font-family="Arial,sans-serif" font-size="7" fill="#fff" text-anchor="middle" font-weight="700">U</text>
+  <text x="46" y="544" font-family="system-ui,sans-serif" font-size="9" fill="#4caf50">48.2 MB/s</text>
+  <text x="100" y="544" font-family="system-ui,sans-serif" font-size="9" fill="#8890a8">Q: 3</text>
+  <text x="450" y="544" font-family="system-ui,sans-serif" font-size="9" fill="#555e78" text-anchor="middle">System tray with speed and queue indicators</text>
+</svg>

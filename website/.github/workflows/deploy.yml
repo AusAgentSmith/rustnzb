@@ -1,0 +1,20 @@
+name: Deploy to Vultr
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, node-b]
+    steps:
+      - name: Deploy to Vultr
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 100.92.4.57
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          script: |
+            cd ~/websites/rustnzbd && git pull --ff-only

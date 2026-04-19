@@ -1,0 +1,1 @@
+import{Q as o,g as e}from"./chunk-2SYKFDVI.js";var a=class t{toggle$=new e;panelToggle$=this.toggle$.asObservable();togglePanel(){this.toggle$.next()}static \u0275fac=function(r){return new(r||t)};static \u0275prov=o({token:t,factory:t.\u0275fac,providedIn:"root"})};export{a};

@@ -1,0 +1,28 @@
+{$SITE_ADDRESS:localhost:8080} {
+    root * /srv
+    file_server
+
+    encode gzip zstd
+
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Cache-Control "public, max-age=3600"
+    }
+
+    header /css/* Cache-Control "public, max-age=86400"
+    header /js/* Cache-Control "public, max-age=86400"
+    header /img/* Cache-Control "public, max-age=604800"
+
+    # SPA fallback for /demo/* paths
+    handle /demo/* {
+        try_files {path} /demo/index.html
+        file_server
+    }
+
+    handle_errors {
+        rewrite * /index.html
+        file_server
+    }
+}

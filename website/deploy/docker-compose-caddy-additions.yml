@@ -1,0 +1,35 @@
+# Add this volume to the caddy service in ~/Caddy/docker-compose.yml on the VPS
+# Under the existing volumes section of the caddy service, add:
+#
+#   - ~/rustnzb_Website:/srv/rustnzb:ro
+#
+# rustnzb.dev uses the existing CLOUDFLARE_API_TOKEN (already configured)
+# No new env var needed.
+#
+# Full example of what the caddy service volumes should look like after adding:
+#
+# services:
+#   caddy:
+#     ...
+#     environment:
+#       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+#       - CLOUDFLARE_API_TOKEN_NOTETAKER=${CLOUDFLARE_API_TOKEN_NOTETAKER}
+#     volumes:
+#       - ./Caddyfile:/etc/caddy/Caddyfile
+#       - caddy_data:/data
+#       - caddy_config:/config
+#       - ~/Indexarr_Website:/srv/website:ro
+#       - ~/NoteTaker_Website:/srv/notetaker:ro
+#       - ~/rustTorrent_Website:/srv/rusttorrent:ro
+#       - ~/rustnzb_Website:/srv/rustnzb:ro
+#
+# For the webhook service, add the deploy script and repo volume:
+#   webhook:
+#     ...
+#     volumes:
+#       - ./webhook/hooks.json:/etc/webhook/hooks.json
+#       - ./webhook/scripts:/scripts
+#       - ~/Indexarr_Website:/repos/indexarr-website
+#       - ~/NoteTaker_Website:/repos/notetaker-website
+#       - ~/rustTorrent_Website:/repos/rusttorrent-website
+#       - ~/rustnzb_Website:/repos/rustnzb-website
