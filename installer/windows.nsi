@@ -10,7 +10,7 @@
 !include "MUI2.nsh"
 
 Name "${PRODUCT_NAME} ${VERSION}"
-OutFile "../rustnzb-${VERSION}-windows-x86_64-setup.exe"
+OutFile "rustnzb-${VERSION}-windows-x86_64-setup.exe"
 InstallDir "$PROGRAMFILES64\rustnzb"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
