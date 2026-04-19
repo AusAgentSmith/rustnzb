@@ -111,12 +111,14 @@ steps:
       - |
         set -ex
         TAG="$CI_COMMIT_TAG"
-        ls -lh rustnzb-${TAG}-* 2>&1 || true
+        echo "=== Artifacts in workspace ==="
+        ls -lh rustnzb-${TAG}-linux-x86_64.tar.gz rustnzb-${TAG}-windows-x86_64-setup.exe rustnzb-${TAG}-amd64.deb
         echo "Publishing release $TAG"
         sha256sum "rustnzb-$TAG-linux-x86_64.tar.gz" "rustnzb-$TAG-windows-x86_64-setup.exe" "rustnzb-$TAG-amd64.deb" > "SHA256SUMS-$TAG.txt"
-        ssh -i ~/.ssh/id_ed25519 root@100.92.4.57 "mkdir -p /root/downloads/rustnzb/$TAG"
-        scp -i ~/.ssh/id_ed25519 "rustnzb-$TAG-linux-x86_64.tar.gz" "rustnzb-$TAG-windows-x86_64-setup.exe" "rustnzb-$TAG-amd64.deb" "SHA256SUMS-$TAG.txt" root@100.92.4.57:/root/downloads/rustnzb/$TAG/
-        ssh -i ~/.ssh/id_ed25519 root@100.92.4.57 "ln -sfn $TAG /root/downloads/rustnzb/latest"
+        ls -lh "SHA256SUMS-$TAG.txt"
+        ssh -i ~/.ssh/id_ed25519 -F ~/.ssh/config root@100.92.4.57 "mkdir -p /root/downloads/rustnzb/$TAG"
+        scp -O -F ~/.ssh/config -i ~/.ssh/id_ed25519 "rustnzb-$TAG-linux-x86_64.tar.gz" "rustnzb-$TAG-windows-x86_64-setup.exe" "rustnzb-$TAG-amd64.deb" "SHA256SUMS-$TAG.txt" root@100.92.4.57:/root/downloads/rustnzb/$TAG/
+        ssh -i ~/.ssh/id_ed25519 -F ~/.ssh/config root@100.92.4.57 "ln -sfn $TAG /root/downloads/rustnzb/latest"
         echo "Published https://dl.rustnzb.dev/latest/"
 
   - name: forgejo-release
