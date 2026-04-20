@@ -137,8 +137,8 @@ test.describe.serial('First boot', () => {
     await page.getByRole('button', { name: 'Import from SABnzbd' }).click();
 
     // Should be on the connect step (Live instance tab is default)
-    // "Live instance" tab content should be visible
-    await expect(page.getByRole('tab', { name: /live instance/i })).toBeVisible();
+    // Tabs are rendered as plain <button>, not ARIA tab role.
+    await expect(page.getByRole('button', { name: /live instance/i })).toBeVisible();
 
     // Click Fetch config without filling any fields
     await page.getByRole('button', { name: /fetch config/i }).click();
@@ -154,13 +154,13 @@ test.describe.serial('First boot', () => {
     await page.goto('/welcome');
 
     await page.getByRole('button', { name: 'Import from SABnzbd' }).click();
-    await expect(page.getByRole('tab', { name: /live instance/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /live instance/i })).toBeVisible();
 
     // Fill in an unreachable URL and a dummy API key
-    const urlField = page.getByLabel(/SABnzbd URL/i).or(page.getByPlaceholder(/http.*sabnzbd/i)).first();
+    const urlField = page.getByPlaceholder(/http.*localhost.*8080/i);
     await urlField.fill('http://localhost:1');
 
-    const apiKeyField = page.getByLabel(/api key/i).first();
+    const apiKeyField = page.getByPlaceholder(/32-character hex key/i);
     await apiKeyField.fill('dummy-api-key-1234');
 
     await page.getByRole('button', { name: /fetch config/i }).click();
@@ -169,5 +169,53 @@ test.describe.serial('First boot', () => {
     await expect(page.getByText(/failed to connect/i)).toBeVisible({ timeout: 15000 });
     // Still on connect step
     await expect(page.getByRole('button', { name: /fetch config/i })).toBeVisible();
+  });
+
+  // ── 1.9 Regression — typing in URL/API key inputs retains all characters ───
+  // Guards against a zoneless-Angular bug where the form block would tear down
+  // and destroy the input after a single keystroke. See commits fixing the
+  // welcome component (signals + [value]/(input) bindings, [hidden] for tabs).
+  test('1.9 typing multi-character strings into URL + API key preserves value', async ({ page }) => {
+    await injectToken(page, storedToken);
+    await page.goto('/welcome');
+
+    await page.getByRole('button', { name: 'Import from SABnzbd' }).click();
+    await expect(page.getByRole('button', { name: /live instance/i })).toBeVisible();
+
+    const urlValue = 'http://example.sabnzbd.local:8081';
+    const apiKeyValue = 'abcdef0123456789abcdef0123456789';
+
+    const urlField = page.getByPlaceholder(/http.*localhost.*8080/i);
+    await urlField.fill(urlValue);
+    await expect(urlField).toHaveValue(urlValue);
+
+    const apiKeyField = page.getByPlaceholder(/32-character hex key/i);
+    await apiKeyField.fill(apiKeyValue);
+    await expect(apiKeyField).toHaveValue(apiKeyValue);
+
+    // After typing into the second field, the first must still hold its value.
+    await expect(urlField).toHaveValue(urlValue);
+
+    // Type character-by-character to catch per-keystroke teardown regressions.
+    await urlField.clear();
+    await urlField.pressSequentially('http://a.b:1', { delay: 20 });
+    await expect(urlField).toHaveValue('http://a.b:1');
+  });
+
+  // ── 1.10 Tab switching keeps both sections' DOM alive ([hidden]) ───────────
+  test('1.10 switching between Live instance / .ini tabs preserves form state', async ({ page }) => {
+    await injectToken(page, storedToken);
+    await page.goto('/welcome');
+
+    await page.getByRole('button', { name: 'Import from SABnzbd' }).click();
+
+    const urlField = page.getByPlaceholder(/http.*localhost.*8080/i);
+    await urlField.fill('http://retained.example:9090');
+
+    // Switch to .ini tab, then back to Live instance
+    await page.getByRole('button', { name: /config file/i }).click();
+    await page.getByRole('button', { name: /live instance/i }).click();
+
+    await expect(urlField).toHaveValue('http://retained.example:9090');
   });
 });

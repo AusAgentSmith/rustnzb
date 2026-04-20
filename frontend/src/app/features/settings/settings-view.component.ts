@@ -101,6 +101,9 @@ function emptyCategory(): CategoryConfig {
                 </div>
                 <div class="actions">
                   <button class="btn sm" (click)="testServer(s.id)">Test</button>
+                  <button class="btn sm" (click)="toggleServerEnabled(s)">
+                    {{ s.enabled ? 'Disable' : 'Enable' }}
+                  </button>
                   <button class="btn sm" (click)="editServer(s)">Edit</button>
                   <button class="btn sm" (click)="cloneServer(s)">Clone</button>
                   <button class="btn sm danger" (click)="deleteServer(s.id)">Remove</button>
@@ -643,6 +646,23 @@ export class SettingsViewComponent implements OnInit {
     this.api.post<{ success: boolean; message: string }>(`/config/servers/test-config`, body).subscribe({
       next: r => this.snack.open(r.message, 'Close', { duration: 4000 }),
       error: () => this.snack.open('Test failed', 'Close', { duration: 3000 }),
+    });
+  }
+
+  toggleServerEnabled(s: ServerConfig): void {
+    const updated = { ...s, enabled: !s.enabled };
+    if (!updated.username) updated.username = null;
+    if (!updated.password) updated.password = null;
+    this.api.put(`/config/servers/${s.id}`, updated).subscribe({
+      next: () => {
+        this.loadServers();
+        this.snack.open(
+          updated.enabled ? 'Server enabled' : 'Server disabled',
+          'Close',
+          { duration: 2000 },
+        );
+      },
+      error: () => this.snack.open('Failed to update server', 'Close', { duration: 3000 }),
     });
   }
 

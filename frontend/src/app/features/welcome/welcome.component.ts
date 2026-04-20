@@ -95,47 +95,43 @@ interface ImportPreview {
             <button [class.active]="method() === 'ini'" (click)="method.set('ini')">Config file (.ini)</button>
           </div>
 
-          @if (method() === 'api') {
-            <div class="form-section">
-              <div class="form-group">
-                <label class="form-label">SABnzbd URL</label>
-                <input
-                  type="text"
-                  class="form-input"
-                  [ngModel]="sabnzbdUrl()"
-                  (ngModelChange)="sabnzbdUrl.set($event)"
-                  placeholder="http://localhost:8080"
-                />
-              </div>
-              <div class="form-group">
-                <label class="form-label">API Key</label>
-                <input
-                  type="text"
-                  class="form-input mono"
-                  [ngModel]="sabnzbdApiKey()"
-                  (ngModelChange)="sabnzbdApiKey.set($event)"
-                  placeholder="32-character hex key"
-                  autocomplete="off"
-                />
-                <div class="hint">Found in SABnzbd → Config → General → API Key</div>
-              </div>
+          <div class="form-section" [hidden]="method() !== 'api'">
+            <div class="form-group">
+              <label class="form-label">SABnzbd URL</label>
+              <input
+                type="text"
+                class="form-input"
+                [value]="sabnzbdUrl()"
+                (input)="sabnzbdUrl.set($any($event.target).value)"
+                placeholder="http://localhost:8080"
+              />
             </div>
-          }
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input
+                type="text"
+                class="form-input mono"
+                [value]="sabnzbdApiKey()"
+                (input)="sabnzbdApiKey.set($any($event.target).value)"
+                placeholder="32-character hex key"
+                autocomplete="off"
+              />
+              <div class="hint">Found in SABnzbd → Config → General → API Key</div>
+            </div>
+          </div>
 
-          @if (method() === 'ini') {
-            <div class="form-section">
-              <div class="form-group">
-                <label class="form-label">sabnzbd.ini file</label>
-                <input
-                  type="file"
-                  class="form-input file-input"
-                  accept=".ini"
-                  (change)="onFileSelected($event)"
-                />
-                <div class="hint">Usually at <code>~/.sabnzbd/sabnzbd.ini</code> or in the SABnzbd config directory</div>
-              </div>
+          <div class="form-section" [hidden]="method() !== 'ini'">
+            <div class="form-group">
+              <label class="form-label">sabnzbd.ini file</label>
+              <input
+                type="file"
+                class="form-input file-input"
+                accept=".ini"
+                (change)="onFileSelected($event)"
+              />
+              <div class="hint">Usually at <code>~/.sabnzbd/sabnzbd.ini</code> or in the SABnzbd config directory</div>
             </div>
-          }
+          </div>
 
           @if (connectError()) {
             <div class="error-box">{{ connectError() }}</div>
@@ -196,19 +192,17 @@ interface ImportPreview {
                     {{ server.enabled ? 'enabled' : 'disabled' }}
                   </div>
                 </div>
-                @if (server.password_masked) {
-                  <div class="password-row">
-                    <label class="form-label small">Password (masked in SABnzbd API — enter if needed)</label>
-                    <input
-                      type="password"
-                      class="form-input"
-                      [ngModel]="server.password ?? ''"
-                      (ngModelChange)="setServerPassword(i, $event)"
-                      placeholder="Leave blank if not required"
-                      autocomplete="new-password"
-                    />
-                  </div>
-                }
+                <div class="password-row" [hidden]="!server.password_masked">
+                  <label class="form-label small">Password (masked in SABnzbd API — enter if needed)</label>
+                  <input
+                    type="password"
+                    class="form-input"
+                    [value]="server.password ?? ''"
+                    (input)="setServerPassword(i, $any($event.target).value)"
+                    placeholder="Leave blank if not required"
+                    autocomplete="new-password"
+                  />
+                </div>
               </div>
             }
           </div>
@@ -510,13 +504,12 @@ export class WelcomeComponent implements OnInit {
     servers[index] = {
       ...servers[index],
       password: password || null,
-      password_masked: false,
     };
     this.preview.set({ ...p, servers });
   }
 
   hasMaskedPasswords(): boolean {
-    return this.preview()?.servers.some(s => s.password_masked) ?? false;
+    return this.preview()?.servers.some(s => s.password_masked && !s.password) ?? false;
   }
 
   applyImport(): void {
@@ -526,7 +519,15 @@ export class WelcomeComponent implements OnInit {
     this.applyError.set('');
     this.step.set('applying');
 
-    this.api.post<{ status: boolean }>('/setup/apply', p).subscribe({
+    const payload = {
+      ...p,
+      servers: p.servers.map(s => ({
+        ...s,
+        password_masked: s.password_masked && !s.password,
+      })),
+    };
+
+    this.api.post<{ status: boolean }>('/setup/apply', payload).subscribe({
       next: () => {
         this.router.navigate(['/queue']);
       },

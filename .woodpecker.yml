@@ -30,6 +30,29 @@ steps:
       - rustup component add clippy
       - cargo clippy --workspace -- -D warnings
 
+  # ─── Playwright E2E (push, PR, manual) ───────────────────────────────────
+  # Builds the frontend + debug binary, then runs the full Playwright suite
+  # against two isolated backends (main + fresh) defined by e2e/global-setup.ts.
+  # Skipped on tags: releases reuse artifacts from the preceding main build.
+  - name: e2e
+    image: rust:1.88-bookworm
+    when:
+      - event: push
+        branch: main
+      - event: pull_request
+      - event: manual
+    commands:
+      - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+      - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+      - apt-get install -y --no-install-recommends nodejs
+      # Frontend deps + production build (build.rs expects dist to exist)
+      - cd frontend && npm ci && npx ng build --configuration=production && cd ..
+      # Debug binary is enough for E2E (release takes too long for every PR)
+      - cargo build --bin rustnzb
+      # Install Playwright (browsers + system deps) and run the suite
+      - cd e2e && npm ci && npx playwright install --with-deps chromium
+      - npx playwright test --reporter=list
+
   # ─── Build (push to main + tags only) ────────────────────────────────────
 
   - name: build-frontend

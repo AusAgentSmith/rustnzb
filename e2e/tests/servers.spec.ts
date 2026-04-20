@@ -186,4 +186,43 @@ test.describe('2. News Server Management', () => {
       page.getByText(/Connection failed|timed out|unreachable|error/i),
     ).toBeVisible({ timeout: 20000 });
   });
+
+  // ── 2.6 Toggle server enabled/disabled via row action ─────────────────────
+  // One-click Disable/Enable button sits next to Test/Edit/Clone/Remove and
+  // flips the `enabled` flag without opening the edit form.
+  test('2.6 toggle server enabled state via row button', async ({ page }) => {
+    const token = readToken();
+    const serverName = 'Toggle Target';
+    const serverHost = 'toggle.test.com';
+    await apiAddServer(token, serverName, serverHost);
+
+    try {
+      await navigateToServers(page);
+
+      const row = page.locator('.srv-row', { hasText: serverHost });
+      await expect(row).toBeVisible();
+
+      // Starts enabled
+      await expect(row.getByText('● enabled')).toBeVisible();
+
+      // Click Disable → row reflects "disabled", button label flips to "Enable"
+      await row.getByRole('button', { name: 'Disable' }).click();
+      await expect(page.getByText('Server disabled', { exact: false })).toBeVisible();
+      await expect(row.getByText('● disabled')).toBeVisible();
+      await expect(row.getByRole('button', { name: 'Enable' })).toBeVisible();
+
+      // Round-trip back to enabled
+      await row.getByRole('button', { name: 'Enable' }).click();
+      await expect(page.getByText('Server enabled', { exact: false })).toBeVisible();
+      await expect(row.getByText('● enabled')).toBeVisible();
+      await expect(row.getByRole('button', { name: 'Disable' })).toBeVisible();
+
+      // Persisted on the backend
+      const servers = await apiListServers(token);
+      const found = servers.find((s) => s.name === serverName) as { enabled?: boolean } | undefined;
+      expect(found?.enabled).toBe(true);
+    } finally {
+      await apiDeleteServerByName(token, serverName);
+    }
+  });
 });
