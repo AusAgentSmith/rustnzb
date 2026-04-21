@@ -1,97 +1,296 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+
+interface DavFile {
+  href: string;      // path from WebDAV root, e.g. /content/Release/file.mkv
+  name: string;
+  isDir: boolean;
+  size: number;
+  contentType: string;
+}
+
+interface Release {
+  href: string;
+  name: string;
+  files: DavFile[];
+  expanded: boolean;
+  loading: boolean;
+}
+
+const VIDEO_EXTS = new Set(['mkv', 'mp4', 'avi', 'mov', 'wmv', 'ts', 'm4v', 'webm', 'flv', 'mpg', 'mpeg']);
+const AUDIO_EXTS = new Set(['mp3', 'flac', 'aac', 'ogg', 'wav', 'm4a', 'opus']);
 
 @Component({
   selector: 'app-media-view',
   standalone: true,
   imports: [CommonModule, MatSnackBarModule],
   template: `
+    <!-- Header bar -->
     <div class="panel">
-      <h3>Media Library</h3>
-      <div class="body">
-        <div class="dav-info">
-          <div class="info-row">
-            <span class="label">WebDAV endpoint</span>
-            <code class="url">{{ davUrl }}</code>
-            <button class="btn ghost sm" (click)="copyUrl()">Copy</button>
+      <h3>Media Library
+        <span class="hint">WebDAV endpoint: <code>{{ davBase }}</code></span>
+        <button class="btn ghost sm" style="margin-left:8px" (click)="copyBase()">Copy URL</button>
+        <button class="btn ghost sm" style="margin-left:4px" (click)="loadContent()">↻ Refresh</button>
+      </h3>
+    </div>
+
+    <!-- Content browser -->
+    <div class="panel">
+      <h3>Content
+        <span class="hint">{{ releases().length }} release{{ releases().length === 1 ? '' : 's' }}</span>
+      </h3>
+      <div class="body flush">
+
+        @if (loading()) {
+          <div class="empty-cell">Loading…</div>
+        } @else if (releases().length === 0) {
+          <div class="empty-cell">
+            No content yet. Send items from History using the <strong>▶ media</strong> button,
+            then wait a few seconds for the pipeline to process the NZB.
           </div>
-          <p class="hint">
-            Connect any WebDAV-capable media client to stream content directly from the download
-            pipeline — no extraction or waiting required.
-          </p>
-        </div>
+        } @else {
+          <table class="data content-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th style="text-align:right">Size</th>
+                <th style="width:160px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rel of releases(); track rel.href) {
+                <!-- Release directory row -->
+                <tr class="rel-row" (click)="toggle(rel)">
+                  <td>
+                    <span class="toggle-icon">{{ rel.expanded ? '▾' : '▸' }}</span>
+                    <span class="rel-name">{{ rel.name }}</span>
+                    @if (rel.loading) { <span class="loading-dot">…</span> }
+                  </td>
+                  <td><span class="badge dir">folder</span></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+
+                <!-- File rows when expanded -->
+                @if (rel.expanded) {
+                  @for (f of rel.files; track f.href) {
+                    <tr class="file-row" [class.video]="isVideo(f)" [class.audio]="isAudio(f)">
+                      <td>
+                        <span class="file-indent"></span>
+                        <span class="file-name" [title]="f.name">{{ f.name }}</span>
+                      </td>
+                      <td>
+                        @if (isVideo(f)) { <span class="badge video">video</span> }
+                        @else if (isAudio(f)) { <span class="badge audio">audio</span> }
+                        @else { <span class="badge other">{{ ext(f.name) }}</span> }
+                      </td>
+                      <td class="size-cell">{{ formatBytes(f.size) }}</td>
+                      <td class="actions">
+                        @if (isVideo(f) || isAudio(f)) {
+                          <a class="row-action play" [href]="fileUrl(f.href)" target="_blank" title="Open in browser / media player">▶ play</a>
+                        }
+                        <button class="row-action" (click)="copyFileUrl(f.href); $event.stopPropagation()" title="Copy stream URL">copy URL</button>
+                        <a class="row-action" [href]="fileUrl(f.href)" [download]="f.name" title="Download">↓</a>
+                      </td>
+                    </tr>
+                  }
+                  @if (rel.files.length === 0 && !rel.loading) {
+                    <tr class="file-row"><td colspan="4" class="empty-sub">Empty or still processing</td></tr>
+                  }
+                }
+              }
+            </tbody>
+          </table>
+        }
       </div>
     </div>
 
+    <!-- Connect instructions -->
     <div class="panel">
-      <h3>Connecting a client</h3>
+      <h3>Connect a media client</h3>
       <div class="body">
+        <p class="hint-block">
+          Point any WebDAV client at <code>{{ davBase }}</code> to browse and stream directly.
+          Use your rustnzb username and password. The <code>/content/</code> collection contains your releases.
+        </p>
         <table class="data clients">
-          <thead>
-            <tr><th>App</th><th>Platform</th><th>How to connect</th></tr>
-          </thead>
+          <thead><tr><th>App</th><th>Platform</th><th>How to add</th></tr></thead>
           <tbody>
-            <tr>
-              <td><strong>Infuse</strong></td>
-              <td>iOS · tvOS · macOS</td>
-              <td>Settings → Add Files → Add Network Share → WebDAV → enter URL + credentials</td>
-            </tr>
-            <tr>
-              <td><strong>VLC</strong></td>
-              <td>All platforms</td>
-              <td>Network → Open Network Stream → paste the WebDAV URL</td>
-            </tr>
-            <tr>
-              <td><strong>Kodi</strong></td>
-              <td>All platforms</td>
-              <td>Files → Add source → Browse → Add Network Location → WebDAV (HTTP)</td>
-            </tr>
-            <tr>
-              <td><strong>nPlayer</strong></td>
-              <td>iOS · tvOS</td>
-              <td>+ → WebDAV → enter server URL + credentials</td>
-            </tr>
-            <tr>
-              <td><strong>Windows Explorer</strong></td>
-              <td>Windows</td>
-              <td>Map Network Drive → paste the WebDAV URL</td>
-            </tr>
+            <tr><td><strong>Infuse</strong></td><td>iOS · tvOS · macOS</td><td>Settings → Add Files → WebDAV → enter URL + credentials</td></tr>
+            <tr><td><strong>VLC</strong></td><td>All</td><td>Network → Open Network Stream → paste file URL, or Media → Open Network</td></tr>
+            <tr><td><strong>Kodi</strong></td><td>All</td><td>Files → Add source → Browse → Add Network Location → WebDAV</td></tr>
+            <tr><td><strong>nPlayer</strong></td><td>iOS · tvOS</td><td>+ → WebDAV → enter server URL + credentials</td></tr>
+            <tr><td><strong>mpv / vlc CLI</strong></td><td>Desktop</td><td><code>mpv http://host/dav/content/Release/file.mkv</code></td></tr>
           </tbody>
         </table>
-        <p class="hint cred-note">
-          Use the same username and password as the rustnzb web UI.
-          Items appear here as they are added via the <strong>▶ media</strong> button in History.
-        </p>
       </div>
     </div>
   `,
   styles: [`
     :host { display: block; }
-    .dav-info { display: flex; flex-direction: column; gap: 12px; }
-    .info-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .info-row .label { color: var(--mute); font-size: 12px; white-space: nowrap; }
-    code.url {
-      background: var(--panel2); border: 1px solid var(--line);
-      border-radius: 4px; padding: 4px 10px; font-size: 13px;
-      color: var(--accent); flex: 1; min-width: 0; word-break: break-all;
-    }
-    .hint { color: var(--mute); font-size: 12px; margin: 0; line-height: 1.6; }
-    .cred-note { margin-top: 12px; }
-    .btn.sm { padding: 4px 10px; font-size: 12px; flex-shrink: 0; }
+
+    .empty-cell { text-align: center; padding: 36px 20px; color: var(--mute); font-size: 13px; }
+    .empty-sub { color: var(--mute); font-size: 12px; padding-left: 32px !important; }
+
+    code { background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; font-size: 12px; color: var(--accent); }
+
+    table.content-table { table-layout: fixed; }
+    table.content-table th:first-child, table.content-table td:first-child { width: 50%; overflow: hidden; text-overflow: ellipsis; }
+
+    .rel-row { cursor: pointer; }
+    .rel-row:hover td { background: var(--panel2); }
+    .toggle-icon { color: var(--mute); margin-right: 6px; font-size: 12px; user-select: none; }
+    .rel-name { font-size: 13px; font-weight: 500; }
+    .loading-dot { color: var(--mute); font-size: 12px; margin-left: 6px; }
+
+    .file-row td { background: rgba(0,0,0,.15); }
+    .file-indent { display: inline-block; width: 24px; }
+    .file-name { font-size: 12px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; max-width: calc(100% - 28px); vertical-align: middle; }
+    .file-row.video .file-name { color: var(--text); }
+    .file-row.audio .file-name { color: var(--text); }
+
+    .size-cell { text-align: right; color: var(--mute); font-size: 12px; }
+    .actions { white-space: nowrap; }
+    .actions a { text-decoration: none; }
+
+    .badge { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
+    .badge.dir   { background: rgba(59,130,246,.15); color: var(--accent); }
+    .badge.video { background: rgba(167,139,250,.15); color: var(--purple); }
+    .badge.audio { background: rgba(16,185,129,.15);  color: var(--accent2); }
+    .badge.other { background: var(--panel2); color: var(--mute); }
+
+    .row-action.play { color: var(--purple); border-color: var(--purple); }
+
+    .hint-block { color: var(--mute); font-size: 12px; margin: 0 0 12px; line-height: 1.6; }
     table.clients td { font-size: 13px; }
     table.clients td:last-child { color: var(--mute); font-size: 12px; }
+    table.clients code { font-size: 11px; }
   `],
 })
-export class MediaViewComponent {
-  davUrl = `${window.location.origin}/dav`;
+export class MediaViewComponent implements OnInit, OnDestroy {
+  private http = inject(HttpClient);
+  private snack = inject(MatSnackBar);
 
-  constructor(private snack: MatSnackBar) {}
+  davBase = `${window.location.origin}/dav`;
+  releases = signal<Release[]>([]);
+  loading = signal(false);
 
-  copyUrl(): void {
-    navigator.clipboard.writeText(this.davUrl).then(
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  ngOnInit(): void {
+    this.loadContent();
+    this.pollTimer = setInterval(() => this.loadContent(), 10000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+  }
+
+  loadContent(): void {
+    this.loading.set(this.releases().length === 0);
+    // davRelPath is the WebDAV-relative path (without /dav prefix)
+    this.propfind('/content', 1).then(items => {
+      const existing = this.releases();
+      const self = ['/content', '/content/'];
+      const dirs = items.filter(i => i.isDir && !self.includes(i.href) && !self.includes(i.href + '/'));
+      const updated = dirs.map(d => {
+        const prev = existing.find(r => r.href === d.href);
+        return prev ?? { href: d.href, name: d.name, files: [], expanded: false, loading: false };
+      });
+      for (const rel of updated) {
+        if (rel.expanded && rel.files.length === 0) this.loadFiles(rel);
+      }
+      this.releases.set(updated);
+      this.loading.set(false);
+    }).catch(() => this.loading.set(false));
+  }
+
+  toggle(rel: Release): void {
+    rel.expanded = !rel.expanded;
+    if (rel.expanded && rel.files.length === 0 && !rel.loading) {
+      this.loadFiles(rel);
+    }
+    this.releases.set([...this.releases()]);
+  }
+
+  private loadFiles(rel: Release): void {
+    rel.loading = true;
+    this.propfind(rel.href, 1).then(items => {
+      rel.files = items.filter(i => !i.isDir && i.href !== rel.href && i.href !== rel.href + '/');
+      rel.loading = false;
+      this.releases.set([...this.releases()]);
+    }).catch(() => {
+      rel.loading = false;
+      this.releases.set([...this.releases()]);
+    });
+  }
+
+  // davRelPath: WebDAV-relative path (no /dav prefix), e.g. '/content' or '/content/Release/'
+  private propfind(davRelPath: string, depth: number): Promise<DavFile[]> {
+    const url = `${window.location.origin}/dav${davRelPath}`;
+    const headers = new HttpHeaders({ Depth: String(depth) });
+    return this.http.request('PROPFIND', url, {
+      headers,
+      responseType: 'text',
+    }).toPromise().then(xml => this.parseMultiStatus(xml ?? ''));
+  }
+
+  private parseMultiStatus(xml: string): DavFile[] {
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const ns = 'DAV:';
+    const items: DavFile[] = [];
+    for (const resp of Array.from(doc.getElementsByTagNameNS(ns, 'response'))) {
+      const href = resp.getElementsByTagNameNS(ns, 'href')[0]?.textContent ?? '';
+      const displayName = resp.getElementsByTagNameNS(ns, 'displayname')[0]?.textContent ?? '';
+      const contentType = resp.getElementsByTagNameNS(ns, 'getcontenttype')[0]?.textContent ?? '';
+      const sizeStr = resp.getElementsByTagNameNS(ns, 'getcontentlength')[0]?.textContent ?? '0';
+      const rtype = resp.getElementsByTagNameNS(ns, 'resourcetype')[0];
+      const isDir = !!rtype?.getElementsByTagNameNS(ns, 'collection').length;
+      const name = displayName || href.split('/').filter(Boolean).pop() || href;
+      items.push({ href: decodeURIComponent(href), name, isDir, size: parseInt(sizeStr) || 0, contentType });
+    }
+    return items;
+  }
+
+  fileUrl(href: string): string {
+    return `${window.location.origin}/dav${href}`;
+  }
+
+  isVideo(f: DavFile): boolean {
+    return VIDEO_EXTS.has(this.ext(f.name));
+  }
+
+  isAudio(f: DavFile): boolean {
+    return AUDIO_EXTS.has(this.ext(f.name));
+  }
+
+  ext(name: string): string {
+    return (name.split('.').pop() ?? '').toLowerCase();
+  }
+
+  formatBytes(b: number): string {
+    if (!b) return '';
+    const k = 1024;
+    const s = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(4, Math.floor(Math.log(b) / Math.log(k)));
+    return (b / Math.pow(k, i)).toFixed(1) + ' ' + s[i];
+  }
+
+  copyBase(): void {
+    navigator.clipboard.writeText(this.davBase).then(
       () => this.snack.open('URL copied', 'Close', { duration: 2000 }),
-      () => this.snack.open(this.davUrl, 'Close', { duration: 5000 }),
+      () => this.snack.open(this.davBase, 'Close', { duration: 4000 }),
+    );
+  }
+
+  copyFileUrl(href: string): void {
+    const url = this.fileUrl(href);
+    navigator.clipboard.writeText(url).then(
+      () => this.snack.open('Stream URL copied', 'Close', { duration: 2000 }),
+      () => this.snack.open(url, 'Close', { duration: 4000 }),
     );
   }
 }
