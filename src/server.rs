@@ -136,6 +136,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/config", get(handlers::h_config_get))
         .route("/config/general", put(handlers::h_general_update))
         .route("/config/servers/health", get(handlers::h_servers_health))
+        .route("/config/servers/stats", get(handlers::h_server_stats))
         .route("/config/servers", get(handlers::h_servers_list))
         .route("/config/servers", post(handlers::h_server_add))
         .route("/config/servers/{id}", put(handlers::h_server_update))
@@ -190,6 +191,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         )
         .route("/config/speed-limit", get(handlers::h_get_speed_limit))
         .route("/config/speed-limit", put(handlers::h_set_speed_limit))
+        .route("/config/disk-guards", get(handlers::h_disk_guards_get))
+        .route("/config/disk-guards", put(handlers::h_disk_guards_set))
         .route("/browse-directory", get(handlers::h_browse_directory))
         // Newsgroup browsing
         .route("/groups", get(group_handlers::h_group_list))

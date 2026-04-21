@@ -1028,6 +1028,39 @@ pub async fn h_set_speed_limit(
 }
 
 // ---------------------------------------------------------------------------
+// Disk guards handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize)]
+pub struct DiskGuardsBody {
+    pub min_free_space_bytes: u64,
+    pub abort_hopeless: bool,
+}
+
+/// GET /api/config/disk-guards -- Get disk guard settings.
+pub async fn h_disk_guards_get(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<DiskGuardsBody>, ApiError> {
+    let config = state.config();
+    Ok(Json(DiskGuardsBody {
+        min_free_space_bytes: config.general.min_free_space_bytes,
+        abort_hopeless: config.general.abort_hopeless,
+    }))
+}
+
+/// PUT /api/config/disk-guards -- Update disk guard settings (persisted; restart to apply).
+pub async fn h_disk_guards_set(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<DiskGuardsBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    let mut config = (*state.config()).clone();
+    config.general.min_free_space_bytes = body.min_free_space_bytes;
+    config.general.abort_hopeless = body.abort_hopeless;
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+// ---------------------------------------------------------------------------
 // RSS feed handlers
 // ---------------------------------------------------------------------------
 
@@ -1393,6 +1426,15 @@ pub async fn h_servers_health(
     }
 
     Ok(Json(results))
+}
+
+/// GET /api/config/servers/stats -- Per-server download statistics.
+pub async fn h_server_stats(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<nzb_web::ServerStatsData>>, ApiError> {
+    let servers = state.config().servers.clone();
+    let stats = state.queue_manager.server_stats_get_all(&servers);
+    Ok(Json(stats))
 }
 
 // ---------------------------------------------------------------------------

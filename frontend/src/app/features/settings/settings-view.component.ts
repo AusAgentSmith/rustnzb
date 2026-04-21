@@ -16,6 +16,14 @@ interface CategoryConfig {
   name: string; output_dir: string | null; post_processing: number;
 }
 
+interface ServerStats {
+  server_id: string; server_name: string;
+  total_bytes: number; today_bytes: number; week_bytes: number; month_bytes: number;
+  total_ok: number; today_ok: number; week_ok: number; month_ok: number;
+  total_fail: number; today_fail: number; week_fail: number; month_fail: number;
+  last_active: string | null;
+}
+
 type Tab =
   | 'servers' | 'rss-cfg'
   | 'categories' | 'postproc' | 'paths'
@@ -97,6 +105,10 @@ function emptyCategory(): CategoryConfig {
                     <span>retention <b>{{ s.retention }} d</b></span>
                     <span>ramp-up <b>{{ s.ramp_up_delay_ms }} ms</b></span>
                     @if (s.compress) { <span><b>compression</b></span> }
+                    @let st = serverStats()[s.id];
+                    @if (st && st.total_bytes > 0) {
+                      <span style="color:var(--accent)">↓ {{ fmtBytes(st.total_bytes) }} total</span>
+                    }
                   </div>
                 </div>
                 <div class="actions">
@@ -107,8 +119,37 @@ function emptyCategory(): CategoryConfig {
                   <button class="btn sm" (click)="editServer(s)">Edit</button>
                   <button class="btn sm" (click)="cloneServer(s)">Clone</button>
                   <button class="btn sm danger" (click)="deleteServer(s.id)">Remove</button>
+                  <button class="btn sm" [class.active]="expandedStatsId === s.id" (click)="toggleStats(s.id)">Stats</button>
                 </div>
               </div>
+              @if (expandedStatsId === s.id) {
+                @let st = serverStats()[s.id];
+                <div class="srv-stats-panel">
+                  @if (st) {
+                    <div class="srv-stats-grid">
+                      <div class="srv-stats-col">
+                        <div class="srv-stats-heading">Bandwidth</div>
+                        <div class="srv-stats-row"><span>Total</span><b>{{ fmtBytes(st.total_bytes) }}</b></div>
+                        <div class="srv-stats-row"><span>Today</span><b>{{ fmtBytes(st.today_bytes) }}</b></div>
+                        <div class="srv-stats-row"><span>This week</span><b>{{ fmtBytes(st.week_bytes) }}</b></div>
+                        <div class="srv-stats-row"><span>This month</span><b>{{ fmtBytes(st.month_bytes) }}</b></div>
+                      </div>
+                      <div class="srv-stats-col">
+                        <div class="srv-stats-heading">Article availability</div>
+                        <div class="srv-stats-row"><span>Total</span><b>{{ fmtAvail(st.total_ok, st.total_fail) }}</b></div>
+                        <div class="srv-stats-row"><span>Today</span><b>{{ fmtAvail(st.today_ok, st.today_fail) }}</b></div>
+                        <div class="srv-stats-row"><span>This week</span><b>{{ fmtAvail(st.week_ok, st.week_fail) }}</b></div>
+                        <div class="srv-stats-row"><span>This month</span><b>{{ fmtAvail(st.month_ok, st.month_fail) }}</b></div>
+                      </div>
+                    </div>
+                    @if (st.last_active) {
+                      <div style="font-size:11px;color:var(--mute);margin-top:6px">Last activity: {{ st.last_active }}</div>
+                    }
+                  } @else {
+                    <div style="color:var(--mute);font-size:12px">No data yet — stats accumulate as downloads complete.</div>
+                  }
+                </div>
+              }
             }
             @if (servers().length === 0 && !editingServer) {
               <div class="empty">No servers configured. Click <b>+ Add server</b> to get started.</div>
@@ -342,9 +383,22 @@ function emptyCategory(): CategoryConfig {
             <h3>Disk guards
               <span class="hint">history retention is editable under <a (click)="tab = 'general'" style="cursor:pointer">General</a></span>
             </h3>
-            <div class="body" style="font-size:13px;color:var(--mute)">
-              Min free space and abort thresholds are configured in <code>config.toml</code>. A UI for
-              these will land when the API endpoints exist.
+            <div class="body">
+              <div class="form">
+                <label>Min free space</label>
+                <div class="inline">
+                  <input type="number" [(ngModel)]="minFreeSpaceGB" min="0" step="0.1" />
+                  <span style="color:var(--mute)">GB · 0 = disabled · restart to apply</span>
+                  <button class="btn sm" (click)="saveDiskGuards()">Save</button>
+                </div>
+                <label>Abort hopeless</label>
+                <div class="inline">
+                  <label class="toggle">
+                    <input type="checkbox" [(ngModel)]="abortHopeless" (change)="saveDiskGuards()" />
+                    <span>Abort downloads that cannot possibly complete</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         }
@@ -493,10 +547,18 @@ function emptyCategory(): CategoryConfig {
     }
     .settings-side .sg {
       color: var(--mute);
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: .5px;
-      padding: 10px 12px 4px;
+      letter-spacing: .7px;
+      padding: 14px 12px 4px;
+      margin-top: 2px;
+      border-top: 1px solid var(--line);
+    }
+    .settings-side .sg:first-child {
+      border-top: none;
+      padding-top: 6px;
+      margin-top: 0;
     }
     .settings-side button {
       display: block;
@@ -504,15 +566,17 @@ function emptyCategory(): CategoryConfig {
       text-align: left;
       background: none;
       border: none;
-      color: var(--mute);
-      padding: 8px 12px;
+      color: var(--text);
+      padding: 7px 12px;
       border-radius: 5px;
       cursor: pointer;
       font: inherit;
+      font-size: 13px;
+      opacity: .7;
     }
-    .settings-side button:hover { color: var(--text); background: var(--panel2); }
+    .settings-side button:hover { opacity: 1; background: var(--panel2); }
     .settings-side button.active {
-      color: var(--text);
+      opacity: 1;
       background: var(--panel2);
       box-shadow: inset 2px 0 0 var(--accent);
     }
@@ -536,6 +600,20 @@ function emptyCategory(): CategoryConfig {
     .meters { display: flex; gap: 18px; align-items: center; font-size: 12px; color: var(--mute); margin-top: 6px; flex-wrap: wrap; }
     .meters b { color: var(--text); font-weight: 600; }
     .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+    .btn.sm.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* Server stats panel */
+    .srv-stats-panel {
+      grid-column: 1 / -1;
+      padding: 12px 14px 14px 42px;
+      background: var(--surface2, rgba(255,255,255,0.03));
+      border-bottom: 1px solid var(--line);
+    }
+    .srv-stats-grid { display: flex; gap: 32px; flex-wrap: wrap; }
+    .srv-stats-col { min-width: 200px; }
+    .srv-stats-heading { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--mute); margin-bottom: 6px; }
+    .srv-stats-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--mute); padding: 2px 0; gap: 16px; }
+    .srv-stats-row b { color: var(--text); font-weight: 600; white-space: nowrap; }
 
     .empty { padding: 24px; color: var(--mute); text-align: center; font-size: 13px; }
     .empty-cell { text-align: center; padding: 28px !important; color: var(--mute); font-size: 13px; }
@@ -550,6 +628,8 @@ export class SettingsViewComponent implements OnInit {
 
   // Servers
   servers = signal<ServerConfig[]>([]);
+  serverStats = signal<Record<string, ServerStats>>({});
+  expandedStatsId: string | null = null;
   editingServer: ServerConfig | null = null;
   editingServerId: string | null = null;
 
@@ -562,6 +642,10 @@ export class SettingsViewComponent implements OnInit {
   speedLimit = 0;
   maxActiveDownloads = 3;
   historyRetention: number | null = null;
+
+  // Disk guards
+  minFreeSpaceGB = 1;
+  abortHopeless = true;
 
   constructor(private api: ApiService, private snack: MatSnackBar) {}
 
@@ -578,6 +662,45 @@ export class SettingsViewComponent implements OnInit {
       next: r => this.servers.set(r),
       error: () => {},
     });
+    this.loadServerStats();
+  }
+
+  loadServerStats(): void {
+    this.api.get<ServerStats[]>('/config/servers/stats').subscribe({
+      next: r => {
+        const map: Record<string, ServerStats> = {};
+        for (const s of r) map[s.server_id] = s;
+        this.serverStats.set(map);
+      },
+      error: () => {},
+    });
+  }
+
+  toggleStats(id: string): void {
+    this.expandedStatsId = this.expandedStatsId === id ? null : id;
+    if (this.expandedStatsId) this.loadServerStats();
+  }
+
+  fmtBytes(bytes: number): string {
+    if (bytes <= 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+    if (bytes < 1024 ** 4) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+    return `${(bytes / 1024 ** 4).toFixed(2)} TB`;
+  }
+
+  fmtAvail(ok: number, fail: number): string {
+    const total = ok + fail;
+    if (total === 0) return '— (no data)';
+    const pct = Math.round(ok / total * 100);
+    return `${pct}% of ${this.fmtCount(total)} articles`;
+  }
+
+  fmtCount(n: number): string {
+    if (n < 1000) return `${n}`;
+    if (n < 1_000_000) return `${(n / 1000).toFixed(0)}K`;
+    return `${(n / 1_000_000).toFixed(1)}M`;
   }
 
   addServer(): void {
@@ -764,6 +887,23 @@ export class SettingsViewComponent implements OnInit {
     this.api.get<{ retention: number | null }>('/config/history-retention').subscribe({
       next: r => this.historyRetention = r.retention,
       error: () => {},
+    });
+    this.api.get<{ min_free_space_bytes: number; abort_hopeless: boolean }>('/config/disk-guards').subscribe({
+      next: r => {
+        this.minFreeSpaceGB = r.min_free_space_bytes / (1024 ** 3);
+        this.abortHopeless = r.abort_hopeless;
+      },
+      error: () => {},
+    });
+  }
+
+  saveDiskGuards(): void {
+    this.api.put('/config/disk-guards', {
+      min_free_space_bytes: Math.round(this.minFreeSpaceGB * (1024 ** 3)),
+      abort_hopeless: this.abortHopeless,
+    }).subscribe({
+      next: () => this.snack.open('Disk guards saved', 'Close', { duration: 2000 }),
+      error: () => this.snack.open('Failed to save disk guards', 'Close', { duration: 3000 }),
     });
   }
 
