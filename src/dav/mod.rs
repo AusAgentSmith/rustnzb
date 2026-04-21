@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use chrono::Utc;
+use nzb_web::nzb_core::config::ServerConfig;
 use nzbdav_core::database::DavDatabase;
 use nzbdav_core::models::{DownloadStatus, HistoryItem, QueueItem};
 use nzbdav_core::sqlite_db::SqliteDavDatabase;
@@ -12,7 +13,6 @@ use nzbdav_dav::store::DatabaseStore;
 use nzbdav_pipeline::queue_item_processor::{PipelineConfig, QueueItemProcessor};
 use nzbdav_stream::UsenetArticleProvider;
 use nzbdav_stream::nzb_nntp::ConnectionPool;
-use nzb_web::nzb_core::config::ServerConfig;
 use parking_lot::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
@@ -27,15 +27,13 @@ pub struct DavHandle {
 
 impl DavHandle {
     pub async fn init(data_dir: &Path, servers: Vec<ServerConfig>) -> anyhow::Result<Self> {
-        let db_path = data_dir
-            .join("nzbdav.db")
-            .to_string_lossy()
-            .to_string();
+        let db_path = data_dir.join("nzbdav.db").to_string_lossy().to_string();
 
         // Open the DAV SQLite DB and seed root directories.
         let conn = nzbdav_core::db::open(&db_path)
             .with_context(|| format!("opening nzbdav DB at {db_path}"))?;
-        let dav_db: Arc<SqliteDavDatabase> = Arc::new(SqliteDavDatabase::new(Arc::new(Mutex::new(conn))));
+        let dav_db: Arc<SqliteDavDatabase> =
+            Arc::new(SqliteDavDatabase::new(Arc::new(Mutex::new(conn))));
         nzbdav_core::seed::seed_root_items(&*dav_db).await?;
 
         // Build NNTP pools from rustnzbd's server configs (same nzb-nntp types).
@@ -75,7 +73,12 @@ impl DavHandle {
         };
 
         info!("WebDAV media library initialised (db: {db_path})");
-        Ok(Self { store, db_path, cancel, _thread: thread })
+        Ok(Self {
+            store,
+            db_path,
+            cancel,
+            _thread: thread,
+        })
     }
 
     /// Queue an NZB for DAV pipeline processing.
@@ -135,8 +138,12 @@ async fn run_queue_loop(
         // Reap completed tasks.
         while let Some(result) = active.try_join_next() {
             match result {
-                Ok(id) => { active_ids.remove(&id); }
-                Err(e) => { error!(error = %e, "DAV pipeline task panicked"); }
+                Ok(id) => {
+                    active_ids.remove(&id);
+                }
+                Err(e) => {
+                    error!(error = %e, "DAV pipeline task panicked");
+                }
             }
         }
 
@@ -185,14 +192,13 @@ async fn run_queue_loop(
     info!("DAV queue manager stopped");
 }
 
-async fn process_item(
-    db_path: &str,
-    processor: &QueueItemProcessor,
-    item: QueueItem,
-) {
+async fn process_item(db_path: &str, processor: &QueueItemProcessor, item: QueueItem) {
     let db = match open_db(db_path) {
         Ok(db) => db,
-        Err(e) => { error!(error = %e, "DAV: failed to open DB for item processing"); return; }
+        Err(e) => {
+            error!(error = %e, "DAV: failed to open DB for item processing");
+            return;
+        }
     };
 
     let job_name = item.job_name.clone();
@@ -203,7 +209,14 @@ async fn process_item(
         Ok(data) => data,
         Err(e) => {
             error!(job_name = %job_name, error = %e, "DAV: NZB blob missing");
-            finish_item(&db, &item, DownloadStatus::Failed, Some(e.to_string()), None).await;
+            finish_item(
+                &db,
+                &item,
+                DownloadStatus::Failed,
+                Some(e.to_string()),
+                None,
+            )
+            .await;
             return;
         }
     };
@@ -216,18 +229,35 @@ async fn process_item(
                 elapsed_secs = start.elapsed().as_secs_f32(),
                 "DAV pipeline completed"
             );
-            finish_item(&db, &item, DownloadStatus::Completed, None, Some(result.job_dir_id)).await;
+            finish_item(
+                &db,
+                &item,
+                DownloadStatus::Completed,
+                None,
+                Some(result.job_dir_id),
+            )
+            .await;
         }
         Err(e) if e.is_retryable() => {
             warn!(job_name = %job_name, error = %e, "DAV: retryable error — pausing 60s");
             let pause_until = Utc::now().naive_utc() + chrono::Duration::seconds(60);
-            if let Err(ue) = db.update_queue_pause_until(item_id, Some(pause_until)).await {
+            if let Err(ue) = db
+                .update_queue_pause_until(item_id, Some(pause_until))
+                .await
+            {
                 error!(error = %ue, "DAV: failed to set pause_until");
             }
         }
         Err(e) => {
             error!(job_name = %job_name, error = %e, "DAV: pipeline failed");
-            finish_item(&db, &item, DownloadStatus::Failed, Some(e.to_string()), None).await;
+            finish_item(
+                &db,
+                &item,
+                DownloadStatus::Failed,
+                Some(e.to_string()),
+                None,
+            )
+            .await;
         }
     }
 }

@@ -233,8 +233,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // WebDAV media library management endpoint (only compiled when feature is on)
     #[cfg(feature = "webdav")]
-    let api_routes = api_routes
-        .route("/dav/add", post(handlers::h_dav_add));
+    let api_routes = api_routes.route("/dav/add", post(handlers::h_dav_add));
 
     // Arr-compatible API (Sonarr/Radarr) — uses its own API key auth
     // Sonarr/Radarr hit /api (the standard SABnzbd path), so register both.

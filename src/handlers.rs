@@ -629,8 +629,9 @@ pub async fn h_history_retry(
 /// GET /api/status -- Overall application status.
 pub async fn h_status(
     State(state): State<Arc<AppState>>,
-    #[cfg(feature = "webdav")]
-    axum::Extension(dav): axum::Extension<Option<Arc<crate::dav::DavHandle>>>,
+    #[cfg(feature = "webdav")] axum::Extension(dav): axum::Extension<
+        Option<Arc<crate::dav::DavHandle>>,
+    >,
 ) -> Result<Json<StatusResponse>, ApiError> {
     let qm = &state.queue_manager;
     let config = state.config();
@@ -1818,9 +1819,9 @@ pub async fn h_dav_add(
     axum::Extension(dav): axum::Extension<Option<Arc<crate::dav::DavHandle>>>,
     Query(q): Query<DavAddQuery>,
 ) -> Result<Json<DavAddResponse>, ApiError> {
-    let dav = dav.as_ref().ok_or_else(|| {
-        ApiError::from(anyhow::anyhow!("WebDAV library not initialised"))
-    })?;
+    let dav = dav
+        .as_ref()
+        .ok_or_else(|| ApiError::from(anyhow::anyhow!("WebDAV library not initialised")))?;
     let qm = &state.queue_manager;
 
     let entry = qm
