@@ -10,22 +10,38 @@ steps:
 
   - name: fmt
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     commands:
       - rustup component add rustfmt
       - cargo fmt --all -- --check
 
   - name: check
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     commands:
       - cargo check --workspace
 
   - name: test
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     commands:
       - cargo test --workspace
 
   - name: clippy
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     commands:
       - rustup component add clippy
       - cargo clippy --workspace -- -D warnings
@@ -38,6 +54,10 @@ steps:
   # a dedicated cleanup pass before it can gate CI.
   - name: e2e
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     when:
       - event: push
         branch: main
@@ -72,6 +92,10 @@ steps:
 
   - name: build-linux
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     commands:
       - if [ -n "$CI_COMMIT_TAG" ]; then export CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 CARGO_PROFILE_RELEASE_STRIP=symbols; fi
       - cargo build --release
@@ -97,6 +121,10 @@ steps:
 
   - name: build-windows
     image: rust:1.88-bookworm
+    environment:
+      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+      CARGO_REGISTRIES_FORGEJO_TOKEN:
+        from_secret: cargo_registry_token
     commands:
       - apt-get update && apt-get install -y --no-install-recommends clang llvm lld
       - cargo install cargo-xwin@0.18.6 --index https://github.com/rust-lang/crates.io-index

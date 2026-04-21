@@ -1887,6 +1887,8 @@ dependencies = [
 [[package]]
 name = "nzbdav-core"
 version = "0.4.1"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "b78de0e6a22cc7d42030b234d55d8de82fae66355b6ad6eef30db435190a288f"
 dependencies = [
  "async-trait",
  "bincode",
@@ -1908,6 +1910,8 @@ dependencies = [
 [[package]]
 name = "nzbdav-dav"
 version = "0.4.1"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "73a1534d092ef82f455a5822c1d8676815bd65287226f90c1e9ee1fbafe58f05"
 dependencies = [
  "axum 0.8.9",
  "bincode",
@@ -1930,6 +1934,8 @@ dependencies = [
 [[package]]
 name = "nzbdav-pipeline"
 version = "0.4.1"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "4bebc904b75cb6dfe0c08679f8884a585797066795f5572258c15e642c19b709"
 dependencies = [
  "bincode",
  "chrono",
@@ -1951,6 +1957,8 @@ dependencies = [
 [[package]]
 name = "nzbdav-rar"
 version = "0.4.1"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "3ca35f912dc719c8570e164f35c0fb8c625f5497121bcbf4dee429896818e6a8"
 dependencies = [
  "aes",
  "cbc",
@@ -1965,6 +1973,8 @@ dependencies = [
 [[package]]
 name = "nzbdav-stream"
 version = "0.4.1"
+source = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
+checksum = "eebfb27f7dd8c48884399eb1ce56bb6893560f435fdec23a54633eb5718929a4"
 dependencies = [
  "aes",
  "arc-swap",

@@ -167,10 +167,12 @@ nzb-dispatch = { path = "../libs/nzb-dispatch" }
 nzb-nntp = { path = "../libs/nzb-nntp" }
 nzb-news = { path = "../libs/nzb-news" }
 
-[patch.forgejo]
-nzbdav-core = { path = "../nzbdav-rs/crates/nzbdav-core" }
-nzbdav-stream = { path = "../nzbdav-rs/crates/nzbdav-stream" }
-nzbdav-dav = { path = "../nzbdav-rs/crates/nzbdav-dav" }
-nzbdav-pipeline = { path = "../nzbdav-rs/crates/nzbdav-pipeline" }
+# Local dev patch for nzbdav crates: uncomment when working against unpublished nzbdav-rs changes.
+# CI fetches from the forgejo registry directly, so this must stay commented out.
+# [patch.forgejo]
+# nzbdav-core = { path = "../nzbdav-rs/crates/nzbdav-core" }
+# nzbdav-stream = { path = "../nzbdav-rs/crates/nzbdav-stream" }
+# nzbdav-dav = { path = "../nzbdav-rs/crates/nzbdav-dav" }
+# nzbdav-pipeline = { path = "../nzbdav-rs/crates/nzbdav-pipeline" }
 
 [profile.release]
