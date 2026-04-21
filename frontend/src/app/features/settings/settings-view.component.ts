@@ -726,6 +726,10 @@ export class SettingsViewComponent implements OnInit {
   saveServer(): void {
     if (!this.editingServer) return;
     const server = { ...this.editingServer };
+    if (!server.host.trim()) {
+      this.snack.open('Host is required', 'Close', { duration: 3000 });
+      return;
+    }
     if (!server.username) server.username = null;
     if (!server.password) server.password = null;
 
