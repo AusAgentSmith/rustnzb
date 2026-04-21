@@ -35,42 +35,42 @@ steps:
   - name: fmt
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - rustup component add rustfmt
       - cargo fmt --all -- --check
 
   - name: check
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - cargo check --workspace
 
   - name: test
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - cargo test --workspace
 
   - name: clippy
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - rustup component add clippy
       - cargo clippy --workspace -- -D warnings
 
@@ -83,16 +83,16 @@ steps:
   - name: e2e
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     when:
       - event: push
         branch: main
       - event: pull_request
       - event: manual
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
       - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
       - apt-get install -y --no-install-recommends nodejs
@@ -122,11 +122,11 @@ steps:
   - name: build-linux
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - if [ -n "$CI_COMMIT_TAG" ]; then export CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 CARGO_PROFILE_RELEASE_STRIP=symbols; fi
       - cargo build --release
       - ls -lh target/release/rustnzb
@@ -152,11 +152,11 @@ steps:
   - name: build-windows
     image: rust:1.88-bookworm
     environment:
-      CARGO_REGISTRIES_FORGEJO_INDEX: "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"
-      CARGO_REGISTRIES_FORGEJO_TOKEN:
-        from_secret: cargo_registry_token
-      CARGO_REGISTRY_GLOBAL_CREDENTIAL_PROVIDERS: "cargo:token"
+      GIT_AUTH_TOKEN:
+        from_secret: git_auth_token
     commands:
+      - printf '[registries.forgejo]\nindex = "sparse+https://repo.indexarr.net/api/packages/indexarr/cargo/"\ncredential-provider = "cargo:token"\n' > $CARGO_HOME/config.toml
+      - printf '[registries.forgejo]\ntoken = "Bearer %s"\n' "$GIT_AUTH_TOKEN" > $CARGO_HOME/credentials.toml
       - apt-get update && apt-get install -y --no-install-recommends clang llvm lld
       - cargo install cargo-xwin@0.18.6 --index https://github.com/rust-lang/crates.io-index
       - rustup target add x86_64-pc-windows-msvc
