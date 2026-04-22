@@ -275,9 +275,12 @@ interface PipelineStep {
                 <td>{{ job.speed_bps > 0 ? eta(job) : '—' }}</td>
                 <td><span class="status-pill" [class]="statusClass(job.status)">{{ displayStatus(job.status) }}</span></td>
                 <td>
-                  <button class="pri-btn" [class.pri-low]="job.priority === 0" [class.pri-normal]="job.priority === 1" [class.pri-high]="job.priority === 2" [class.pri-force]="job.priority === 3" (click)="cyclePriority(job)" title="Click to change priority">
-                    {{ priorityLabel(job.priority) }}
-                  </button>
+                  <select class="pri-select" [class.pri-low]="job.priority === 0" [class.pri-normal]="job.priority === 1" [class.pri-high]="job.priority === 2" [class.pri-force]="job.priority === 3" [value]="job.priority" (change)="setPriority(job, +$any($event.target).value)">
+                    <option value="0">Low</option>
+                    <option value="1">Normal</option>
+                    <option value="2">High</option>
+                    <option value="3">Force</option>
+                  </select>
                 </td>
                 <td class="actions">
                   @if (job.status === 'paused') {
@@ -439,16 +442,17 @@ interface PipelineStep {
     /* Table overrides */
     .job-name { font-size: 13px; color: var(--text); }
     .job-tags { margin-top: 3px; }
-    .pri-btn {
-      background: none; border: 1px solid var(--line); border-radius: 4px;
+    .pri-select {
+      background: var(--surface, #1e2533); border: 1px solid var(--line); border-radius: 4px;
       color: var(--text); cursor: pointer; font: inherit; font-size: 11px;
-      padding: 2px 8px; line-height: 18px; transition: all .15s; white-space: nowrap;
+      padding: 2px 4px; line-height: 18px; transition: border-color .15s;
+      -webkit-appearance: auto;
     }
-    .pri-btn:hover { border-color: var(--accent); background: rgba(59,130,246,.08); }
-    .pri-btn.pri-low    { color: var(--mute); border-color: var(--line); }
-    .pri-btn.pri-normal { color: var(--text); border-color: var(--line); }
-    .pri-btn.pri-high   { color: var(--accent); border-color: var(--accent); background: rgba(59,130,246,.08); }
-    .pri-btn.pri-force  { color: #fff; border-color: #a78bfa; background: rgba(167,139,250,.25); }
+    .pri-select:focus { outline: none; border-color: var(--accent); }
+    .pri-select.pri-low    { color: var(--mute); }
+    .pri-select.pri-normal { color: var(--text); }
+    .pri-select.pri-high   { color: var(--accent); border-color: var(--accent); }
+    .pri-select.pri-force  { color: #a78bfa; border-color: #a78bfa; }
     .prog-sub { color: var(--mute); font-size: 11px; margin-top: 2px; }
     .actions { white-space: nowrap; }
     .empty-cell {
@@ -718,9 +722,8 @@ export class QueueViewComponent implements OnInit, OnDestroy {
   pauseJob(id: string): void { this.api.post(`/queue/${id}/pause`).subscribe(() => this.loadQueue()); }
   resumeJob(id: string): void { this.api.post(`/queue/${id}/resume`).subscribe(() => this.loadQueue()); }
 
-  cyclePriority(job: NzbJob): void {
-    const next = (job.priority + 1) % 4;
-    this.api.put(`/queue/${job.id}/priority`, { priority: next }).subscribe({
+  setPriority(job: NzbJob, priority: number): void {
+    this.api.put(`/queue/${job.id}/priority`, { priority }).subscribe({
       next: () => this.loadQueue(),
       error: () => {},
     });
