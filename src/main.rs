@@ -10,7 +10,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use nzb_web::nzb_core::config::AppConfig;
 use nzb_web::{LogBuffer, LogBufferLayer, StartupConfig};
 
-use rustnzb::{handlers, server};
+use rustnzb::handlers;
 
 #[derive(Parser, Debug)]
 #[command(name = "rustnzb", version, about = "Usenet NZB download client")]
@@ -277,7 +277,94 @@ async fn main() -> anyhow::Result<()> {
 
     // Start HTTP server
     info!("Starting HTTP API server");
-    crate::server::run(result.state).await?;
+
+    #[cfg(feature = "webdav")]
+    {
+        use axum::Extension;
+        use std::sync::Arc;
+
+        let servers = result.queue_manager.get_servers();
+        let data_dir = result.state.config().general.data_dir.clone();
+        let dav_handle: Option<Arc<rustnzb::dav::DavHandle>> =
+            rustnzb::dav::DavHandle::init(&data_dir, servers)
+                .await
+                .inspect_err(|e| tracing::warn!("WebDAV init failed, running without it: {e}"))
+                .ok()
+                .map(Arc::new);
+
+        // Spawn background task: auto-send completed downloads to DAV pipeline
+        // when DavConfig.auto_send_all or category_rules matches.
+        if let Some(ref dav) = dav_handle {
+            let dav_clone = Arc::clone(dav);
+            let state_clone = result.state.clone();
+            let mut completions = result.queue_manager.subscribe_completions();
+            tokio::spawn(async move {
+                loop {
+                    match completions.recv().await {
+                        Ok(event) => {
+                            if event.status != nzb_web::nzb_core::models::JobStatus::Completed {
+                                continue;
+                            }
+                            let dav_cfg = state_clone.config().dav.clone();
+                            let should_send = dav_cfg.auto_send_all
+                                || dav_cfg.category_rules.contains(&event.category);
+                            if !should_send {
+                                continue;
+                            }
+                            // Look up NZB data from history.
+                            let nzb_data = match state_clone
+                                .queue_manager
+                                .history_get_nzb_data(&event.id)
+                            {
+                                Ok(Some(d)) => d,
+                                Ok(None) => {
+                                    tracing::warn!(
+                                        job = %event.name,
+                                        "DAV auto-send: no NZB data retained"
+                                    );
+                                    continue;
+                                }
+                                Err(e) => {
+                                    tracing::warn!(job = %event.name, error = %e, "DAV auto-send: DB error");
+                                    continue;
+                                }
+                            };
+                            let file_name = format!("{}.nzb", event.name);
+                            if let Err(e) = dav_clone
+                                .enqueue_nzb(&file_name, &event.name, &nzb_data)
+                                .await
+                            {
+                                tracing::warn!(job = %event.name, error = %e, "DAV auto-send: enqueue failed");
+                            } else {
+                                tracing::info!(job = %event.name, "DAV auto-send: queued");
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            tracing::warn!("DAV auto-send: missed {n} completion events (lagged)");
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                    }
+                }
+            });
+        }
+
+        let router = {
+            let mut r = rustnzb::server::build_router(result.state.clone());
+            if let Some(ref dav) = dav_handle {
+                r = r.nest("/dav", nzbdav_dav::dav_router(Arc::clone(&dav.store)));
+                info!("WebDAV media library mounted at /dav");
+            }
+            // Always layer Option<Arc<DavHandle>> so h_status and h_dav_add can extract it.
+            r.layer(Extension(dav_handle))
+        };
+
+        rustnzb::server::serve(result.state, router).await?;
+    }
+
+    #[cfg(not(feature = "webdav"))]
+    {
+        rustnzb::server::run(result.state).await?;
+    }
 
     Ok(())
 }

@@ -35,7 +35,7 @@ RUN if [ "$RELEASE_OPTIMIZED" = "true" ]; then \
              CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 \
              CARGO_PROFILE_RELEASE_STRIP=symbols; \
     fi && \
-    cargo build --release
+    cargo build --release --features webdav
 
 
 FROM lscr.io/linuxserver/baseimage-alpine:3.21

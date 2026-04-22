@@ -136,6 +136,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/config", get(handlers::h_config_get))
         .route("/config/general", put(handlers::h_general_update))
         .route("/config/servers/health", get(handlers::h_servers_health))
+        .route("/config/servers/stats", get(handlers::h_server_stats))
         .route("/config/servers", get(handlers::h_servers_list))
         .route("/config/servers", post(handlers::h_server_add))
         .route("/config/servers/{id}", put(handlers::h_server_update))
@@ -190,6 +191,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         )
         .route("/config/speed-limit", get(handlers::h_get_speed_limit))
         .route("/config/speed-limit", put(handlers::h_set_speed_limit))
+        .route("/config/disk-guards", get(handlers::h_disk_guards_get))
+        .route("/config/disk-guards", put(handlers::h_disk_guards_set))
         .route("/browse-directory", get(handlers::h_browse_directory))
         // Newsgroup browsing
         .route("/groups", get(group_handlers::h_group_list))
@@ -227,6 +230,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             get(group_handlers::h_thread_get),
         )
         .route("/articles/{message_id}", get(group_handlers::h_article_get));
+
+    // WebDAV media library management endpoints (only compiled when feature is on)
+    #[cfg(feature = "webdav")]
+    let api_routes = api_routes
+        .route("/dav/add", post(handlers::h_dav_add))
+        .route("/dav/status", get(handlers::h_dav_status))
+        .route(
+            "/config/dav",
+            get(handlers::h_dav_config_get).put(handlers::h_dav_config_set),
+        );
 
     // Arr-compatible API (Sonarr/Radarr) — uses its own API key auth
     // Sonarr/Radarr hit /api (the standard SABnzbd path), so register both.
@@ -323,12 +336,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
 }
 
-/// Start the HTTP server.
+/// Start the HTTP server with a default router.
 pub async fn run(state: Arc<AppState>) -> anyhow::Result<()> {
+    let router = build_router(state.clone());
+    serve(state, router).await
+}
+
+/// Start the HTTP server with a pre-built (possibly augmented) router.
+pub async fn serve(state: Arc<AppState>, router: Router) -> anyhow::Result<()> {
     let config = state.config();
     let addr = format!("{}:{}", config.general.listen_addr, config.general.port);
-
-    let router = build_router(state.clone());
     let listener = TcpListener::bind(&addr).await?;
 
     info!("HTTP server listening on http://{addr}");
@@ -339,7 +356,6 @@ pub async fn run(state: Arc<AppState>) -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    // After server stops, shut down queue manager
     info!("HTTP server stopped, shutting down queue manager...");
     state.queue_manager.shutdown().await;
     info!("Graceful shutdown complete");

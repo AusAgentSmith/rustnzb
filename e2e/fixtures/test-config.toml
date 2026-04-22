@@ -1,7 +1,54 @@
 [general]
 listen_addr = "127.0.0.1"
 port = 9190
-data_dir = "e2e/test-data"
 incomplete_dir = "e2e/test-data/incomplete"
 complete_dir = "e2e/test-data/complete"
+data_dir = "e2e/test-data"
+speed_limit_bps = 0
+cache_size = 524288000
 log_level = "warn"
+max_active_downloads = 1
+min_free_space_bytes = 1073741824
+rss_history_limit = 500
+direct_unpack = true
+abort_hopeless = true
+early_failure_check = true
+required_completion_pct = 100.2
+article_timeout_secs = 30
+
+[[servers]]
+id = "test-server-1"
+name = "Test Server"
+host = "news.example.com"
+port = 563
+ssl = true
+ssl_verify = false
+connections = 4
+priority = 0
+enabled = true
+retention = 0
+pipelining = 16
+optional = false
+compress = false
+ramp_up_delay_ms = 0
+recv_buffer_size = 2097152
+
+[[categories]]
+name = "movies"
+post_processing = 3
+
+[[categories]]
+name = "tv"
+post_processing = 3
+
+[otel]
+enabled = false
+endpoint = "http://localhost:4317"
+service_name = "rustnzb"
+
+[[rss_feeds]]
+name = "Test Feed"
+url = "https://example.com/rss"
+poll_interval_secs = 900
+enabled = true
+auto_download = false

@@ -40,6 +40,7 @@ export interface StatusResponse {
   disk_free_bytes: number;
   paused: boolean;
   uptime_secs: number;
+  webdav_enabled: boolean;
 }
 
 export interface HistoryEntry {

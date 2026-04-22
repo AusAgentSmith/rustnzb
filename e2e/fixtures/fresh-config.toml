@@ -1,0 +1,7 @@
+[general]
+listen_addr = "127.0.0.1"
+port = 9191
+data_dir = "e2e/test-data-fresh"
+incomplete_dir = "e2e/test-data-fresh/incomplete"
+complete_dir = "e2e/test-data-fresh/complete"
+log_level = "warn"

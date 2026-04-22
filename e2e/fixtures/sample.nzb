@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.1//EN" "http://www.newzbin.com/DTD/nzb/nzb-1.1.dtd">
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+  <head>
+    <meta type="title">Sample Test File</meta>
+    <meta type="category">test</meta>
+  </head>
+  <file poster="test@rustnzb.test" date="1743465600" subject="Sample.Test.File - &quot;sample.bin&quot; (1/1) yEnc (1/1)">
+    <groups>
+      <group>alt.binaries.test</group>
+    </groups>
+    <segments>
+      <segment bytes="102400" number="1">sample-article-001@rustnzb.test</segment>
+    </segments>
+  </file>
+</nzb>

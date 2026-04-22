@@ -175,6 +175,7 @@ import { GroupBrowserDialogComponent } from './group-browser-dialog.component';
     .side-filter { padding: 8px 10px; border-bottom: 1px solid var(--line); }
     .side-filter input {
       width: 100%;
+      box-sizing: border-box;
       background: var(--panel2);
       border: 1px solid var(--line);
       color: var(--text);

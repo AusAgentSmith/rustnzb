@@ -18,71 +18,66 @@ import { WidthModeService } from './core/services/width-mode.service';
       <router-outlet />
     } @else {
       <div class="shell">
-        <header>
+        <nav class="topbar">
           <div class="wrap">
-            <div>
-              <span class="brand">rust<span>nzb</span></span>
-              <span class="ver">v{{ version }}</span>
-            </div>
+            <span class="brand">rust<span>nzb</span></span>
+            <span class="ver">v{{ version }}</span>
+            <div class="sep"></div>
+            <a routerLink="/queue"    routerLinkActive="active">Queue</a>
+            <a routerLink="/history"  routerLinkActive="active">History</a>
+            <a routerLink="/groups"   routerLinkActive="active">Search</a>
+            <a routerLink="/rss"      routerLinkActive="active">RSS</a>
+            @if (webdavEnabled()) {
+              <a routerLink="/media" routerLinkActive="active">Media</a>
+            }
+            <a routerLink="/logs"     routerLinkActive="active">Logs</a>
+            <a routerLink="/settings" routerLinkActive="active">Settings</a>
+            <div class="spacer"></div>
             <div class="status">
               <span class="pill" [class.ok]="!paused()" [class.warn]="paused()">
-                ● {{ paused() ? 'Paused' : 'Daemon running' }}
+                ● {{ paused() ? 'Paused' : 'Live' }}
               </span>
-              <span class="pill">Speed: <b>{{ formatSpeed(speed()) }}</b></span>
-              <span class="pill">Queue: <b>{{ queueCount() }}</b></span>
-              <span class="pill">Free: <b>{{ formatBytes(diskFree()) }}</b></span>
+              <span class="pill">{{ formatSpeed(speed()) }}</span>
+              <span class="pill">{{ queueCount() }} queued</span>
+              <span class="pill">{{ formatBytes(diskFree()) }} free</span>
             </div>
-          </div>
-        </header>
-
-        <nav class="top">
-          <div class="wrap">
-          <a routerLink="/queue"    routerLinkActive="active">Queue</a>
-          <a routerLink="/history"  routerLinkActive="active">History</a>
-          <a routerLink="/groups"   routerLinkActive="active">Search</a>
-          <a routerLink="/rss"      routerLinkActive="active">RSS</a>
-          <a routerLink="/logs"     routerLinkActive="active">Logs</a>
-          <a routerLink="/settings" routerLinkActive="active">Settings</a>
-          <div class="spacer"></div>
-          <div class="mode-toggle" role="group" aria-label="Layout width">
-            <button type="button" [class.active]="widthMode.mode() === 'compact'"
-                    (click)="widthMode.set('compact')" title="Compact — center content">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <rect x="3.5" y="2.5" width="9" height="11" rx="1"/>
-              </svg>
-              Compact
-            </button>
-            <button type="button" [class.active]="widthMode.mode() === 'expanded'"
-                    (click)="widthMode.set('expanded')" title="Expanded — full width">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <rect x="1.5" y="2.5" width="13" height="11" rx="1"/>
-              </svg>
-              Expanded
-            </button>
-          </div>
-          <button class="action primary" (click)="onAddNzb()">+ Upload NZB</button>
-          <div class="pause-group">
-            <button class="action" (click)="togglePause()">
-              {{ paused() ? '▶ Resume all' : '❚❚ Pause all' }}
-            </button>
-            @if (!paused()) {
-              <button class="action pause-caret" (click)="pauseMenuOpen = !pauseMenuOpen" title="Pause for…">▾</button>
-              @if (pauseMenuOpen) {
-                <div class="pause-menu" (click)="$event.stopPropagation()">
-                  <div class="pm-title">Pause for…</div>
-                  @for (opt of pauseTimerOptions; track opt.secs) {
-                    <button class="pm-item" (click)="pauseFor(opt.secs)">{{ opt.label }}</button>
-                  }
-                  <div class="pm-custom">
-                    <input type="number" min="1" placeholder="min" [(ngModel)]="customPauseMin"
-                           (keydown.enter)="pauseForCustom()" />
-                    <button class="pm-go" (click)="pauseForCustom()">Go</button>
+            <div class="mode-toggle" role="group" aria-label="Layout width">
+              <button type="button" [class.active]="widthMode.mode() === 'compact'"
+                      (click)="widthMode.set('compact')" title="Compact">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <rect x="3.5" y="2.5" width="9" height="11" rx="1"/>
+                </svg>
+              </button>
+              <button type="button" [class.active]="widthMode.mode() === 'expanded'"
+                      (click)="widthMode.set('expanded')" title="Expanded">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <rect x="1.5" y="2.5" width="13" height="11" rx="1"/>
+                </svg>
+              </button>
+            </div>
+            <button class="action primary" (click)="onAddNzb()">+ Upload NZB</button>
+            <div class="pause-group">
+              <button class="action" (click)="togglePause()">
+                {{ paused() ? '▶ Resume' : '❚❚ Pause' }}
+              </button>
+              @if (!paused()) {
+                <button class="action pause-caret" (click)="pauseMenuOpen = !pauseMenuOpen" title="Pause for…">▾</button>
+                @if (pauseMenuOpen) {
+                  <div class="pause-menu" (click)="$event.stopPropagation()">
+                    <div class="pm-title">Pause for…</div>
+                    @for (opt of pauseTimerOptions; track opt.secs) {
+                      <button class="pm-item" (click)="pauseFor(opt.secs)">{{ opt.label }}</button>
+                    }
+                    <div class="pm-custom">
+                      <input type="number" min="1" placeholder="min" [(ngModel)]="customPauseMin"
+                             (keydown.enter)="pauseForCustom()" />
+                      <button class="pm-go" (click)="pauseForCustom()">Go</button>
+                    </div>
                   </div>
-                </div>
+                }
               }
-            }
-          </div>
-          <button class="action muted" (click)="onLogout()" title="Sign out">Sign out</button>
+            </div>
+            <button class="action muted" (click)="onLogout()" title="Sign out">Sign out</button>
           </div>
         </nav>
 
@@ -116,54 +111,48 @@ import { WidthModeService } from './core/services/width-mode.service';
       padding: 0 24px;
     }
 
-    /* ---- Header ---- */
-    header {
-      background: var(--panel);
-      border-bottom: 1px solid var(--line);
-      flex-shrink: 0;
-    }
-    header .wrap {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-top: 12px; padding-bottom: 12px;
-    }
-    .brand { font-weight: 700; font-size: 16px; letter-spacing: .2px; }
+    /* ---- Combined topbar ---- */
+    .brand { font-weight: 700; font-size: 15px; letter-spacing: .2px; }
     .brand span { color: var(--accent); }
-    .ver { color: var(--mute); font-size: 11px; margin-left: 8px; font-weight: 400; }
-    .status { display: flex; gap: 10px; align-items: center; font-size: 12px; }
+    .ver { color: var(--mute); font-size: 11px; margin-left: 6px; font-weight: 400; }
+    .sep { width: 1px; height: 18px; background: var(--line); margin: 0 8px; flex-shrink: 0; }
+    .status { display: flex; gap: 6px; align-items: center; }
 
-    /* ---- Top nav ---- */
-    nav.top {
+    nav.topbar {
       background: var(--panel);
       border-bottom: 1px solid var(--line);
       flex-shrink: 0;
     }
-    nav.top .wrap {
+    nav.topbar .wrap {
       display: flex;
       align-items: center;
       overflow-x: auto;
+      padding-top: 0;
+      padding-bottom: 0;
+      gap: 0;
     }
-    nav.top a {
+    nav.topbar a {
       color: var(--mute);
-      padding: 10px 16px;
+      padding: 12px 14px;
       border-bottom: 2px solid transparent;
       text-decoration: none;
-      font-size: 14px;
+      font-size: 13px;
       white-space: nowrap;
       transition: color .15s;
     }
-    nav.top a:hover { color: var(--text); text-decoration: none; }
-    nav.top a.active { color: var(--text); border-bottom-color: var(--accent); }
+    nav.topbar a:hover { color: var(--text); text-decoration: none; }
+    nav.topbar a.active { color: var(--text); border-bottom-color: var(--accent); }
 
-    nav.top .spacer { flex: 1; }
-    nav.top .action {
+    nav.topbar .spacer { flex: 1; }
+    nav.topbar .action {
       background: none; border: none;
-      color: var(--text); padding: 10px 14px;
+      color: var(--text); padding: 12px 12px;
       cursor: pointer; font: inherit; font-size: 13px;
       opacity: .85;
     }
-    nav.top .action:hover { opacity: 1; }
-    nav.top .action.primary { color: var(--accent2); font-weight: 600; }
-    nav.top .action.muted { color: var(--mute); font-size: 12px; }
+    nav.topbar .action:hover { opacity: 1; }
+    nav.topbar .action.primary { color: var(--accent2); font-weight: 600; }
+    nav.topbar .action.muted { color: var(--mute); font-size: 12px; }
 
     /* Pause split-button + dropdown */
     .pause-group { position: relative; display: flex; align-items: center; }
@@ -215,21 +204,20 @@ import { WidthModeService } from './core/services/width-mode.service';
       overflow-y: auto;
     }
     main .wrap {
-      padding-top: 20px;
-      padding-bottom: 20px;
+      padding-bottom: 28px;
     }
 
-    /* ---- Width-mode toggle (segmented control) ---- */
+    /* ---- Width-mode toggle (icon-only segmented control) ---- */
     .mode-toggle {
       display: inline-flex; align-items: center;
       background: var(--panel2); border: 1px solid var(--line);
-      border-radius: 6px; padding: 2px; margin: 0 8px;
+      border-radius: 6px; padding: 2px; margin: 0 6px; flex-shrink: 0;
     }
     .mode-toggle button {
       background: none; border: none; color: var(--mute);
-      font: inherit; font-size: 12px; padding: 4px 10px;
+      padding: 4px 6px;
       border-radius: 4px; cursor: pointer;
-      display: inline-flex; gap: 6px; align-items: center;
+      display: inline-flex; align-items: center;
     }
     .mode-toggle button:hover { color: var(--text); }
     .mode-toggle button.active {
@@ -241,12 +229,13 @@ import { WidthModeService } from './core/services/width-mode.service';
 })
 export class App implements OnInit, OnDestroy {
   // Version string shown in the header. Kept in sync with package.json manually.
-  readonly version = '0.2.4';
+  readonly version = '1.0.3';
 
   speed = signal(0);
   paused = signal(false);
   queueCount = signal(0);
   diskFree = signal(0);
+  webdavEnabled = signal(false);
   authenticated = signal(false);
   pauseMenuOpen = false;
   customPauseMin: number | null = null;
@@ -293,6 +282,7 @@ export class App implements OnInit, OnDestroy {
         this.paused.set(s.paused);
         this.queueCount.set(s.queue_size);
         this.diskFree.set(s.disk_free_bytes);
+        this.webdavEnabled.set(!!s.webdav_enabled);
       },
       error: () => {},
     });
@@ -341,7 +331,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
+    if (!bytes) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));

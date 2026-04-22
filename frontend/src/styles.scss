@@ -85,16 +85,19 @@ code {
 .bar.green > div { background: var(--accent2); }
 .bar.warn  > div { background: var(--warn); }
 
+/* Main area top padding — keeps content below the nav bar */
+main { padding-top: 28px; }
+
 /* Card grid */
-.cards4 { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); margin-bottom: 20px; }
-.cards3 { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); margin-bottom: 20px; }
+.cards4 { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); margin-bottom: 24px; }
+.cards3 { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); margin-bottom: 24px; }
 
 /* Panel */
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .panel h3 {
   margin: 0;
@@ -302,7 +305,7 @@ table.data tr:hover td { background: rgba(255,255,255,.02); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 12px;
+  margin: 0 0 16px;
 }
 .section-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .section-head .sub { color: var(--mute); font-size: 12px; margin-top: 2px; }

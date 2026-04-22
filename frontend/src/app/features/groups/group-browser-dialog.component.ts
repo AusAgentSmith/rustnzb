@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { HttpErrorResponse } from '@angular/common/http';
 import { GroupService } from '../../core/services/group.service';
 import { GroupRow } from '../../core/models/group.model';
 
@@ -89,7 +90,13 @@ export class GroupBrowserDialogComponent implements OnInit {
     this.refreshing.set(true);
     this.svc.refresh().subscribe({
       next: r => { this.refreshing.set(false); this.snack.open(r.message, 'Close', { duration: 3000 }); this.loadGroups(); },
-      error: () => { this.refreshing.set(false); this.snack.open('Refresh failed', 'Close', { duration: 3000 }); },
+      error: (e: HttpErrorResponse) => {
+        this.refreshing.set(false);
+        const msg = e.status === 400
+          ? (e.error?.human_readable || 'No servers configured — add one in Settings first.')
+          : 'Refresh failed';
+        this.snack.open(msg, 'Close', { duration: 5000 });
+      },
     });
   }
 

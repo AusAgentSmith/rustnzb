@@ -55,7 +55,7 @@ pub async fn h_group_refresh(
     let servers = state.queue_manager.get_servers();
     let server = servers
         .first()
-        .ok_or_else(|| ApiError::from(anyhow::anyhow!("No servers configured")))?;
+        .ok_or_else(|| ApiError::bad_request("No servers configured"))?;
 
     let mut conn = NntpConnection::new("group-refresh".to_string());
     conn.connect(server)
@@ -185,7 +185,7 @@ pub async fn h_header_fetch(
     let servers = state.queue_manager.get_servers();
     let server = servers
         .first()
-        .ok_or_else(|| ApiError::from(anyhow::anyhow!("No servers configured")))?
+        .ok_or_else(|| ApiError::bad_request("No servers configured"))?
         .clone();
     let group_name = group.name.clone();
     let last_scanned = group.last_scanned;
@@ -334,7 +334,7 @@ pub async fn h_article_get(
     let servers = state.queue_manager.get_servers();
     let server = servers
         .first()
-        .ok_or_else(|| ApiError::from(anyhow::anyhow!("No servers configured")))?;
+        .ok_or_else(|| ApiError::bad_request("No servers configured"))?;
 
     let mut conn = NntpConnection::new("article-fetch".to_string());
     conn.connect(server)

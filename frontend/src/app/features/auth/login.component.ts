@@ -191,9 +191,10 @@ export class LoginComponent implements OnInit {
       ? this.authService.setup(this.username, this.password)
       : this.authService.login(this.username, this.password);
 
+    const isSetup = this.isSetup();
     request$.subscribe({
       next: () => {
-        this.router.navigate(['/queue']);
+        this.router.navigate(isSetup ? ['/welcome'] : ['/queue']);
       },
       error: (err) => {
         this.submitting.set(false);

@@ -8,6 +8,8 @@ use flate2::read::GzDecoder;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "webdav")]
+use nzb_web::nzb_core::config::DavConfig;
 use nzb_web::nzb_core::config::{CategoryConfig, RssFeedConfig, ServerConfig};
 use nzb_web::nzb_core::models::*;
 use nzb_web::nzb_core::nzb_parser;
@@ -144,6 +146,7 @@ pub struct StatusResponse {
     pub disk_space_free: u64,
     pub min_free_space_bytes: u64,
     pub pause_remaining_secs: Option<i64>,
+    pub webdav_enabled: bool,
 }
 
 #[derive(Serialize)]
@@ -628,6 +631,9 @@ pub async fn h_history_retry(
 /// GET /api/status -- Overall application status.
 pub async fn h_status(
     State(state): State<Arc<AppState>>,
+    #[cfg(feature = "webdav")] axum::Extension(dav): axum::Extension<
+        Option<Arc<crate::dav::DavHandle>>,
+    >,
 ) -> Result<Json<StatusResponse>, ApiError> {
     let qm = &state.queue_manager;
     let config = state.config();
@@ -640,6 +646,10 @@ pub async fn h_status(
         disk_space_free: get_disk_space_free(&config.general.complete_dir),
         min_free_space_bytes: qm.min_free_space(),
         pause_remaining_secs: qm.pause_remaining_secs(),
+        #[cfg(feature = "webdav")]
+        webdav_enabled: dav.is_some(),
+        #[cfg(not(feature = "webdav"))]
+        webdav_enabled: false,
     }))
 }
 
@@ -1028,6 +1038,39 @@ pub async fn h_set_speed_limit(
 }
 
 // ---------------------------------------------------------------------------
+// Disk guards handlers
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize)]
+pub struct DiskGuardsBody {
+    pub min_free_space_bytes: u64,
+    pub abort_hopeless: bool,
+}
+
+/// GET /api/config/disk-guards -- Get disk guard settings.
+pub async fn h_disk_guards_get(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<DiskGuardsBody>, ApiError> {
+    let config = state.config();
+    Ok(Json(DiskGuardsBody {
+        min_free_space_bytes: config.general.min_free_space_bytes,
+        abort_hopeless: config.general.abort_hopeless,
+    }))
+}
+
+/// PUT /api/config/disk-guards -- Update disk guard settings (persisted; restart to apply).
+pub async fn h_disk_guards_set(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<DiskGuardsBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    let mut config = (*state.config()).clone();
+    config.general.min_free_space_bytes = body.min_free_space_bytes;
+    config.general.abort_hopeless = body.abort_hopeless;
+    state.update_config(config).map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+// ---------------------------------------------------------------------------
 // RSS feed handlers
 // ---------------------------------------------------------------------------
 
@@ -1395,6 +1438,15 @@ pub async fn h_servers_health(
     Ok(Json(results))
 }
 
+/// GET /api/config/servers/stats -- Per-server download statistics.
+pub async fn h_server_stats(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<nzb_web::ServerStatsData>>, ApiError> {
+    let servers = state.config().servers.clone();
+    let stats = state.queue_manager.server_stats_get_all(&servers);
+    Ok(Json(stats))
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -1621,36 +1673,59 @@ pub async fn h_import_sabnzbd_api(
     Json(req): Json<ImportApiRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let base_url = req.url.trim_end_matches('/');
-    let url = format!(
-        "{}/sabnzbd/api?mode=get_config&output=json&apikey={}",
-        base_url, req.api_key
-    );
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {e}")))?;
 
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to connect to SABnzbd: {e}")))?;
+    // SABnzbd exposes its API at /api (default) or /sabnzbd/api (when configured
+    // with a URL base prefix). Try /api first, fall back to /sabnzbd/api.
+    let candidates = [
+        format!(
+            "{}/api?mode=get_config&output=json&apikey={}",
+            base_url, req.api_key
+        ),
+        format!(
+            "{}/sabnzbd/api?mode=get_config&output=json&apikey={}",
+            base_url, req.api_key
+        ),
+    ];
 
-    if !resp.status().is_success() {
-        return Err(ApiError::from(anyhow::anyhow!(
-            "SABnzbd returned HTTP {}",
-            resp.status()
-        )));
+    let mut last_err = String::new();
+    for url in &candidates {
+        let resp = match client.get(url).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = format!("Failed to connect to SABnzbd: {e}");
+                continue;
+            }
+        };
+
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            last_err = format!("SABnzbd API not found at {url}");
+            continue;
+        }
+
+        if !resp.status().is_success() {
+            return Err(ApiError::from(anyhow::anyhow!(
+                "SABnzbd returned HTTP {} — check your API key",
+                resp.status()
+            )));
+        }
+
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid JSON from SABnzbd: {e}")))?;
+
+        let preview = sabnzbd_import::parse_sabnzbd_api_response(&json);
+        return Ok(Json(preview));
     }
 
-    let json: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid JSON from SABnzbd: {e}")))?;
-
-    let preview = sabnzbd_import::parse_sabnzbd_api_response(&json);
-    Ok(Json(preview))
+    Err(ApiError::from(anyhow::anyhow!(
+        "Could not reach SABnzbd API — {last_err}"
+    )))
 }
 
 /// Apply an import preview — writes servers, categories, general settings to config.
@@ -1717,5 +1792,157 @@ pub async fn h_setup_apply(
             .set_speed_limit(config.general.speed_limit_bps);
     }
 
+    Ok(Json(serde_json::json!({ "status": true })))
+}
+
+// ---------------------------------------------------------------------------
+// WebDAV media library handlers
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "webdav")]
+#[derive(Deserialize)]
+pub struct DavAddQuery {
+    pub id: String,
+}
+
+#[cfg(feature = "webdav")]
+#[derive(Serialize)]
+pub struct DavAddResponse {
+    pub status: bool,
+    pub dav_id: String,
+}
+
+// ── DAV pipeline status types ──────────────────────────────────────────────
+
+#[cfg(feature = "webdav")]
+#[derive(Serialize)]
+pub struct DavQueueEntry {
+    pub job_name: String,
+    pub queued_at: String,
+}
+
+#[cfg(feature = "webdav")]
+#[derive(Serialize)]
+pub struct DavHistoryEntry {
+    pub job_name: String,
+    pub status: String,
+    pub fail_message: Option<String>,
+    pub completed_at: String,
+}
+
+#[cfg(feature = "webdav")]
+#[derive(Serialize)]
+pub struct DavStatusResponse {
+    pub queue: Vec<DavQueueEntry>,
+    pub history: Vec<DavHistoryEntry>,
+}
+
+/// GET /api/dav/status — pipeline queue + history for media library status overlay.
+#[cfg(feature = "webdav")]
+pub async fn h_dav_status(
+    axum::Extension(dav): axum::Extension<Option<Arc<crate::dav::DavHandle>>>,
+) -> Result<Json<DavStatusResponse>, ApiError> {
+    let dav = dav
+        .as_ref()
+        .ok_or_else(|| ApiError::from(anyhow::anyhow!("WebDAV library not initialised")))?;
+
+    let status = dav
+        .pipeline_status()
+        .await
+        .map_err(|e| ApiError::from(anyhow::anyhow!("DAV status query failed: {e}")))?;
+
+    use nzbdav_core::models::DownloadStatus;
+
+    let queue = status
+        .queue
+        .into_iter()
+        .map(|q| DavQueueEntry {
+            job_name: q.job_name,
+            queued_at: q.created_at.and_utc().to_rfc3339(),
+        })
+        .collect();
+
+    let history = status
+        .history
+        .into_iter()
+        .map(|h| DavHistoryEntry {
+            job_name: h.job_name,
+            status: match h.download_status {
+                DownloadStatus::Completed => "completed".into(),
+                DownloadStatus::Failed => "failed".into(),
+            },
+            fail_message: h.fail_message,
+            completed_at: h.created_at.and_utc().to_rfc3339(),
+        })
+        .collect();
+
+    Ok(Json(DavStatusResponse { queue, history }))
+}
+
+/// POST /api/dav/add?id=<history-id>
+/// Feeds a completed download's NZB into the WebDAV streaming pipeline.
+/// The item must exist in history (completed or failed) with NZB data retained.
+#[cfg(feature = "webdav")]
+pub async fn h_dav_add(
+    State(state): State<Arc<AppState>>,
+    axum::Extension(dav): axum::Extension<Option<Arc<crate::dav::DavHandle>>>,
+    Query(q): Query<DavAddQuery>,
+) -> Result<Json<DavAddResponse>, ApiError> {
+    let dav = dav
+        .as_ref()
+        .ok_or_else(|| ApiError::from(anyhow::anyhow!("WebDAV library not initialised")))?;
+    let qm = &state.queue_manager;
+
+    let entry = qm
+        .history_get(&q.id)
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("history item not found"))?;
+
+    let nzb_data = qm
+        .history_get_nzb_data(&q.id)
+        .map_err(ApiError::from)?
+        .ok_or_else(|| ApiError::not_found("NZB data not retained for this item"))?;
+
+    let file_name: String = entry.name.clone();
+    let job_name = file_name.trim_end_matches(".nzb").to_string();
+
+    let dav_id = dav
+        .enqueue_nzb(&file_name, &job_name, &nzb_data)
+        .await
+        .map_err(|e| ApiError::from(anyhow::anyhow!("DAV enqueue failed: {e}")))?;
+
+    Ok(Json(DavAddResponse {
+        status: true,
+        dav_id: dav_id.to_string(),
+    }))
+}
+
+// ---------------------------------------------------------------------------
+// DAV config handlers
+// ---------------------------------------------------------------------------
+
+/// GET /api/config/dav -- Get DAV auto-send configuration.
+#[cfg(feature = "webdav")]
+pub async fn h_dav_config_get(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<DavConfig>, ApiError> {
+    Ok(Json(state.config().dav.clone()))
+}
+
+/// PUT /api/config/dav -- Update DAV auto-send configuration.
+///
+/// When `auto_send_all` is true the `category_rules` list is cleared — the two
+/// modes are mutually exclusive.
+#[cfg(feature = "webdav")]
+pub async fn h_dav_config_set(
+    State(state): State<Arc<AppState>>,
+    Json(mut body): Json<DavConfig>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    if body.auto_send_all {
+        body.category_rules.clear();
+    }
+    let mut config = (*state.config()).clone();
+    config.dav = body;
+    state.update_config(config).map_err(ApiError::from)?;
     Ok(Json(serde_json::json!({ "status": true })))
 }

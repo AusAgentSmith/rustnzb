@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/services/api.service';
-import { HistoryEntry } from '../../core/models/queue.model';
+import { HistoryEntry, StatusResponse } from '../../core/models/queue.model';
 
 type StatusFilter = 'all' | 'completed' | 'failed';
 type TimeFilter = '7d' | '30d' | 'all';
@@ -101,6 +101,9 @@ type TimeFilter = '7d' | '30d' | 'all';
                   @if (e.status === 'failed') {
                     <button class="row-action warn" (click)="retry(e.id)">↻ retry</button>
                   }
+                  @if (e.status === 'completed' && webdavEnabled()) {
+                    <button class="row-action media" (click)="addToMedia(e.id)" title="Add to Media Library">▶ media</button>
+                  }
                   <button class="row-action" (click)="openOutput(e)">open</button>
                   <button class="row-action danger" (click)="remove(e.id)">✕</button>
                 </td>
@@ -132,10 +135,12 @@ type TimeFilter = '7d' | '30d' | 'all';
       text-align: center; padding: 36px 20px !important;
       color: var(--mute); font-size: 13px;
     }
+    .row-action.media { color: var(--accent, #7c6af7); border-color: var(--accent, #7c6af7); }
   `],
 })
 export class HistoryViewComponent implements OnInit, OnDestroy {
   entries = signal<HistoryEntry[]>([]);
+  webdavEnabled = signal(false);
   filterStatus: StatusFilter = 'all';
   filterCategory = '';
   filterTime: TimeFilter = '7d';
@@ -147,6 +152,10 @@ export class HistoryViewComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.load();
+    this.api.get<StatusResponse>('/status').subscribe({
+      next: s => this.webdavEnabled.set(!!s.webdav_enabled),
+      error: () => {},
+    });
     this.pollTimer = setInterval(() => this.load(), 5000);
   }
 
@@ -240,6 +249,13 @@ export class HistoryViewComponent implements OnInit, OnDestroy {
     this.api.post(`/history/${id}/retry`).subscribe(() => {
       this.load();
       this.snack.open('Retrying…', 'Close', { duration: 2000 });
+    });
+  }
+
+  addToMedia(id: string): void {
+    this.api.post(`/dav/add?id=${id}`).subscribe({
+      next: () => this.snack.open('Queued for Media Library', 'Close', { duration: 3000 }),
+      error: () => this.snack.open('Failed to add to Media Library', 'Close', { duration: 3000 }),
     });
   }
 

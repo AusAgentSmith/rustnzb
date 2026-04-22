@@ -28,4 +28,10 @@ export class ApiService {
   delete<T>(path: string): Observable<T> {
     return this.http.delete<T>(`${this.baseUrl}${path}`, { headers: this.headers() });
   }
+
+  postForm<T>(path: string, body: FormData): Observable<T> {
+    const token = localStorage.getItem('access_token');
+    const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders();
+    return this.http.post<T>(`${this.baseUrl}${path}`, body, { headers });
+  }
 }
