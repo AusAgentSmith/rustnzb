@@ -7,7 +7,8 @@
 use std::sync::Arc;
 
 use axum::Json;
-use axum::extract::{Multipart, Query, State};
+use axum::extract::{Form, FromRequest, Multipart, Query, Request, State};
+use axum::http::{StatusCode, header::CONTENT_TYPE};
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 
@@ -200,13 +201,48 @@ async fn handle_addurl(
     }
 }
 
-/// POST /sabnzbd/api -- Handle POST requests (addfile multipart, or form-encoded).
+/// Body encodings a SABnzbd client may use for a POST request.
+enum SabPostBody {
+    /// `multipart/form-data` -- the only encoding that can carry an NZB file.
+    Multipart,
+    /// `application/x-www-form-urlencoded` -- plain key/value fields.
+    Form,
+    /// No body, or an encoding we don't parse: parameters come from the
+    /// query string alone.
+    None,
+}
+
+fn classify_post_body(request: &Request) -> SabPostBody {
+    let content_type = request
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.trim().to_ascii_lowercase())
+        .unwrap_or_default();
+    if content_type.starts_with("multipart/form-data") {
+        SabPostBody::Multipart
+    } else if content_type.starts_with("application/x-www-form-urlencoded") {
+        SabPostBody::Form
+    } else {
+        SabPostBody::None
+    }
+}
+
+/// POST /sabnzbd/api -- Handle POST requests.
+///
+/// The body is optional. `mode=addfile` needs a `multipart/form-data` upload,
+/// but clients such as Prowlarr send `mode=addurl` as a bare POST with every
+/// parameter in the query string and no body at all (#119), and others use
+/// `application/x-www-form-urlencoded`. Requiring the multipart extractor
+/// unconditionally rejected those with `400 Invalid boundary` before the
+/// mode was ever inspected, so the body is only parsed as multipart when the
+/// request actually says it is one.
 pub async fn h_sabnzbd_api_post(
     State(state): State<Arc<AppState>>,
     Query(query_req): Query<SabApiRequest>,
-    mut multipart: Multipart,
+    request: Request,
 ) -> Result<impl IntoResponse, ApiError> {
-    // Extract fields from multipart form data
+    // Query-string parameters are the baseline; body fields override them.
     let mut mode = query_req.mode.clone().unwrap_or_default();
     let mut apikey = query_req.apikey.clone();
     let mut cat = query_req.cat.clone();
@@ -216,6 +252,79 @@ pub async fn h_sabnzbd_api_post(
     let mut nzb_url: Option<String> = None;
     let mut password: Option<String> = query_req.password.clone();
 
+    match classify_post_body(&request) {
+        SabPostBody::None => {}
+        SabPostBody::Form => {
+            let Form(form) = Form::<SabApiRequest>::from_request(request, &())
+                .await
+                .map_err(|e| {
+                    ApiError::from((StatusCode::BAD_REQUEST, format!("Form error: {e}")))
+                })?;
+            if let Some(m) = form.mode.filter(|m| !m.is_empty()) {
+                mode = m;
+            }
+            if form.apikey.is_some() {
+                apikey = form.apikey;
+            }
+            if form.cat.is_some() {
+                cat = form.cat;
+            }
+            if form.priority.is_some() {
+                priority = form.priority;
+            }
+            if form.name.is_some() {
+                name = form.name;
+            }
+            if form.value.is_some() {
+                nzb_url = form.value;
+            }
+            if let Some(pw) = form.password.filter(|pw| !pw.is_empty()) {
+                password = Some(pw);
+            }
+        }
+        SabPostBody::Multipart => {
+            let mut multipart = Multipart::from_request(request, &()).await.map_err(|e| {
+                ApiError::from((StatusCode::BAD_REQUEST, format!("Multipart error: {e}")))
+            })?;
+            read_multipart_fields(
+                &mut multipart,
+                &mut mode,
+                &mut apikey,
+                &mut cat,
+                &mut priority,
+                &mut name,
+                &mut nzb_data,
+                &mut nzb_url,
+                &mut password,
+            )
+            .await?;
+        }
+    }
+
+    // Validate API key
+    if let Err(resp) = validate_api_key(&state, apikey.as_deref()) {
+        return Ok(resp);
+    }
+
+    dispatch_post(
+        &state, mode, name, cat, priority, nzb_data, nzb_url, password, query_req,
+    )
+    .await
+}
+
+/// Fold the fields of a multipart body into the request parameters.
+#[allow(clippy::too_many_arguments)]
+async fn read_multipart_fields(
+    multipart: &mut Multipart,
+    mode: &mut String,
+    apikey: &mut Option<String>,
+    cat: &mut Option<String>,
+    priority: &mut Option<String>,
+    name: &mut Option<String>,
+    nzb_data: &mut Option<(String, Vec<u8>)>,
+    nzb_url: &mut Option<String>,
+    password: &mut Option<String>,
+) -> Result<(), ApiError> {
     while let Some(field) = multipart
         .next_field()
         .await
@@ -227,22 +336,22 @@ pub async fn h_sabnzbd_api_post(
                 if let Ok(text) = field.text().await
                     && !text.is_empty()
                 {
-                    mode = text;
+                    *mode = text;
                 }
             }
             "apikey" => {
                 if let Ok(text) = field.text().await {
-                    apikey = Some(text);
+                    *apikey = Some(text);
                 }
             }
             "cat" => {
                 if let Ok(text) = field.text().await {
-                    cat = Some(text);
+                    *cat = Some(text);
                 }
             }
             "priority" => {
                 if let Ok(text) = field.text().await {
-                    priority = Some(text);
+                    *priority = Some(text);
                 }
             }
             "name" => {
@@ -258,9 +367,9 @@ pub async fn h_sabnzbd_api_post(
                         .bytes()
                         .await
                         .map_err(|e| ApiError::from(anyhow::anyhow!("Read error: {e}")))?;
-                    nzb_data = Some((file_name, data.to_vec()));
+                    *nzb_data = Some((file_name, data.to_vec()));
                 } else if let Ok(text) = field.text().await {
-                    name = Some(text);
+                    *name = Some(text);
                 }
             }
             "nzbfile" => {
@@ -272,18 +381,18 @@ pub async fn h_sabnzbd_api_post(
                     .bytes()
                     .await
                     .map_err(|e| ApiError::from(anyhow::anyhow!("Read error: {e}")))?;
-                nzb_data = Some((file_name, data.to_vec()));
+                *nzb_data = Some((file_name, data.to_vec()));
             }
             "value" | "url" => {
                 if let Ok(text) = field.text().await {
-                    nzb_url = Some(text);
+                    *nzb_url = Some(text);
                 }
             }
             "password" => {
                 if let Ok(text) = field.text().await
                     && !text.is_empty()
                 {
-                    password = Some(text);
+                    *password = Some(text);
                 }
             }
             _ => {
@@ -291,12 +400,23 @@ pub async fn h_sabnzbd_api_post(
             }
         }
     }
+    Ok(())
+}
 
-    // Validate API key
-    if let Err(resp) = validate_api_key(&state, apikey.as_deref()) {
-        return Ok(resp);
-    }
-
+/// Dispatch a POST request once its parameters have been assembled from the
+/// query string and (optional) body.
+#[allow(clippy::too_many_arguments)]
+async fn dispatch_post(
+    state: &AppState,
+    mode: String,
+    name: Option<String>,
+    cat: Option<String>,
+    priority: Option<String>,
+    nzb_data: Option<(String, Vec<u8>)>,
+    nzb_url: Option<String>,
+    password: Option<String>,
+    query_req: SabApiRequest,
+) -> Result<Json<serde_json::Value>, ApiError> {
     match mode.as_str() {
         "addfile" => {
             let (file_name, data) = match nzb_data {
@@ -362,7 +482,7 @@ pub async fn h_sabnzbd_api_post(
 
         "addurl" => {
             let url = nzb_url.or_else(|| name.clone());
-            handle_addurl(&state, url, name, cat, priority, password).await
+            handle_addurl(state, url, name, cat, priority, password).await
         }
 
         _ => {
@@ -375,7 +495,7 @@ pub async fn h_sabnzbd_api_post(
                 // here, silently breaking those actions over POST.
                 value: query_req.value,
                 value2: query_req.value2,
-                apikey,
+                apikey: None, // already validated by the caller
                 output: None,
                 cat,
                 category: query_req.category,
@@ -392,7 +512,7 @@ pub async fn h_sabnzbd_api_post(
                 del_files: query_req.del_files,
             };
             Ok(dispatch_mode(
-                &state,
+                state,
                 req.mode.as_deref().unwrap_or(""),
                 &req,
             ))
@@ -2714,5 +2834,132 @@ mod tests {
 
         assert_eq!(value["status"], serde_json::json!(true));
         assert!(value["nzo_ids"][0].as_str().is_some());
+    }
+
+    async fn json_body(response: axum::response::Response) -> serde_json::Value {
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read response body");
+        serde_json::from_slice(&body).expect("parse JSON body")
+    }
+
+    /// Prowlarr sends `mode=addurl` as a POST with every parameter in the
+    /// query string and no body at all (#119). The multipart extractor used
+    /// to reject that with `400 Invalid boundary` before the mode was read.
+    #[tokio::test]
+    async fn addurl_over_bare_post_uses_query_string() {
+        let test_state = test_state();
+        let url = spawn_nzb_server(SAMPLE_NZB).await;
+
+        let req = SabApiRequest {
+            mode: Some("addurl".into()),
+            name: Some(url),
+            cat: Some("prowlarr".into()),
+            priority: Some("-100".into()),
+            apikey: Some("contract-api-key".into()),
+            output: Some("json".into()),
+            ..SabApiRequest::default()
+        };
+        let request = Request::builder()
+            .method("POST")
+            .uri("/sabnzbd/api")
+            .body(axum::body::Body::empty())
+            .expect("build request");
+
+        let response = h_sabnzbd_api_post(State(Arc::new(test_state.state)), Query(req), request)
+            .await
+            .expect("addurl over bare POST should succeed")
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let value = json_body(response).await;
+        assert_eq!(value["status"], serde_json::json!(true));
+        assert!(value["nzo_ids"][0].as_str().is_some());
+    }
+
+    /// Non-upload modes must also work over a bare POST.
+    #[tokio::test]
+    async fn version_over_bare_post_dispatches() {
+        let test_state = test_state();
+        let req = SabApiRequest {
+            mode: Some("version".into()),
+            apikey: Some("contract-api-key".into()),
+            ..SabApiRequest::default()
+        };
+        let request = Request::builder()
+            .method("POST")
+            .uri("/sabnzbd/api")
+            .body(axum::body::Body::empty())
+            .expect("build request");
+
+        let response = h_sabnzbd_api_post(State(Arc::new(test_state.state)), Query(req), request)
+            .await
+            .expect("version over bare POST should succeed")
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let value = json_body(response).await;
+        assert_eq!(value["version"], serde_json::json!(SABNZBD_COMPAT_VERSION));
+    }
+
+    /// `application/x-www-form-urlencoded` bodies carry the same fields as
+    /// multipart ones and override the query string.
+    #[tokio::test]
+    async fn addurl_over_form_urlencoded_post_reads_body_fields() {
+        let test_state = test_state();
+        let url = spawn_nzb_server(SAMPLE_NZB).await;
+
+        let req = SabApiRequest {
+            apikey: Some("contract-api-key".into()),
+            ..SabApiRequest::default()
+        };
+        let body = format!(
+            "mode=addurl&name={}&cat=tv",
+            url.replace(':', "%3A").replace('/', "%2F")
+        );
+        let request = Request::builder()
+            .method("POST")
+            .uri("/sabnzbd/api")
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(axum::body::Body::from(body))
+            .expect("build request");
+
+        let response = h_sabnzbd_api_post(State(Arc::new(test_state.state)), Query(req), request)
+            .await
+            .expect("addurl over form POST should succeed")
+            .into_response();
+        assert_eq!(response.status(), StatusCode::OK);
+        let value = json_body(response).await;
+        assert_eq!(value["status"], serde_json::json!(true));
+        assert!(value["nzo_ids"][0].as_str().is_some());
+    }
+
+    /// A request that claims to be multipart but carries no boundary is still
+    /// a client error, not a server error.
+    #[tokio::test]
+    async fn malformed_multipart_post_is_bad_request() {
+        let test_state = test_state();
+        let req = SabApiRequest {
+            mode: Some("addfile".into()),
+            apikey: Some("contract-api-key".into()),
+            ..SabApiRequest::default()
+        };
+        let request = Request::builder()
+            .method("POST")
+            .uri("/sabnzbd/api")
+            .header(CONTENT_TYPE, "multipart/form-data")
+            .body(axum::body::Body::empty())
+            .expect("build request");
+
+        let response = match h_sabnzbd_api_post(
+            State(Arc::new(test_state.state)),
+            Query(req),
+            request,
+        )
+        .await
+        {
+            Ok(_) => panic!("multipart without boundary should be rejected"),
+            Err(err) => err.into_response(),
+        };
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 }
