@@ -603,6 +603,17 @@ pub(crate) struct HopelessAbort {
 }
 
 impl HopelessTracker {
+    /// Reset the no-progress clock so the article timeout starts fresh.
+    ///
+    /// Called when a job returns to `Downloading` after a pause. The clock is
+    /// a wall-clock `Instant` that only advances on real article progress, so
+    /// without this reset the time a job spent paused would count toward the
+    /// no-progress timeout and abort it the instant it resumes (GH #123). A
+    /// paused job is never actively fetching, so paused time must not count.
+    fn reset_progress_clock(&mut self) {
+        self.last_progress_at = Instant::now();
+    }
+
     /// Phase 6: time-based hopeless check. Operates on the tracker's
     /// `created_at` field, not on article counters, so it fires even when
     /// the engine has stopped emitting progress events entirely (the
@@ -2392,6 +2403,13 @@ impl QueueManager {
                 // Job context still lives in the pool — just unpause it.
                 state.job.status = JobStatus::Downloading;
                 state.job.error_message = None;
+                // The no-progress watchdog measures wall-clock idle time and
+                // does not stop while paused, so restart its clock here or the
+                // paused interval counts toward the article timeout and aborts
+                // the job on the next scan (GH #123).
+                if let Some(tracker) = state.hopeless_tracker.as_mut() {
+                    tracker.reset_progress_clock();
+                }
                 let db = self.db.lock();
                 let _ = db.queue_update_progress(
                     id,
@@ -4361,5 +4379,25 @@ mod hopeless_tests {
         let result = t.time_based_check(Duration::from_secs(300));
         assert!(result.is_some(), "late-stage stalls should abort");
         assert_eq!(result.unwrap().tier, "no_progress_timeout");
+    }
+
+    #[test]
+    fn reset_progress_clock_prevents_abort_after_pause() {
+        // Simulate a job that was paused for longer than the article timeout:
+        // its progress clock is stale. Resuming must restart the clock (GH
+        // #123) so the watchdog does not abort it on the next scan.
+        let mut t = make_tracker(100, 10);
+        t.last_progress_at = Instant::now() - Duration::from_secs(600);
+        assert!(
+            t.time_based_check(Duration::from_secs(300)).is_some(),
+            "precondition: a stale clock should abort"
+        );
+
+        t.reset_progress_clock();
+
+        assert!(
+            t.time_based_check(Duration::from_secs(300)).is_none(),
+            "resuming a paused job must not abort it: paused time must not count toward the article timeout"
+        );
     }
 }
