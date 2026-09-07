@@ -33,7 +33,7 @@ jobs:
     # self-hosted runner on each. Skipped jobs report success, so a required
     # check would not stay pending.
     if: github.event_name != 'pull_request' || github.event.pull_request.user.type != 'Bot'
-    runs-on: [self-hosted, node-b, linux, x64, rust]
+    runs-on: [self-hosted]
     permissions:
       # Uploading CodeQL results requires write on security events.
       security-events: write

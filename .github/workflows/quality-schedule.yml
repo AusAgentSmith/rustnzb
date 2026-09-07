@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   coverage:
-    runs-on: [self-hosted, node-b, linux, x64, rust]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -27,7 +27,7 @@ jobs:
           path: .ci-artifacts/rust-coverage.json
 
   fuzz:
-    runs-on: [self-hosted, node-b, linux, x64, rust]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
@@ -49,7 +49,7 @@ jobs:
           if-no-files-found: ignore
 
   mutation:
-    runs-on: [self-hosted, node-b, linux, x64, rust]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
