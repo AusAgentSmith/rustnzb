@@ -2168,8 +2168,13 @@ impl QueueManager {
     // Job control
     // -----------------------------------------------------------------------
 
-    /// Change the priority of a specific job, reorder the queue, and preempt
-    /// lower-priority downloads when a higher-priority job is waiting.
+    /// Change the priority of a specific job and reorder the queue.
+    ///
+    /// A priority change only reorders the queue; it never pauses an
+    /// actively-downloading job (GH #124). The new order takes effect the
+    /// next time a download slot frees up. If a slot is already free, any
+    /// queued job is started in the new order, but no running download is
+    /// preempted.
     pub fn set_job_priority(
         self: &Arc<Self>,
         id: &str,
@@ -2214,8 +2219,10 @@ impl QueueManager {
             }
         }
 
-        // 3. Preempt lower-priority downloads if a higher-priority queued job is waiting
-        self.preempt_if_needed();
+        // 3. Fill any free download slot in the new order. A priority change
+        // must not pause a running download (GH #124), so start queued jobs
+        // only — never preempt an active one.
+        self.start_next_queued();
 
         Ok(())
     }

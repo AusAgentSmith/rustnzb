@@ -27,7 +27,7 @@ use std::time::Duration;
 use harness::nzb_fixture::NzbFixture;
 use harness::{HarnessBuilder, ServerProfile, yenc_articles};
 use nzb_nntp::testutil::MockConfig;
-use nzb_web::nzb_core::models::JobStatus;
+use nzb_web::nzb_core::models::{JobStatus, Priority};
 
 // ---------------------------------------------------------------------------
 // Fixture helpers — return fully owned data so tests don't fight the borrow
@@ -467,6 +467,99 @@ async fn moving_queued_job_to_top_preempts_active_download() {
         preempted,
         "reorder did not preempt immediately: first={} second={}",
         first.status, second.status
+    );
+}
+
+/// A priority change must reorder only — it must never pause an
+/// actively-downloading job (GH #124). With a single download slot, raising a
+/// queued job to `Force` leaves the running job downloading; the new order
+/// takes effect when the slot frees. (Contrast with `move_job`, an explicit
+/// drag-to-top, which does preempt — see the test above.)
+#[tokio::test]
+async fn raising_queued_priority_does_not_preempt_active_download() {
+    let (xml_a, yenc_a, _mids_a) = make_fixture("prio-a", 12);
+    let (xml_b, yenc_b, _mids_b) = make_fixture("prio-b", 12);
+
+    let primary = ServerProfile::start(
+        "primary",
+        MockConfig {
+            articles: yenc_a.into_iter().chain(yenc_b).collect(),
+            response_delay: Some(Duration::from_millis(120)),
+            ..Default::default()
+        },
+        2,
+    )
+    .await
+    .with_priority(0);
+
+    let engine = HarnessBuilder::new()
+        .with_server(primary)
+        .max_active_downloads(1)
+        .article_timeout(10)
+        .build();
+
+    let first_id = engine
+        .submit_nzb_xml("prio-a", xml_a)
+        .expect("submit first nzb");
+    let first_started = engine
+        .wait_for(Duration::from_secs(5), |snap| {
+            snap.job(&first_id)
+                .map(|j| j.status == JobStatus::Downloading)
+                .unwrap_or(false)
+        })
+        .await;
+    assert!(first_started, "first job never entered downloading state");
+
+    let second_id = engine
+        .submit_nzb_xml("prio-b", xml_b)
+        .expect("submit second nzb");
+    let second_queued = engine
+        .wait_for(Duration::from_secs(5), |snap| {
+            matches!(
+                (
+                    snap.job(&first_id).map(|j| j.status),
+                    snap.job(&second_id).map(|j| j.status)
+                ),
+                (Some(JobStatus::Downloading), Some(JobStatus::Queued))
+            )
+        })
+        .await;
+    assert!(
+        second_queued,
+        "expected first job downloading and second queued before reprioritise"
+    );
+
+    // Raise the queued job to the highest priority via a priority change.
+    engine
+        .queue_manager
+        .set_job_priority(&second_id, Priority::Force)
+        .expect("raise second job to Force");
+
+    // The active job must NOT be preempted. Give any (incorrect) preemption a
+    // window to occur and assert it never does.
+    let preempted = engine
+        .wait_for(Duration::from_secs(2), |snap| {
+            snap.job(&first_id)
+                .map(|j| j.status == JobStatus::Paused)
+                .unwrap_or(false)
+        })
+        .await;
+    assert!(
+        !preempted,
+        "priority change must not pause the active download"
+    );
+
+    let first = engine.job(&first_id).expect("first job present");
+    let second = engine.job(&second_id).expect("second job present");
+    assert_eq!(
+        first.status,
+        JobStatus::Downloading,
+        "active job should keep downloading after a priority change"
+    );
+    assert_eq!(
+        second.status,
+        JobStatus::Queued,
+        "reprioritised job waits for a free slot instead of preempting"
     );
 }
 
