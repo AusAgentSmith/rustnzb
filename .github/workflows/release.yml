@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   verify-release-ref:
-    runs-on: [self-hosted, node-b, linux, x64, rust]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,7 +30,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    runs-on: [self-hosted, node-b, linux, x64, publish, docker]
+    runs-on: [self-hosted, docker, publish]
     env:
       IMAGE: ghcr.io/thedancingdeveloper-org/rustnzbd
     steps:
@@ -140,7 +140,7 @@ jobs:
     needs: verify-release-ref
     permissions:
       contents: write
-    runs-on: [self-hosted, node-b, linux, x64, publish, docker]
+    runs-on: [self-hosted, docker, publish]
     env:
       CROSS_IMAGE: repo.indexarr.net/indexarr/rustnzb-ci-cross@sha256:89f1f570acb0f8e6514ffcca39bd9f26305263d95274e4c170eedf867d113ad9
     steps:

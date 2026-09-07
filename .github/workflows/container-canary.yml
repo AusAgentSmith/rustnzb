@@ -15,7 +15,7 @@ jobs:
   publish-canary:
     # This privileged runner is selected only for this repository.  This
     # workflow intentionally has no pull_request trigger.
-    runs-on: [self-hosted, node-b, linux, x64, publish, docker]
+    runs-on: [self-hosted, docker, publish]
     env:
       IMAGE: ghcr.io/thedancingdeveloper-org/rustnzbd
       CANARY_TAG: migration-canary-${{ github.sha }}
