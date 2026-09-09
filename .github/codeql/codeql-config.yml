@@ -1,0 +1,11 @@
+# Shared CodeQL configuration (referenced by .github/workflows/codeql.yml).
+#
+# paths-ignore excludes code that is not part of the shipped product, so its
+# findings do not clutter the Security > Code scanning dashboard:
+#   - benchnzb/  : an internal benchmark/stress harness that talks to local
+#                  mock services over a private network (source of the
+#                  rust/non-https-url alerts).
+name: rustnzb CodeQL config
+
+paths-ignore:
+  - benchnzb
