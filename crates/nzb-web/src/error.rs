@@ -166,8 +166,17 @@ impl std::fmt::Display for ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        let status = self.status();
+        // Server-side failures (5xx) are otherwise invisible: the error is
+        // serialized into the response body but never logged, so operators
+        // running at debug level saw only tower_http's "status=500" with no
+        // cause (rustnzb#129). Log it here so every 5xx surfaces its
+        // underlying error.
+        if status.is_server_error() {
+            tracing::error!(status = %status, error = %format!("{:#}", self.kind), "API request failed");
+        }
         let mut response = axum::Json(&self).into_response();
-        *response.status_mut() = self.status();
+        *response.status_mut() = status;
         response
     }
 }
