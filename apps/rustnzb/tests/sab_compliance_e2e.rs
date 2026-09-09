@@ -170,13 +170,20 @@ async fn addfile_reports_enqueue_failure_as_status_false_not_500() {
 
 /// `mode=addurl` fetches a remote NZB and has no file body to upload, so
 /// real SABnzbd (and clients like NZB360/Sonarr/Radarr) issue it as a plain
-/// GET. Regression coverage for rustnzb#65/PR#70: GET requests used to fall
-/// through to "Unknown mode" and silently drop `cat`.
+/// GET. This exercises two things at once:
+///
+///  - Dispatch (rustnzb#65/PR#70): a GET `mode=addurl` must reach the addurl
+///    handler and return a structured SABnzbd `status` field, not fall through
+///    to "Unknown mode".
+///  - SSRF guard (rustnzb#129 review): the caller-supplied URL is validated
+///    before fetching, so a private/loopback target is refused with
+///    `{status:false}` on HTTP 200 (never fetched, never enqueued). A local
+///    server standing by proves the guard blocks *before* the request.
 #[tokio::test]
-async fn addurl_over_get_fetches_and_applies_category() {
+async fn addurl_over_get_is_dispatched_and_ssrf_guard_blocks_loopback() {
     let app = start_test_server(Vec::new()).await;
     let client = reqwest::Client::new();
-    let nzb_url = spawn_nzb_server(sample_nzb_bytes()).await;
+    let nzb_url = spawn_nzb_server(sample_nzb_bytes()).await; // http://127.0.0.1:PORT/...
 
     let add_response: serde_json::Value = client
         .get(format!(
@@ -189,13 +196,22 @@ async fn addurl_over_get_fetches_and_applies_category() {
         .json()
         .await
         .unwrap();
+    // Dispatched to the addurl handler (structured status), and refused by the
+    // SSRF guard rather than fetched.
     assert_eq!(
         add_response["status"],
-        serde_json::json!(true),
-        "resp={add_response:?}"
+        serde_json::json!(false),
+        "loopback addurl must be refused by the SSRF guard, resp={add_response:?}"
     );
-    let nzo_id = add_response["nzo_ids"][0].as_str().unwrap().to_string();
+    assert!(
+        add_response["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("private/reserved"),
+        "expected SSRF rejection reason, resp={add_response:?}"
+    );
 
+    // Nothing should have been enqueued.
     let queue: serde_json::Value = client
         .get(format!("{}/sabnzbd/api?mode=queue", app.base_url))
         .send()
@@ -204,13 +220,13 @@ async fn addurl_over_get_fetches_and_applies_category() {
         .json()
         .await
         .unwrap();
-    let slot = queue["queue"]["slots"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|slot| slot["nzo_id"] == nzo_id)
-        .expect("URL-added job present in queue");
-    assert_eq!(slot["cat"], "movies");
+    assert!(
+        queue["queue"]["slots"]
+            .as_array()
+            .map(|s| s.is_empty())
+            .unwrap_or(true),
+        "SSRF-refused addurl must not enqueue anything, resp={queue:?}"
+    );
 }
 
 /// `mode=get_cats` must report the default category as the literal `"*"`

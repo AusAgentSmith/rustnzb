@@ -23,6 +23,9 @@ use crate::state::AppState;
 /// `tests/fixtures/sabnzbd-*`.
 const SABNZBD_COMPAT_VERSION: &str = "5.0.4";
 
+/// Upper bound on an `addurl`-fetched NZB body, to avoid unbounded memory use.
+const MAX_ADDURL_BODY_BYTES: usize = 100 * 1024 * 1024;
+
 /// Arr-compatible API request -- all parameters come as query strings.
 #[derive(Deserialize, Default)]
 pub struct SabApiRequest {
@@ -116,15 +119,27 @@ async fn handle_addurl(
         })));
     }
 
+    // SSRF guard: addurl fetches a caller-supplied URL, so validate it and pin
+    // the connection to the validated address (shared with the native URL-add
+    // path in the app crate). Rejects non-http(s) schemes and private/reserved
+    // hosts such as 169.254.169.254. See rustnzb#129 review.
+    let fetch_plan = match crate::fetch_guard::validate_fetch_url(&url).await {
+        Ok(plan) => plan,
+        Err(error) => {
+            tracing::warn!(url = %url, %error, "Refusing addurl fetch (SSRF guard)");
+            return Ok(Json(serde_json::json!({
+                "status": false,
+                "error": error.to_string()
+            })));
+        }
+    };
+
     tracing::info!(url = %url, "Fetching NZB from URL via arr API");
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| ApiError::from(anyhow::anyhow!("HTTP client error: {e}")))?;
+    let client = crate::fetch_guard::build_fetch_client(&fetch_plan)?;
 
     let response = client
-        .get(&url)
+        .get(fetch_plan.url.clone())
         .send()
         .await
         .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to fetch URL: {e}")))?;
@@ -136,10 +151,9 @@ async fn handle_addurl(
         })));
     }
 
-    let data = response
-        .bytes()
-        .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {e}")))?;
+    // Cap the fetched body to avoid unbounded memory from a hostile URL.
+    let data =
+        crate::fetch_guard::read_response_bytes_limited(response, MAX_ADDURL_BODY_BYTES).await?;
 
     // Derive job name from URL filename if not provided
     let job_name = name.unwrap_or_else(|| {
@@ -2871,8 +2885,18 @@ mod tests {
             .expect("read response body");
         let value: serde_json::Value = serde_json::from_slice(&body).expect("parse JSON body");
 
-        assert_eq!(value["status"], serde_json::json!(true));
-        assert!(value["nzo_ids"][0].as_str().is_some());
+        // The URL was parsed from the request (dispatch reached the addurl
+        // handler), then refused by the SSRF guard because the test server is
+        // on loopback -- so the response is a structured {status:false}, not a
+        // "No URL provided" / "Unknown mode" fall-through.
+        assert_eq!(value["status"], serde_json::json!(false));
+        assert!(
+            value["error"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("private/reserved"),
+            "expected SSRF rejection, resp={value:?}"
+        );
     }
 
     async fn json_body(response: axum::response::Response) -> serde_json::Value {
@@ -2912,8 +2936,18 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let value = json_body(response).await;
-        assert_eq!(value["status"], serde_json::json!(true));
-        assert!(value["nzo_ids"][0].as_str().is_some());
+        // The URL was parsed from the request (dispatch reached the addurl
+        // handler), then refused by the SSRF guard because the test server is
+        // on loopback -- so the response is a structured {status:false}, not a
+        // "No URL provided" / "Unknown mode" fall-through.
+        assert_eq!(value["status"], serde_json::json!(false));
+        assert!(
+            value["error"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("private/reserved"),
+            "expected SSRF rejection, resp={value:?}"
+        );
     }
 
     /// Non-upload modes must also work over a bare POST.
@@ -2968,8 +3002,18 @@ mod tests {
             .into_response();
         assert_eq!(response.status(), StatusCode::OK);
         let value = json_body(response).await;
-        assert_eq!(value["status"], serde_json::json!(true));
-        assert!(value["nzo_ids"][0].as_str().is_some());
+        // The URL was parsed from the request (dispatch reached the addurl
+        // handler), then refused by the SSRF guard because the test server is
+        // on loopback -- so the response is a structured {status:false}, not a
+        // "No URL provided" / "Unknown mode" fall-through.
+        assert_eq!(value["status"], serde_json::json!(false));
+        assert!(
+            value["error"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("private/reserved"),
+            "expected SSRF rejection, resp={value:?}"
+        );
     }
 
     /// A request that claims to be multipart but carries no boundary is still

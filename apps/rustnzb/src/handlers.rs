@@ -1,5 +1,4 @@
 use std::io::{Cursor, Read as _};
-use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use axum::Json;
@@ -23,122 +22,6 @@ static HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::
 const MAX_NZB_DECOMPRESSED_BYTES: u64 = 100 * 1024 * 1024;
 const MAX_FETCH_BODY_BYTES: usize = 100 * 1024 * 1024;
 
-// ---------------------------------------------------------------------------
-// SSRF guard
-// ---------------------------------------------------------------------------
-
-#[derive(Debug)]
-struct FetchUrlPlan {
-    url: reqwest::Url,
-    resolved_addrs: Option<(String, Vec<SocketAddr>)>,
-}
-
-/// Returns `Err` if `raw_url` is not http/https or resolves to a private/reserved address.
-async fn validate_fetch_url(raw_url: &str) -> Result<FetchUrlPlan, ApiError> {
-    let url = reqwest::Url::parse(raw_url)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid URL: {e}")))?;
-
-    match url.scheme() {
-        "http" | "https" => {}
-        s => {
-            return Err(ApiError::from(anyhow::anyhow!(
-                "URL scheme '{s}' not allowed (must be http or https)"
-            )));
-        }
-    }
-
-    let host = url
-        .host_str()
-        .ok_or_else(|| ApiError::from(anyhow::anyhow!("URL has no host")))?
-        .to_string();
-
-    // IP literal: validate directly without a DNS round-trip.
-    if let Ok(ip) = host.parse::<IpAddr>() {
-        if !is_globally_routable(ip) {
-            return Err(ApiError::from(anyhow::anyhow!(
-                "URL targets a private/reserved address"
-            )));
-        }
-        return Ok(FetchUrlPlan {
-            url,
-            resolved_addrs: None,
-        });
-    }
-
-    // Hostname: resolve and check every returned address.
-    let port = url.port_or_known_default().unwrap_or(80);
-    let addrs: Vec<_> = tokio::net::lookup_host(format!("{host}:{port}"))
-        .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("DNS resolution failed for '{host}': {e}")))?
-        .collect();
-
-    if addrs.is_empty() {
-        return Err(ApiError::from(anyhow::anyhow!(
-            "DNS resolution returned no addresses for '{host}'"
-        )));
-    }
-
-    for addr in &addrs {
-        if !is_globally_routable(addr.ip()) {
-            return Err(ApiError::from(anyhow::anyhow!(
-                "URL resolves to a private/reserved address"
-            )));
-        }
-    }
-
-    Ok(FetchUrlPlan {
-        url,
-        resolved_addrs: Some((host, addrs)),
-    })
-}
-
-fn build_fetch_client(plan: &FetchUrlPlan) -> Result<reqwest::Client, ApiError> {
-    let mut builder = reqwest::Client::builder().timeout(std::time::Duration::from_secs(30));
-    if let Some((host, addrs)) = &plan.resolved_addrs {
-        builder = builder.resolve_to_addrs(host, addrs.as_slice());
-    }
-    builder
-        .build()
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to build fetch client: {e}")))
-}
-
-async fn read_response_bytes_limited(
-    mut response: reqwest::Response,
-    max_bytes: usize,
-) -> Result<Vec<u8>, ApiError> {
-    let mut body = Vec::new();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Failed to read response: {e}")))?
-    {
-        if body.len().saturating_add(chunk.len()) > max_bytes {
-            return Err(ApiError::from(anyhow::anyhow!(
-                "Fetched body exceeds the {} MB limit",
-                max_bytes / 1024 / 1024
-            )));
-        }
-        body.extend_from_slice(&chunk);
-    }
-    Ok(body)
-}
-
-fn is_globally_routable(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => {
-            !v4.is_loopback()
-                && !v4.is_private()
-                && !v4.is_link_local()
-                && !v4.is_broadcast()
-                && !v4.is_unspecified()
-                && !v4.is_documentation()
-        }
-        IpAddr::V6(v6) => {
-            !v6.is_loopback() && !v6.is_unspecified() && !v6.is_multicast() && !v6.is_unique_local()
-        }
-    }
-}
-
 #[cfg(feature = "webdav")]
 use nzb_web::nzb_core::config::DavConfig;
 use nzb_web::nzb_core::config::{CategoryConfig, RssFeedConfig, ServerConfig};
@@ -147,6 +30,7 @@ use nzb_web::nzb_core::nzb_parser;
 use nzb_web::nzb_core::sabnzbd_import;
 
 use nzb_web::error::ApiError;
+use nzb_web::fetch_guard::{build_fetch_client, read_response_bytes_limited, validate_fetch_url};
 use nzb_web::log_buffer::LogEntry;
 use nzb_web::state::AppState;
 
@@ -592,12 +476,11 @@ pub async fn h_queue_add_url(
     let fetch_plan = validate_fetch_url(&body.url).await?;
     tracing::info!(url = %body.url, "Fetching NZB from URL");
 
-    let client = fetch_plan
-        .resolved_addrs
-        .as_ref()
-        .map(|_| build_fetch_client(&fetch_plan))
-        .transpose()?
-        .unwrap_or_else(|| HTTP_CLIENT.clone());
+    let client = if fetch_plan.requires_pinned_client() {
+        build_fetch_client(&fetch_plan)?
+    } else {
+        HTTP_CLIENT.clone()
+    };
     let response = client
         .get(fetch_plan.url.clone())
         .send()
@@ -1440,12 +1323,11 @@ pub async fn h_rss_item_download(
 
     // Fetch the NZB
     let fetch_plan = validate_fetch_url(url).await?;
-    let client = fetch_plan
-        .resolved_addrs
-        .as_ref()
-        .map(|_| build_fetch_client(&fetch_plan))
-        .transpose()?
-        .unwrap_or_else(|| HTTP_CLIENT.clone());
+    let client = if fetch_plan.requires_pinned_client() {
+        build_fetch_client(&fetch_plan)?
+    } else {
+        HTTP_CLIENT.clone()
+    };
     let response = client
         .get(fetch_plan.url.clone())
         .send()
@@ -1511,6 +1393,26 @@ pub struct RssRuleBody {
     pub enabled: Option<bool>,
 }
 
+/// Longest RSS match pattern we will accept, in bytes.
+const MAX_RSS_REGEX_LEN: usize = 512;
+
+/// Compile a user-supplied RSS match pattern with explicit bounds. The `regex`
+/// crate is already linear-time (no catastrophic backtracking), but we also cap
+/// the pattern length and the compiled-program size so a hostile or accidental
+/// pattern cannot consume unbounded memory/CPU at compile time.
+fn compile_rss_regex(pattern: &str) -> Result<regex::Regex, ApiError> {
+    if pattern.len() > MAX_RSS_REGEX_LEN {
+        return Err(ApiError::from(anyhow::anyhow!(
+            "Regex too long ({} bytes, max {MAX_RSS_REGEX_LEN})",
+            pattern.len()
+        )));
+    }
+    regex::RegexBuilder::new(pattern)
+        .size_limit(1 << 20) // 1 MiB compiled-program cap
+        .build()
+        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {e}")))
+}
+
 /// GET /api/rss/rules -- List RSS download rules.
 pub async fn h_rss_rules_list(
     State(state): State<Arc<AppState>>,
@@ -1527,9 +1429,8 @@ pub async fn h_rss_rule_add(
     State(state): State<Arc<AppState>>,
     Json(body): Json<RssRuleBody>,
 ) -> Result<Json<SimpleResponse>, ApiError> {
-    // Validate the regex
-    regex::Regex::new(&body.match_regex)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {e}")))?;
+    // Validate and bound the user-supplied regex.
+    compile_rss_regex(&body.match_regex)?;
 
     let rule = RssRule {
         id: uuid::Uuid::new_v4().to_string(),
@@ -1553,9 +1454,8 @@ pub async fn h_rss_rule_update(
     Path(id): Path<String>,
     Json(body): Json<RssRuleBody>,
 ) -> Result<Json<SimpleResponse>, ApiError> {
-    // Validate the regex
-    regex::Regex::new(&body.match_regex)
-        .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid regex: {e}")))?;
+    // Validate and bound the user-supplied regex.
+    compile_rss_regex(&body.match_regex)?;
 
     let rule = RssRule {
         id,
@@ -1992,12 +1892,11 @@ pub async fn h_import_sabnzbd_api(
     let base_url = req.url.trim_end_matches('/');
 
     let fetch_plan = validate_fetch_url(base_url).await?;
-    let client = fetch_plan
-        .resolved_addrs
-        .as_ref()
-        .map(|_| build_fetch_client(&fetch_plan))
-        .transpose()?
-        .unwrap_or_else(|| HTTP_CLIENT.clone());
+    let client = if fetch_plan.requires_pinned_client() {
+        build_fetch_client(&fetch_plan)?
+    } else {
+        HTTP_CLIENT.clone()
+    };
 
     // SABnzbd exposes its API at /api (default) or /sabnzbd/api (when configured
     // with a URL base prefix). Try /api first, fall back to /sabnzbd/api.
@@ -2291,7 +2190,8 @@ pub async fn h_dav_config_set(
 #[cfg(test)]
 mod tests {
     use super::{
-        MAX_NZB_DECOMPRESSED_BYTES, extract_nzbs, sanitize_server_config, validate_fetch_url,
+        MAX_NZB_DECOMPRESSED_BYTES, MAX_RSS_REGEX_LEN, compile_rss_regex, extract_nzbs,
+        sanitize_server_config,
     };
     use std::io::Write;
 
@@ -2312,20 +2212,22 @@ mod tests {
         writer.finish().unwrap().into_inner()
     }
 
-    #[tokio::test]
-    async fn validate_fetch_url_rejects_private_ip_literals() {
-        let err = validate_fetch_url("http://127.0.0.1/file.nzb")
-            .await
-            .unwrap_err();
-        assert!(err.to_string().contains("private/reserved"));
+    #[test]
+    fn compile_rss_regex_accepts_normal_pattern() {
+        assert!(compile_rss_regex(r"(?i)ubuntu.*\.iso").is_ok());
     }
 
-    #[tokio::test]
-    async fn validate_fetch_url_rejects_localhost_hostname() {
-        let err = validate_fetch_url("http://localhost/file.nzb")
-            .await
-            .unwrap_err();
-        assert!(err.to_string().contains("private/reserved"));
+    #[test]
+    fn compile_rss_regex_rejects_invalid_pattern() {
+        let err = compile_rss_regex("(unclosed").unwrap_err();
+        assert!(err.to_string().contains("Invalid regex"));
+    }
+
+    #[test]
+    fn compile_rss_regex_rejects_overlong_pattern() {
+        let pattern = "a".repeat(MAX_RSS_REGEX_LEN + 1);
+        let err = compile_rss_regex(&pattern).unwrap_err();
+        assert!(err.to_string().contains("too long"));
     }
 
     #[test]
