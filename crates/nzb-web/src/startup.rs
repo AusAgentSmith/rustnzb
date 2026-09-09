@@ -172,10 +172,8 @@ pub async fn initialize(
         config.general.article_timeout_secs,
     );
 
-    // Set history retention
-    if let Some(retention) = config.general.history_retention {
-        queue_manager.set_history_retention(Some(retention));
-    }
+    // Set history retention (the setter folds 0 into "keep all").
+    queue_manager.set_history_retention(config.general.history_retention);
 
     // Restore any in-progress jobs from the database
     if let Err(e) = queue_manager.restore_from_db() {

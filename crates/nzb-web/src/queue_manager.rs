@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info, warn};
 
-use crate::nzb_core::config::{CategoryConfig, ServerConfig};
+use crate::nzb_core::config::{CategoryConfig, ServerConfig, normalize_history_retention};
 use crate::nzb_core::db::Database;
 use crate::nzb_core::models::*;
 use crate::nzb_core::nzb_parser;
@@ -876,9 +876,10 @@ impl QueueManager {
         }
     }
 
-    /// Set history retention limit.
+    /// Set history retention limit. `Some(0)` is normalized to `None`
+    /// (keep all) so a zero can never wipe history on completion (GH #136).
     pub fn set_history_retention(&self, limit: Option<usize>) {
-        *self.history_retention.lock() = limit;
+        *self.history_retention.lock() = normalize_history_retention(limit);
     }
 
     /// Current generation of the SAB-compatible history view.
@@ -3922,6 +3923,50 @@ mod global_pause_tests {
         manager.history_remove("counter-terminal").unwrap();
         manager.history_clear().unwrap();
         assert_eq!(manager.history_update(), 3);
+    }
+
+    /// GH #136: a configured retention of 0 used to run `LIMIT 0` retention
+    /// right after the insert and silently delete the row just persisted.
+    #[tokio::test]
+    async fn zero_history_retention_keeps_completed_jobs() {
+        let (manager, tempdir) = manager();
+        manager.set_history_retention(Some(0));
+        assert_eq!(manager.get_history_retention(), None);
+
+        insert_job(
+            &manager,
+            job("zero-retention", JobStatus::Completed, tempdir.path()),
+        );
+        {
+            let mut jobs = manager.jobs.lock();
+            manager.move_to_history(jobs.get_mut("zero-retention").unwrap(), Vec::new());
+        }
+
+        let db = manager.db.lock();
+        let entry = db
+            .history_get("zero-retention")
+            .unwrap()
+            .expect("completed job must remain in history with retention 0");
+        assert_eq!(entry.status, JobStatus::Completed);
+        assert_eq!(db.history_count().unwrap(), 1);
+    }
+
+    /// A positive retention limit still prunes, oldest first.
+    #[tokio::test]
+    async fn positive_history_retention_prunes_after_completion() {
+        let (manager, tempdir) = manager();
+        manager.set_history_retention(Some(1));
+        assert_eq!(manager.get_history_retention(), Some(1));
+
+        for id in ["ret-first", "ret-second"] {
+            insert_job(&manager, job(id, JobStatus::Completed, tempdir.path()));
+            let mut jobs = manager.jobs.lock();
+            manager.move_to_history(jobs.get_mut(id).unwrap(), Vec::new());
+        }
+
+        let db = manager.db.lock();
+        assert_eq!(db.history_count().unwrap(), 1);
+        assert!(db.history_get("ret-second").unwrap().is_some());
     }
 
     #[tokio::test]
