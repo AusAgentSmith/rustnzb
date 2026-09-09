@@ -119,6 +119,53 @@ fn newly_extracted_files(
     Ok(files)
 }
 
+fn safe_zip_output_path(root: &Path, name: &str) -> anyhow::Result<PathBuf> {
+    let normalized = name.replace('\\', "/");
+    let has_drive_prefix = normalized.as_bytes().get(1) == Some(&b':');
+    if normalized.is_empty()
+        || normalized.starts_with('/')
+        || has_drive_prefix
+        || normalized.split('/').any(|component| component == "..")
+    {
+        anyhow::bail!("ZIP archive contains unsafe path `{name}`");
+    }
+
+    let output = normalized
+        .split('/')
+        .filter(|component| !component.is_empty() && *component != ".")
+        .fold(root.to_path_buf(), |path, component| path.join(component));
+    if !output.starts_with(root) {
+        anyhow::bail!("ZIP archive path escapes extraction directory: `{name}`");
+    }
+    Ok(output)
+}
+
+fn reject_symlinked_path(root: &Path, path: &Path) -> anyhow::Result<()> {
+    let relative = path
+        .strip_prefix(root)
+        .map_err(|_| anyhow::anyhow!("ZIP archive path is outside extraction directory"))?;
+    let mut current = root.to_path_buf();
+    if let Ok(metadata) = std::fs::symlink_metadata(&current)
+        && metadata.file_type().is_symlink()
+    {
+        anyhow::bail!("ZIP extraction directory is a symbolic link");
+    }
+
+    for component in relative.components() {
+        current.push(component.as_os_str());
+        let Ok(metadata) = std::fs::symlink_metadata(&current) else {
+            continue;
+        };
+        if metadata.file_type().is_symlink() {
+            anyhow::bail!("ZIP archive path crosses a symbolic link");
+        }
+        if current != path && !metadata.is_dir() {
+            anyhow::bail!("ZIP archive path crosses a non-directory");
+        }
+    }
+    Ok(())
+}
+
 /// Extract RAR archives in a directory.
 ///
 /// If `password` is `Some`, it is passed to the extractor (`-p<pw>` for unrar,
@@ -281,14 +328,32 @@ pub async fn extract_zip(zip_file: &Path, output_dir: &Path) -> anyhow::Result<U
         let file = std::fs::File::open(&zip_path)?;
         let mut archive = zip::ZipArchive::new(file)?;
         let mut extracted = Vec::new();
+        let mut output_paths = HashSet::new();
 
         for i in 0..archive.len() {
             let mut entry = archive.by_index(i)?;
-            let outpath = out_path.join(entry.mangled_name());
+            // Never materialize links from an untrusted archive. Treating a
+            // link payload as a regular file also makes the policy explicit
+            // on platforms where link metadata is partially supported.
+            if entry.is_symlink() {
+                anyhow::bail!(
+                    "ZIP archive contains unsupported symbolic link `{}`",
+                    entry.name()
+                );
+            }
+            let outpath = safe_zip_output_path(&out_path, entry.name())?;
+            if !output_paths.insert(outpath.clone()) {
+                anyhow::bail!(
+                    "ZIP archive contains duplicate output path `{}`",
+                    entry.name()
+                );
+            }
 
             if entry.is_dir() {
+                reject_symlinked_path(&out_path, &outpath)?;
                 std::fs::create_dir_all(&outpath)?;
             } else {
+                reject_symlinked_path(&out_path, &outpath)?;
                 if let Some(parent) = outpath.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
@@ -376,6 +441,105 @@ mod tests {
         )
         .await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_extract_zip_rejects_duplicate_output_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("duplicate.zip");
+        let out_dir = dir.path().join("out");
+        {
+            let file = std::fs::File::create(&zip_path).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default();
+            writer.add_directory("same.txt/", options).unwrap();
+            writer.start_file("same.txt", options).unwrap();
+            writer.write_all(b"second").unwrap();
+            writer.finish().unwrap();
+        }
+
+        let result = extract_zip(&zip_path, &out_dir).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("duplicate output path"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn test_extract_zip_rejects_parent_and_absolute_paths() {
+        for (index, name) in [
+            "../../outside.txt",
+            "/absolute.txt",
+            r"..\..\outside.txt",
+            r"C:\outside.txt",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let dir = tempfile::tempdir().unwrap();
+            let zip_path = dir.path().join(format!("unsafe-{index}.zip"));
+            let out_dir = dir.path().join("out");
+            let file = std::fs::File::create(&zip_path).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            writer
+                .start_file(*name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(b"outside").unwrap();
+            writer.finish().unwrap();
+
+            let result = extract_zip(&zip_path, &out_dir).await;
+            let error = result.unwrap_err().to_string();
+            assert!(error.contains("unsafe path"), "{error}");
+            assert!(!dir.path().join("outside.txt").exists());
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_extract_zip_rejects_preexisting_symlink_ancestors() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("symlink-ancestor.zip");
+        let out_dir = dir.path().join("out");
+        let outside_dir = dir.path().join("outside");
+        std::fs::create_dir_all(&out_dir).unwrap();
+        std::fs::create_dir_all(&outside_dir).unwrap();
+        symlink(&outside_dir, out_dir.join("link")).unwrap();
+
+        let file = std::fs::File::create(&zip_path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        writer
+            .start_file("link/escaped.txt", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"outside").unwrap();
+        writer.finish().unwrap();
+
+        let result = extract_zip(&zip_path, &out_dir).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("symbolic link"), "{error}");
+        assert!(!outside_dir.join("escaped.txt").exists());
+    }
+
+    #[tokio::test]
+    async fn test_extract_zip_rejects_symbolic_links() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("symlink.zip");
+        let out_dir = dir.path().join("out");
+        {
+            let file = std::fs::File::create(&zip_path).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            writer
+                .add_symlink(
+                    "link",
+                    "outside.txt",
+                    zip::write::SimpleFileOptions::default(),
+                )
+                .unwrap();
+            writer.finish().unwrap();
+        }
+
+        let result = extract_zip(&zip_path, &out_dir).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("symbolic link"), "{error}");
     }
 
     #[test]

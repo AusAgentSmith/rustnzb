@@ -28,6 +28,7 @@ use nzb_web::nzb_core::config::ServerConfig;
 use nzb_web::nzb_core::db::Database;
 use nzb_web::nzb_core::models::{JobStatus, NzbJob};
 use nzb_web::nzb_core::nzb_parser;
+use nzb_web::nzb_postproc::PostProcLimits;
 use nzb_web::queue_manager::QueueManager;
 
 use tempfile::TempDir;
@@ -90,30 +91,92 @@ impl ServerProfile {
 /// independently optional; defaults are tuned for fast, deterministic tests.
 pub struct HarnessBuilder {
     servers: Vec<ServerProfile>,
+    server_configs: Vec<ServerConfig>,
+    database_path: Option<PathBuf>,
+    state_dir: Option<PathBuf>,
     article_timeout_secs: u64,
     max_active_downloads: usize,
     abort_hopeless: bool,
     early_failure_check: bool,
     required_completion_pct: f64,
     speed_limit_bps: u64,
+    postproc_limits: PostProcLimits,
 }
 
 impl HarnessBuilder {
     pub fn new() -> Self {
         Self {
             servers: Vec::new(),
+            server_configs: Vec::new(),
+            database_path: None,
+            state_dir: None,
             article_timeout_secs: 30,
             max_active_downloads: 5,
             abort_hopeless: true,
             early_failure_check: true,
             required_completion_pct: 100.0,
             speed_limit_bps: 0,
+            postproc_limits: PostProcLimits::default(),
         }
     }
 
     pub fn with_server(mut self, profile: ServerProfile) -> Self {
         self.servers.push(profile);
         self
+    }
+
+    pub fn with_server_config(mut self, config: ServerConfig) -> Self {
+        self.server_configs.push(config);
+        self
+    }
+
+    pub fn with_database_path(mut self, path: PathBuf) -> Self {
+        self.database_path = Some(path);
+        self
+    }
+
+    pub fn with_state_dir(mut self, path: PathBuf) -> Self {
+        self.state_dir = Some(path);
+        self
+    }
+
+    /// Happy-path profile: one healthy provider and the production-like
+    /// completion policy used by smoke tests.
+    pub fn happy_path(server: ServerProfile) -> Self {
+        Self::new().with_server(server)
+    }
+
+    /// Retry profile: short article deadlines expose reconnect and failover
+    /// behavior without making the test wait through production timeouts.
+    pub fn retrying(server: ServerProfile) -> Self {
+        Self::new().with_server(server).article_timeout(3)
+    }
+
+    /// Pause/resume profile: keep one active download so control-plane tests
+    /// can observe a pause boundary deterministically.
+    pub fn pause_resume(server: ServerProfile) -> Self {
+        Self::new().with_server(server).max_active_downloads(1)
+    }
+
+    /// Cancellation profile: a single worker makes slot-release assertions
+    /// independent of scheduler width.
+    pub fn cancellation(server: ServerProfile) -> Self {
+        Self::new().with_server(server).max_active_downloads(1)
+    }
+
+    /// Hopeless-job profile: enable the failure watchdog and use a compact
+    /// article deadline so silent providers converge quickly.
+    pub fn hopeless(server: ServerProfile) -> Self {
+        Self::new()
+            .with_server(server)
+            .article_timeout(2)
+            .abort_hopeless(true)
+    }
+
+    /// Restart-recovery profile: a single active worker makes checkpoint and
+    /// requeue assertions independent of scheduler width.
+    pub fn restart_recovery(server: ServerProfile) -> Self {
+        Self::new().with_server(server).max_active_downloads(1)
     }
 
     pub fn article_timeout(mut self, secs: u64) -> Self {
@@ -131,27 +194,69 @@ impl HarnessBuilder {
         self
     }
 
-    /// Build the engine. Creates temp dirs, an in-memory database, and a
-    /// fully-wired `QueueManager` whose worker pool is already running.
+    pub fn early_failure_check(mut self, enabled: bool) -> Self {
+        self.early_failure_check = enabled;
+        self
+    }
+
+    pub fn required_completion_pct(mut self, percentage: f64) -> Self {
+        self.required_completion_pct = percentage;
+        self
+    }
+
+    pub fn speed_limit_bps(mut self, bytes_per_second: u64) -> Self {
+        self.speed_limit_bps = bytes_per_second;
+        self
+    }
+
+    pub fn postproc_limits(mut self, limits: PostProcLimits) -> Self {
+        self.postproc_limits = limits;
+        self
+    }
+
+    /// Build the engine. Creates isolated directories and a fully-wired
+    /// `QueueManager` whose worker pool is already running.
     pub fn build(self) -> TestEngine {
         init_test_tracing();
-        let tempdir = TempDir::new().expect("create tempdir");
-        let incomplete_dir = tempdir.path().join("incomplete");
-        let complete_dir = tempdir.path().join("complete");
+        let tempdir = self
+            .state_dir
+            .is_none()
+            .then(|| TempDir::new().expect("create tempdir"));
+        let root = self.state_dir.clone().unwrap_or_else(|| {
+            tempdir
+                .as_ref()
+                .expect("temporary state")
+                .path()
+                .to_path_buf()
+        });
+        std::fs::create_dir_all(&root).expect("create harness state directory");
+        let incomplete_dir = root.join("incomplete");
+        let complete_dir = root.join("complete");
         std::fs::create_dir_all(&incomplete_dir).expect("create incomplete_dir");
         std::fs::create_dir_all(&complete_dir).expect("create complete_dir");
 
-        let db = Database::open_memory().expect("open in-memory db");
-        let server_configs: Vec<ServerConfig> =
-            self.servers.iter().map(|p| p.config.clone()).collect();
+        let db = self
+            .database_path
+            .as_deref()
+            .map(Database::open)
+            .transpose()
+            .expect("open harness database")
+            .unwrap_or_else(|| Database::open_memory().expect("open in-memory db"));
+        let server_configs: Vec<ServerConfig> = self
+            .servers
+            .iter()
+            .map(|p| p.config.clone())
+            .chain(self.server_configs)
+            .collect();
 
-        let queue_manager = QueueManager::new(
+        let queue_manager = QueueManager::new_with_postproc_limits(
             server_configs,
             db,
             incomplete_dir.clone(),
             complete_dir.clone(),
             LogBuffer::default(),
             self.max_active_downloads,
+            self.postproc_limits,
             Vec::new(), // categories
             0,          // min_free_space
             self.speed_limit_bps,
@@ -190,7 +295,7 @@ impl Default for HarnessBuilder {
 pub struct TestEngine {
     pub queue_manager: Arc<QueueManager>,
     _servers: Vec<ServerProfile>,
-    _tempdir: TempDir,
+    _tempdir: Option<TempDir>,
     pub incomplete_dir: PathBuf,
     pub complete_dir: PathBuf,
 }
@@ -229,6 +334,14 @@ impl TestEngine {
         self.snapshot().jobs.into_iter().find(|j| j.id == id)
     }
 
+    pub fn history_status(&self, id: &str) -> Option<JobStatus> {
+        self.queue_manager
+            .history_get(id)
+            .ok()
+            .flatten()
+            .map(|entry| entry.status)
+    }
+
     /// Poll `predicate` against fresh snapshots until it returns `true` or
     /// the timeout elapses. Returns `true` on success. Polls every 100 ms.
     pub async fn wait_for<F>(&self, timeout: Duration, mut predicate: F) -> bool
@@ -260,7 +373,10 @@ impl TestEngine {
                 .iter()
                 .find(|j| j.id == job_id)
                 .map(|j| statuses.contains(&j.status))
-                .unwrap_or(false)
+                .unwrap_or_else(|| {
+                    self.history_status(job_id)
+                        .is_some_and(|status| statuses.contains(&status))
+                })
         })
         .await
     }
@@ -291,6 +407,7 @@ pub struct JobView {
     pub articles_failed: usize,
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
+    pub error_message: Option<String>,
 }
 
 impl From<NzbJob> for JobView {
@@ -304,6 +421,7 @@ impl From<NzbJob> for JobView {
             articles_failed: j.articles_failed,
             downloaded_bytes: j.downloaded_bytes,
             total_bytes: j.total_bytes,
+            error_message: j.error_message,
         }
     }
 }

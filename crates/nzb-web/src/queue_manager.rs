@@ -1192,7 +1192,11 @@ impl QueueManager {
                                 state.job.articles_failed = checkpoint.articles_failed;
                                 state.job.files_completed = checkpoint.files_completed;
                                 for file in &mut state.job.files {
-                                    if let Some(segments) = checkpoint.files.get(&file.id) {
+                                    let segments = checkpoint
+                                        .files
+                                        .get(&file.filename)
+                                        .or_else(|| checkpoint.files.get(&file.id));
+                                    if let Some(segments) = segments {
                                         let mut fbd: u64 = 0;
                                         for article in &mut file.articles {
                                             if segments.contains(&article.segment_number) {
@@ -2148,7 +2152,11 @@ impl QueueManager {
                             .filter(|a| a.downloaded)
                             .map(|a| a.segment_number)
                             .collect();
-                        (f.id.clone(), downloaded_segments)
+                        // File IDs are generated while parsing an NZB and
+                        // therefore change after a restart. The filename is
+                        // stable across parses; accept the old ID key while
+                        // reading checkpoints written by older versions.
+                        (f.filename.clone(), downloaded_segments)
                     })
                     .collect(),
                 downloaded_bytes: state.job.downloaded_bytes,
@@ -3309,7 +3317,11 @@ impl QueueManager {
                             job.files_completed = checkpoint.files_completed;
 
                             for file in &mut job.files {
-                                if let Some(segments) = checkpoint.files.get(&file.id) {
+                                let segments = checkpoint
+                                    .files
+                                    .get(&file.filename)
+                                    .or_else(|| checkpoint.files.get(&file.id));
+                                if let Some(segments) = segments {
                                     let mut file_bytes_downloaded: u64 = 0;
                                     for article in &mut file.articles {
                                         if segments.contains(&article.segment_number) {

@@ -2724,6 +2724,98 @@ mod tests {
         assert_eq!(response["scripts"], serde_json::json!(["None"]));
     }
 
+    #[tokio::test]
+    async fn rejected_requests_keep_the_error_envelope() {
+        let test_state = test_state();
+
+        for provided in [None, Some("wrong-key")] {
+            let response = validate_api_key(&test_state.state, provided)
+                .expect_err("invalid credentials must be rejected")
+                .0;
+            assert_eq!(response["status"], serde_json::json!(false));
+            assert!(response["error"].is_string());
+        }
+
+        let response = dispatch_mode(
+            &test_state.state,
+            "unknown-contract-mode",
+            &SabApiRequest::default(),
+        )
+        .0;
+        assert_eq!(response["status"], serde_json::json!(false));
+        assert!(response["error"].as_str().unwrap().contains("Unknown mode"));
+    }
+
+    #[tokio::test]
+    async fn representative_read_modes_keep_stable_top_level_types() {
+        let test_state = test_state();
+
+        let config = dispatch_mode(&test_state.state, "get_config", &SabApiRequest::default()).0;
+        assert!(config["config"]["misc"]["complete_dir"].is_string());
+        assert!(config["config"]["categories"].is_array());
+
+        let categories = dispatch_mode(&test_state.state, "get_cats", &SabApiRequest::default()).0;
+        assert!(categories["categories"].is_array());
+
+        let scripts = dispatch_mode(&test_state.state, "get_scripts", &SabApiRequest::default()).0;
+        assert!(scripts["scripts"].is_array());
+    }
+
+    #[tokio::test]
+    async fn addfile_reports_success_and_parse_errors_as_json() {
+        let test_state = test_state();
+        let success = dispatch_post(
+            &test_state.state,
+            "addfile".into(),
+            None,
+            None,
+            None,
+            Some(("contract.nzb".into(), SAMPLE_NZB.as_bytes().to_vec())),
+            None,
+            None,
+            SabApiRequest::default(),
+        )
+        .await
+        .expect("addfile response")
+        .0;
+        assert_eq!(success["status"], serde_json::json!(true));
+        assert_eq!(success["nzo_ids"].as_array().unwrap().len(), 1);
+
+        let missing = dispatch_post(
+            &test_state.state,
+            "addfile".into(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            SabApiRequest::default(),
+        )
+        .await
+        .expect("missing-file response")
+        .0;
+        assert_eq!(missing["status"], serde_json::json!(false));
+        assert!(missing["error"].is_string());
+
+        let malformed = dispatch_post(
+            &test_state.state,
+            "addfile".into(),
+            None,
+            None,
+            None,
+            Some(("malformed.nzb".into(), b"not an nzb".to_vec())),
+            None,
+            None,
+            SabApiRequest::default(),
+        )
+        .await
+        .expect("malformed-file response")
+        .0;
+        assert_eq!(malformed["status"], serde_json::json!(false));
+        assert!(malformed["error"].is_string());
+    }
+
     /// SABnzbd's real `_api_queue_delete` accepts a comma-separated `value`
     /// list, removing every matching job in one call.
     #[tokio::test]

@@ -1,11 +1,15 @@
+use std::io::Read as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use flate2::read::GzDecoder;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 use crate::queue_manager::QueueManager;
+
+const MAX_WATCHED_NZB_BYTES: usize = 100 * 1024 * 1024;
 
 pub struct DirWatcher {
     watch_dir: PathBuf,
@@ -69,8 +73,11 @@ impl DirWatcher {
     }
 
     fn is_nzb_file(path: &Path) -> bool {
-        path.extension().is_some_and(|ext| ext == "nzb")
-            || path.to_str().is_some_and(|s| s.ends_with(".nzb.gz"))
+        path.extension().is_some_and(|ext| ext == "nzb") || Self::is_gz_nzb(path)
+    }
+
+    fn is_gz_nzb(path: &Path) -> bool {
+        path.to_str().is_some_and(|s| s.ends_with(".nzb.gz"))
     }
 
     async fn process_existing_files(&self) {
@@ -93,7 +100,7 @@ impl DirWatcher {
     async fn process_file(&self, path: &Path) {
         info!(file = %path.display(), "Processing NZB from watch directory");
 
-        let data = match std::fs::read(path) {
+        let raw_data = match Self::read_limited(path) {
             Ok(d) => d,
             Err(e) => {
                 warn!(error = %e, file = %path.display(), "Failed to read NZB file");
@@ -101,11 +108,37 @@ impl DirWatcher {
             }
         };
 
-        let name = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown")
-            .to_string();
+        let data = if Self::is_gz_nzb(path) {
+            let decoder = GzDecoder::new(raw_data.as_slice());
+            let mut decompressed = Vec::new();
+            if let Err(error) = decoder
+                .take((MAX_WATCHED_NZB_BYTES as u64).saturating_add(1))
+                .read_to_end(&mut decompressed)
+            {
+                warn!(error = %error, file = %path.display(), "Failed to decompress watched NZB");
+                return;
+            }
+            if decompressed.len() > MAX_WATCHED_NZB_BYTES {
+                warn!(file = %path.display(), limit = MAX_WATCHED_NZB_BYTES, "Decompressed watched NZB exceeds the input limit");
+                return;
+            }
+            decompressed
+        } else {
+            raw_data
+        };
+
+        let name = if Self::is_gz_nzb(path) {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .and_then(|name| name.strip_suffix(".nzb.gz"))
+                .unwrap_or("unknown")
+                .to_string()
+        } else {
+            path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string()
+        };
 
         match crate::nzb_core::nzb_parser::parse_nzb(&name, &data) {
             Ok(mut job) => {
@@ -142,6 +175,34 @@ impl DirWatcher {
             }
         }
     }
+
+    fn read_limited(path: &Path) -> std::io::Result<Vec<u8>> {
+        let metadata = std::fs::symlink_metadata(path)?;
+        if metadata.file_type().is_symlink() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "watched NZB symlinks are not supported",
+            ));
+        }
+        if metadata.len() > MAX_WATCHED_NZB_BYTES as u64 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::FileTooLarge,
+                format!("watched NZB exceeds the {MAX_WATCHED_NZB_BYTES} byte limit"),
+            ));
+        }
+
+        let file = std::fs::File::open(path)?;
+        let mut data = Vec::new();
+        file.take((MAX_WATCHED_NZB_BYTES as u64).saturating_add(1))
+            .read_to_end(&mut data)?;
+        if data.len() > MAX_WATCHED_NZB_BYTES {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::FileTooLarge,
+                format!("watched NZB exceeds the {MAX_WATCHED_NZB_BYTES} byte limit"),
+            ));
+        }
+        Ok(data)
+    }
 }
 
 #[cfg(test)]
@@ -154,5 +215,14 @@ mod tests {
         assert!(DirWatcher::is_nzb_file(Path::new("release.nzb.gz")));
         assert!(!DirWatcher::is_nzb_file(Path::new("release.NZB")));
         assert!(!DirWatcher::is_nzb_file(Path::new("release.txt")));
+    }
+
+    #[test]
+    fn bounded_file_reader_rejects_oversized_input() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("oversized.nzb");
+        std::fs::write(&path, vec![b'x'; MAX_WATCHED_NZB_BYTES + 1]).unwrap();
+        let error = DirWatcher::read_limited(&path).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::FileTooLarge);
     }
 }

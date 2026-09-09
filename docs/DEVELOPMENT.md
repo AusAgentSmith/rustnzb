@@ -54,6 +54,7 @@ useful where a local Docker environment is available:
 ./ci/run check
 ./ci/run test
 ./ci/run clippy
+./ci/run harness
 ./ci/run frontend-test
 ./ci/run e2e
 ./ci/run build-image rustnzb:local
@@ -70,3 +71,39 @@ frontend build directories and must not be committed.
 - Browser journeys and Playwright coverage live in `e2e/`.
 - The deterministic NNTP fixture is in `crates/mock-nntp-server/`.
 - `benchnzb/` is a benchmark harness, not a substitute for correctness tests.
+
+### Deterministic compatibility harness
+
+The compatibility test layers are intentionally local and deterministic:
+
+```bash
+cargo test -p nzb-web --tests --locked
+cargo test -p rustnzb --tests --locked
+cargo test -p nzb-postproc --tests --locked
+```
+
+The reusable fixtures live under `crates/nzb-web/tests/harness/` and the
+checked-in response contract lives under
+`crates/nzb-web/tests/fixtures/`. Update a golden only when the
+wire contract changes, preserve dynamic `$type:*` markers, and include a test
+that proves the changed mode's complete response shape. NNTP, URL, feed, and
+watch-folder tests use loopback fixtures or temporary directories; correctness
+tests must never contact a live provider. Every fixture owns its temporary
+state and drops it at test completion. Tests that depend on an implementation
+not yet present should be marked as an explicit implementation-gated plan
+rather than weakened to pass.
+
+The harness gate covers the compatibility and failure matrix as one explicit
+review target. The matrix is intentionally split by ownership:
+
+| Area | Current deterministic coverage | Implementation-gated extension |
+| --- | --- | --- |
+| API envelopes | Read modes, uploads, errors, filtering, paging, and golden fixtures | Add a fixture whenever a supported response field changes |
+| NNTP lifecycle | Retry, pause/resume, cancellation, authentication failure, failover, and restart checkpoints | Add provider-specific protocol cases only when the production state machine gains them |
+| URL and feed input | Scheme/address validation, redirect resistance, body limits, feed filters, and duplicate suppression | Add parser fixtures for newly accepted feed formats |
+| Post-processing | Nested archives, path safety, cleanup, password diagnostics, repair, and resource limits | Tar and hardlink semantics remain explicit implementation gates until supported |
+| Import and watch workflows | Multipart import, URL import, watch-folder ingestion, and compressed input limits | Add a workflow fixture before exposing a new ingestion source |
+
+Focused gates are suitable for local iteration; the full workspace commands
+above remain the review gate. Run a focused test three times when changing
+timing-sensitive queue behavior to catch flakes before broadening the loop.

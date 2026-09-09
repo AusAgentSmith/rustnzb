@@ -15,12 +15,12 @@ use serde::{Deserialize, Serialize};
 static HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("Failed to build shared HTTP client")
 });
 
 const MAX_NZB_DECOMPRESSED_BYTES: u64 = 100 * 1024 * 1024;
-const MAX_FETCH_BODY_BYTES: usize = 100 * 1024 * 1024;
 
 #[cfg(feature = "webdav")]
 use nzb_web::nzb_core::config::DavConfig;
@@ -32,7 +32,9 @@ use nzb_web::nzb_core::nzb_parser;
 use nzb_web::nzb_core::sabnzbd_import;
 
 use nzb_web::error::ApiError;
-use nzb_web::fetch_guard::{build_fetch_client, read_response_bytes_limited, validate_fetch_url};
+use nzb_web::fetch_guard::{
+    MAX_FETCH_BODY_BYTES, build_fetch_client, read_response_bytes_limited, validate_fetch_url,
+};
 use nzb_web::log_buffer::LogEntry;
 use nzb_web::state::AppState;
 
@@ -1939,9 +1941,8 @@ pub async fn h_import_sabnzbd_api(
             )));
         }
 
-        let json: serde_json::Value = resp
-            .json()
-            .await
+        let body = read_response_bytes_limited(resp, MAX_FETCH_BODY_BYTES).await?;
+        let json: serde_json::Value = serde_json::from_slice(&body)
             .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid JSON from SABnzbd: {e}")))?;
 
         let preview = sabnzbd_import::parse_sabnzbd_api_response(&json);

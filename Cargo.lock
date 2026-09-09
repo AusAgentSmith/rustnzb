@@ -1890,6 +1890,7 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "feed-rs",
+ "flate2",
  "governor",
  "hex",
  "http",

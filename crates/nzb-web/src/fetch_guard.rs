@@ -13,6 +13,9 @@ use std::net::{IpAddr, SocketAddr};
 
 use crate::error::ApiError;
 
+/// Maximum body size accepted by URL-backed NZB and feed workflows.
+pub const MAX_FETCH_BODY_BYTES: usize = 100 * 1024 * 1024;
+
 #[derive(Debug)]
 pub struct FetchUrlPlan {
     pub url: reqwest::Url,
@@ -92,7 +95,11 @@ pub async fn validate_fetch_url(raw_url: &str) -> Result<FetchUrlPlan, ApiError>
 /// Build a reqwest client pinned to the addresses validated in `plan`, so a
 /// hostname cannot re-resolve to an internal address after the check.
 pub fn build_fetch_client(plan: &FetchUrlPlan) -> Result<reqwest::Client, ApiError> {
-    let mut builder = reqwest::Client::builder().timeout(std::time::Duration::from_secs(30));
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        // Redirect targets are not covered by the original DNS validation.
+        // Refuse redirects so a public URL cannot bounce into a private host.
+        .redirect(reqwest::redirect::Policy::none());
     if let Some((host, addrs)) = &plan.resolved_addrs {
         builder = builder.resolve_to_addrs(host, addrs.as_slice());
     }
@@ -107,6 +114,16 @@ pub async fn read_response_bytes_limited(
     mut response: reqwest::Response,
     max_bytes: usize,
 ) -> Result<Vec<u8>, ApiError> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > max_bytes as u64)
+    {
+        return Err(ApiError::from(anyhow::anyhow!(
+            "Fetched body exceeds the {} MB limit",
+            max_bytes / 1024 / 1024
+        )));
+    }
+
     let mut body = Vec::new();
     while let Some(chunk) = response
         .chunk()
@@ -127,15 +144,39 @@ pub async fn read_response_bytes_limited(
 fn is_globally_routable(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {
-            !v4.is_loopback()
+            let [first, second, ..] = v4.octets();
+            let this_network = first == 0;
+            let shared_address_space = first == 100 && (64..=127).contains(&second);
+            let benchmarking_space = first == 198 && (18..=19).contains(&second);
+            let reserved_zero_block = first == 192 && second == 0;
+            let multicast = (224..=239).contains(&first);
+            let reserved_future_use = first >= 240;
+            !this_network
+                && !v4.is_loopback()
                 && !v4.is_private()
                 && !v4.is_link_local()
                 && !v4.is_broadcast()
                 && !v4.is_unspecified()
                 && !v4.is_documentation()
+                && !shared_address_space
+                && !benchmarking_space
+                && !reserved_zero_block
+                && !multicast
+                && !reserved_future_use
         }
         IpAddr::V6(v6) => {
-            !v6.is_loopback() && !v6.is_unspecified() && !v6.is_multicast() && !v6.is_unique_local()
+            let first = v6.segments()[0];
+            let mapped_is_global = v6
+                .to_ipv4_mapped()
+                .is_none_or(|mapped| is_globally_routable(IpAddr::V4(mapped)));
+            !v6.is_loopback()
+                && !v6.is_unspecified()
+                && !v6.is_multicast()
+                && !v6.is_unique_local()
+                && (first & 0xffc0) != 0xfe80
+                && (first & 0xffc0) != 0xfec0
+                && !(first == 0x2001 && v6.segments()[1] == 0x0db8)
+                && mapped_is_global
         }
     }
 }
@@ -173,5 +214,90 @@ mod tests {
     async fn validate_fetch_url_rejects_non_http_scheme() {
         let err = validate_fetch_url("file:///etc/passwd").await.unwrap_err();
         assert!(err.to_string().contains("not allowed"));
+    }
+
+    #[tokio::test]
+    async fn validate_fetch_url_rejects_special_use_address_ranges() {
+        for url in [
+            "http://100.64.0.1/file.nzb",
+            "http://198.18.0.1/file.nzb",
+            "http://192.0.0.1/file.nzb",
+            "http://0.1.2.3/file.nzb",
+            "http://224.0.0.1/file.nzb",
+            "http://240.0.0.1/file.nzb",
+            "http://[fe80::1]/file.nzb",
+            "http://[2001:db8::1]/file.nzb",
+        ] {
+            let error = validate_fetch_url(url)
+                .await
+                .expect_err("special-use address must be rejected");
+            assert!(
+                error.to_string().contains("private/reserved"),
+                "{url}: {error}"
+            );
+        }
+    }
+
+    async fn one_shot_http_response(response: &'static str) -> reqwest::Url {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind local fixture");
+        let address = listener.local_addr().expect("local fixture address");
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept local fixture");
+            let mut request = [0; 1024];
+            let _ = socket.read(&mut request).await;
+            let _ = socket.write_all(response.as_bytes()).await;
+            let _ = socket.shutdown().await;
+        });
+        format!("http://{address}/fixture").parse().unwrap()
+    }
+
+    #[tokio::test]
+    async fn pinned_client_uses_validated_address_and_does_not_follow_redirects() {
+        let url = one_shot_http_response(
+            "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1/private\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+        let address = url.port().expect("fixture port");
+        let plan = FetchUrlPlan {
+            url: url.clone(),
+            resolved_addrs: Some((
+                "fixture.invalid".into(),
+                vec![std::net::SocketAddr::from(([127, 0, 0, 1], address))],
+            )),
+        };
+        let client = build_fetch_client(&plan).expect("build pinned client");
+        let response = client
+            .get(url)
+            .header("host", "fixture.invalid")
+            .send()
+            .await
+            .expect("request local fixture");
+        assert_eq!(response.status(), reqwest::StatusCode::FOUND);
+    }
+
+    #[tokio::test]
+    async fn response_body_limit_is_enforced_incrementally() {
+        let url = one_shot_http_response(
+            "HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\n12345678",
+        )
+        .await;
+        let plan = FetchUrlPlan {
+            url: url.clone(),
+            resolved_addrs: None,
+        };
+        let response = build_fetch_client(&plan)
+            .expect("build fixture client")
+            .get(url)
+            .send()
+            .await
+            .expect("request body fixture");
+        let error = read_response_bytes_limited(response, 4)
+            .await
+            .expect_err("oversized body must be rejected");
+        assert!(error.to_string().contains("exceeds"));
     }
 }

@@ -45,6 +45,7 @@ feed-rs = "2"
 regex = "1"
 libc = "0.2"
 unicode-normalization = "0.1"
+flate2.workspace = true
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
