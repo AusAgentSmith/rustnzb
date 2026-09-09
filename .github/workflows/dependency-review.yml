@@ -1,0 +1,36 @@
+name: Dependency review
+
+# Blocks a pull request that introduces a dependency with a known
+# vulnerability (or a disallowed license) before it merges -- the pre-merge
+# complement to Dependabot alerts, which only fire after a vulnerable
+# dependency has already landed. Findings surface as a PR check and summary.
+
+on:
+  pull_request:
+    paths-ignore: ["*.md", "docs/**", "AGENTS.md", "CONTRIBUTING.md", "SECURITY.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    # Self-hosted to satisfy the runner-policy gate, matching the rest of CI.
+    runs-on: [self-hosted]
+    permissions:
+      contents: read
+      # Needed to post the review summary comment on the PR.
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          # Fail the check on newly introduced high/critical advisories; lower
+          # severities are reported in the summary but do not block.
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

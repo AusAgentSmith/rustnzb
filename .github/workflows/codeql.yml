@@ -57,6 +57,10 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          # Broader coverage than the default suite. security-extended adds
+          # lower-precision security queries (more findings, some noisier);
+          # triage new alerts under Security > Code scanning.
+          queries: security-extended
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
