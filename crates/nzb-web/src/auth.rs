@@ -143,6 +143,13 @@ pub struct CredentialStore {
 
 impl CredentialStore {
     pub fn new(config_dir: PathBuf) -> Self {
+        // Startup creates the configured data directory before constructing
+        // this store. Canonicalizing it here confines the credential file to
+        // that existing directory and removes traversal or symlinked-parent
+        // ambiguity from the subsequent writes.
+        let config_dir = config_dir.canonicalize().unwrap_or_else(|error| {
+            panic!("credential store data directory must exist before startup: {error}")
+        });
         let file_path = config_dir.join("credentials.json");
         let credentials = if file_path.exists() {
             match std::fs::read_to_string(&file_path) {
@@ -168,10 +175,6 @@ impl CredentialStore {
 
     pub fn set_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
         let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
-        // Create parent directory if needed
-        if let Some(parent) = self.file_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
         std::fs::write(&self.file_path, &json)?;
         // Set file permissions to owner-only on unix
         #[cfg(unix)]
@@ -194,9 +197,6 @@ impl CredentialStore {
             ));
         }
         let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
-        if let Some(parent) = self.file_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
         std::fs::write(&self.file_path, &json)?;
         #[cfg(unix)]
         {
