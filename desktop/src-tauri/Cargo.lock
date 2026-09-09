@@ -1422,6 +1422,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "filetime"
+version = "0.2.29"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c287a33c7f0a620c38e641e7f60827713987b3c0f26e8ddc9462cc69cf75759"
+dependencies = [
+ "cfg-if",
+ "libc",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3005,7 +3015,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-core"
-version = "0.2.16"
+version = "0.2.17"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3082,12 +3092,13 @@ dependencies = [
 
 [[package]]
 name = "nzb-postproc"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "anyhow",
  "nzb-core",
  "opentelemetry",
  "rust-par2",
+ "tar",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -3097,7 +3108,7 @@ dependencies = [
 
 [[package]]
 name = "nzb-web"
-version = "0.4.20"
+version = "0.4.21"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3106,6 +3117,7 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "feed-rs",
+ "flate2",
  "governor",
  "hex",
  "http",
@@ -5102,6 +5114,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tar"
+version = "0.4.46"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f6221d9a6003c78398e3b239969f352578258df48c8eb051caadae0015bc840"
+dependencies = [
+ "filetime",
+ "libc",
+ "xattr",
+]
+
+[[package]]
 name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6968,6 +6991,16 @@ dependencies = [
  "libc",
  "once_cell",
  "pkg-config",
+]
+
+[[package]]
+name = "xattr"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32e45ad4206f6d2479085147f02bc2ef834ac85886624a23575ae137c8aa8156"
+dependencies = [
+ "libc",
+ "rustix",
 ]
 
 [[package]]
