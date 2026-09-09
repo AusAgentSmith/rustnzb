@@ -189,7 +189,15 @@ async fn handle_addurl(
 
             let qm = &state.queue_manager;
             job.work_dir = qm.incomplete_dir().join(&job.id);
-            job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
+            job.output_dir = match qm.output_dir_for(&job.category, &job.name) {
+                Ok(path) => path,
+                Err(error) => {
+                    return Ok(Json(serde_json::json!({
+                        "status": false,
+                        "error": error.to_string()
+                    })));
+                }
+            };
 
             let nzo_id = format!("SABnzbd_nzo_{}", &job.id[..12.min(job.id.len())]);
             let job_name = job.name.clone();
@@ -485,7 +493,15 @@ async fn dispatch_post(
 
                     let qm = &state.queue_manager;
                     job.work_dir = qm.incomplete_dir().join(&job.id);
-                    job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
+                    job.output_dir = match qm.output_dir_for(&job.category, &job.name) {
+                        Ok(path) => path,
+                        Err(error) => {
+                            return Ok(Json(serde_json::json!({
+                                "status": false,
+                                "error": error.to_string()
+                            })));
+                        }
+                    };
 
                     let nzo_id = format!("SABnzbd_nzo_{}", &job.id[..12.min(job.id.len())]);
                     let job_name = job.name.clone();
@@ -592,7 +608,7 @@ fn dispatch_mode(state: &AppState, mode: &str, req: &SabApiRequest) -> Json<serd
         // permanent, correct response -- it matches what real SABnzbd
         // reports when no script directory / scripts are configured
         // (sabnzbd/api.py::_api_get_scripts -> filesystem.py::list_scripts).
-        "get_scripts" => Json(serde_json::json!({ "scripts": ["None"] })),
+        "get_scripts" => handle_get_scripts(state),
 
         "change_cat" => handle_change_cat(state, req),
 
@@ -622,6 +638,31 @@ fn dispatch_mode(state: &AppState, mode: &str, req: &SabApiRequest) -> Json<serd
             "error": format!("Unknown mode: {mode}")
         })),
     }
+}
+
+fn handle_get_scripts(state: &AppState) -> Json<serde_json::Value> {
+    let config = state.config();
+    let mut scripts = Vec::new();
+    if let Some(directory) = config.general.scripts_dir.as_ref()
+        && let Ok(entries) = std::fs::read_dir(directory)
+    {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if entry
+                .file_type()
+                .map(|kind| kind.is_file())
+                .unwrap_or(false)
+                && path.file_name().and_then(|name| name.to_str()).is_some()
+            {
+                scripts.push(path.file_name().unwrap().to_string_lossy().into_owned());
+            }
+        }
+    }
+    scripts.sort();
+    if scripts.is_empty() {
+        scripts.push("None".to_string());
+    }
+    Json(serde_json::json!({ "scripts": scripts }))
 }
 
 /// Return the stable subset of SABnzbd's full-status dashboard contract.
@@ -720,6 +761,16 @@ fn handle_queue(state: &AppState, req: &SabApiRequest) -> Json<serde_json::Value
         Some("priority") => return handle_queue_priority(state, req),
         Some("rename") => return handle_queue_rename(state, req),
         Some("purge") => return handle_queue_purge(state),
+        Some("sort") => {
+            let ascending = !matches!(
+                req.value.as_deref(),
+                Some(value)
+                    if value.eq_ignore_ascii_case("descending")
+                        || value.eq_ignore_ascii_case("desc")
+            );
+            qm.sort_by_remaining_percentage(ascending);
+            return Json(serde_json::json!({ "status": true }));
+        }
         Some("change_complete_action") => return Json(serde_json::json!({ "status": true })),
         _ => {}
     }
@@ -1410,7 +1461,16 @@ fn handle_retry(state: &AppState, req: &SabApiRequest) -> Json<serde_json::Value
         }
     };
 
-    let mut job = match nzb_parser::parse_nzb(&entry.name, &data) {
+    let retry_data = match state.queue_manager.history_get_retry_data(&entry.id) {
+        Ok(data) => data,
+        Err(error) => {
+            return Json(serde_json::json!({ "status": false, "error": error.to_string() }));
+        }
+    };
+    let job = match state
+        .queue_manager
+        .prepare_retry_job(&entry, &data, retry_data.as_deref())
+    {
         Ok(job) => job,
         Err(error) => {
             return Json(serde_json::json!({
@@ -1419,13 +1479,6 @@ fn handle_retry(state: &AppState, req: &SabApiRequest) -> Json<serde_json::Value
             }));
         }
     };
-    job.category = entry.category;
-    job.work_dir = state.queue_manager.incomplete_dir().join(&job.id);
-    job.output_dir = state
-        .queue_manager
-        .complete_dir()
-        .join(&job.category)
-        .join(&job.name);
 
     let nzo_id = format!("SABnzbd_nzo_{}", &job.id[..12.min(job.id.len())]);
     if let Err(error) = state.queue_manager.add_job(job, Some(data)) {
@@ -2042,6 +2095,7 @@ mod tests {
             error_message: (status == JobStatus::Failed).then(|| "broken archive".into()),
             server_stats: Vec::new(),
             nzb_data: (status == JobStatus::Failed).then(Vec::new),
+            retry_data: None,
         }
     }
 
@@ -2222,6 +2276,7 @@ mod tests {
             error_message: None,
             server_stats: Vec::new(),
             nzb_data: None,
+            retry_data: None,
         };
 
         assert_eq!(SabHistorySlot::from_entry(&entry).download_time, 2);
@@ -2468,6 +2523,7 @@ mod tests {
             error_message: None,
             server_stats: Vec::new(),
             nzb_data: None,
+            retry_data: None,
         };
         state.state.queue_manager.with_db(|database| {
             database
@@ -2855,6 +2911,7 @@ mod tests {
             error_message: None,
             server_stats: Vec::new(),
             nzb_data: None,
+            retry_data: None,
         };
         test_state.state.queue_manager.with_db(|database| {
             database

@@ -46,6 +46,12 @@ pub struct ClientResult {
     pub scenario_description: String,
     pub test_type: String,
     pub total_bytes: u64,
+    /// Runtime knobs recorded with every result so cache/connection changes
+    /// cannot be mistaken for an application improvement.
+    #[serde(default = "default_benchmark_cache_bytes")]
+    pub direct_write_cache_bytes: u64,
+    #[serde(default = "default_benchmark_connections")]
+    pub nntp_connections: usize,
     pub outcome: BenchmarkOutcome,
     pub payload_verified: bool,
     pub peak_work_dir_bytes: u64,
@@ -180,7 +186,7 @@ pub async fn run(scenario_selector: String, data_dir: PathBuf, results_dir: Path
 
     // Wait for services
     tracing::info!("Waiting for services...");
-    let rnzb = RustnzbClient::new(config::RUSTNZB_API);
+    let mut rnzb = RustnzbClient::new(config::RUSTNZB_API);
 
     wait_for_service("mock-nntp", "http://mock-nntp:8080/health", 120).await?;
     let sab = SabnzbdClient::from_runtime_config(config::SABNZBD_API, &docker_client).await?;
@@ -188,11 +194,13 @@ pub async fn run(scenario_selector: String, data_dir: PathBuf, results_dir: Path
     sab.configure_mock_server().await?;
     wait_for_service(
         "rustnzb",
-        &format!("{}/api/status", config::RUSTNZB_API),
+        &format!("{}/api/health", config::RUSTNZB_API),
         120,
     )
     .await?;
-    bootstrap_rustnzb_mock_server().await?;
+    rnzb.initialize_auth().await?;
+    bootstrap_rustnzb_mock_server(&rnzb).await?;
+    configure_rustnzb_benchmark_settings(&rnzb).await?;
 
     // Resolve container IDs for metrics and log capture
     metrics.resolve_container_id("sabnzbd").await;
@@ -378,6 +386,8 @@ async fn run_client(
         scenario_description: sc.description.clone(),
         test_type: sc.test_type.to_string(),
         total_bytes: sc.total_size,
+        direct_write_cache_bytes: runtime_benchmark_settings().0,
+        nntp_connections: runtime_benchmark_settings().1,
         outcome: BenchmarkOutcome::SubmissionFailed,
         payload_verified: false,
         peak_work_dir_bytes: 0,
@@ -583,6 +593,38 @@ async fn run_client(
     result
 }
 
+fn runtime_benchmark_settings() -> (u64, usize) {
+    let cache = std::env::var("RUSTNZB_BENCH_CACHE_BYTES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or_else(default_benchmark_cache_bytes);
+    let connections = std::env::var("RUSTNZB_BENCH_CONNECTIONS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or_else(default_benchmark_connections);
+    (cache, connections)
+}
+
+fn default_benchmark_cache_bytes() -> u64 {
+    524_288_000
+}
+
+fn default_benchmark_connections() -> usize {
+    20
+}
+
+async fn configure_rustnzb_benchmark_settings(client: &RustnzbClient) -> Result<()> {
+    let (cache_size, _) = runtime_benchmark_settings();
+    client
+        .put(format!("{}/api/config/general", config::RUSTNZB_API))
+        .json(&serde_json::json!({"cache_size": cache_size}))
+        .timeout(std::time::Duration::from_secs(15))
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(())
+}
+
 async fn reset_fixture_stats() -> Result<()> {
     reqwest::Client::new()
         .post("http://mock-nntp:8080/reset-stats")
@@ -596,21 +638,31 @@ async fn reset_fixture_stats() -> Result<()> {
 /// the service is ready. This avoids relying on image/bootstrap timing for a
 /// bind-mounted TOML file and verifies the workload has a real server before
 /// timing any job.
-async fn bootstrap_rustnzb_mock_server() -> Result<()> {
-    let http = reqwest::Client::new();
+async fn bootstrap_rustnzb_mock_server(client: &RustnzbClient) -> Result<()> {
     let endpoint = format!("{}/api/config/servers", config::RUSTNZB_API);
-    let existing: Vec<serde_json::Value> = http
-        .get(&endpoint)
+    let existing: Vec<serde_json::Value> = client
+        .get(endpoint.clone())
         .timeout(std::time::Duration::from_secs(15))
         .send()
         .await?
         .error_for_status()?
         .json()
         .await?;
-    if !existing
+    let (_, connections) = runtime_benchmark_settings();
+    if let Some(existing_server) = existing
         .iter()
-        .any(|server| server["id"].as_str() == Some("benchmark-mock"))
+        .find(|server| server["id"].as_str() == Some("benchmark-mock"))
     {
+        let mut server = existing_server.clone();
+        server["connections"] = serde_json::json!(connections);
+        client
+            .put(format!("{endpoint}/benchmark-mock"))
+            .json(&server)
+            .timeout(std::time::Duration::from_secs(15))
+            .send()
+            .await?
+            .error_for_status()?;
+    } else {
         let server = serde_json::json!({
             "id": "benchmark-mock",
             "name": "Benchmark mock NNTP",
@@ -620,7 +672,7 @@ async fn bootstrap_rustnzb_mock_server() -> Result<()> {
             "ssl_verify": false,
             "username": "bench",
             "password": "bench",
-            "connections": 20,
+            "connections": connections,
             "priority": 0,
             "enabled": true,
             "retention": 0,
@@ -633,7 +685,8 @@ async fn bootstrap_rustnzb_mock_server() -> Result<()> {
             "trusted_fingerprint": null,
             "connect_timeout_secs": 30,
         });
-        http.post(&endpoint)
+        client
+            .post(endpoint.clone())
             .json(&server)
             .timeout(std::time::Duration::from_secs(15))
             .send()
@@ -641,8 +694,8 @@ async fn bootstrap_rustnzb_mock_server() -> Result<()> {
             .error_for_status()?;
     }
 
-    let configured: Vec<serde_json::Value> = http
-        .get(&endpoint)
+    let configured: Vec<serde_json::Value> = client
+        .get(endpoint)
         .timeout(std::time::Duration::from_secs(15))
         .send()
         .await?
@@ -656,7 +709,7 @@ async fn bootstrap_rustnzb_mock_server() -> Result<()> {
     }) {
         anyhow::bail!("rustnzb benchmark mock NNTP server was not configured");
     }
-    tracing::info!("rustnzb mock NNTP server configured");
+    tracing::info!(connections, "rustnzb mock NNTP server configured");
     Ok(())
 }
 

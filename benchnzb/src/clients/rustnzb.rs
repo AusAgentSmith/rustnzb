@@ -9,6 +9,7 @@ pub struct StatusSummary {
 
 pub struct RustnzbClient {
     url: String,
+    access_token: Option<String>,
     http: reqwest::Client,
 }
 
@@ -16,8 +17,53 @@ impl RustnzbClient {
     pub fn new(url: &str) -> Self {
         Self {
             url: url.trim_end_matches('/').to_string(),
+            access_token: None,
             http: reqwest::Client::new(),
         }
+    }
+
+    pub fn get(&self, url: String) -> reqwest::RequestBuilder {
+        self.authorize(self.http.get(url))
+    }
+
+    pub fn post(&self, url: String) -> reqwest::RequestBuilder {
+        self.authorize(self.http.post(url))
+    }
+
+    pub fn put(&self, url: String) -> reqwest::RequestBuilder {
+        self.authorize(self.http.put(url))
+    }
+
+    fn authorize(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match &self.access_token {
+            Some(token) => request.bearer_auth(token),
+            None => request,
+        }
+    }
+
+    /// Create an isolated first-boot account and retain its short-lived token.
+    /// Benchmark state is disposable, so no credential or API key is stored in
+    /// the repository or passed through the benchmark configuration.
+    pub async fn initialize_auth(&mut self) -> Result<()> {
+        let suffix = rand::random::<u128>();
+        let response: serde_json::Value = self
+            .http
+            .post(format!("{}/api/auth/setup", self.url))
+            .json(&serde_json::json!({
+                "username": format!("benchmark-{suffix:x}"),
+                "password": format!("benchmark-{suffix:032x}"),
+            }))
+            .timeout(std::time::Duration::from_secs(15))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        self.access_token = response["access_token"].as_str().map(str::to_string);
+        if self.access_token.is_none() {
+            anyhow::bail!("rustnzb auth setup did not return an access token");
+        }
+        Ok(())
     }
 
     pub async fn add_nzb(&self, data: &[u8], filename: &str) -> Result<()> {
@@ -27,7 +73,6 @@ impl RustnzbClient {
         let form = reqwest::multipart::Form::new().part("nzbfile", part);
 
         let resp = self
-            .http
             .post(format!("{}/api/queue/add", self.url))
             .multipart(form)
             .timeout(std::time::Duration::from_secs(30))
@@ -42,7 +87,6 @@ impl RustnzbClient {
     pub async fn all_finished(&self) -> Result<bool> {
         // Queue empty = download phase done, but check history for post-processing
         let queue: serde_json::Value = self
-            .http
             .get(format!("{}/api/queue", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -62,7 +106,6 @@ impl RustnzbClient {
 
         // Check history
         let history: serde_json::Value = self
-            .http
             .get(format!("{}/api/history", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -86,7 +129,6 @@ impl RustnzbClient {
     /// successful benchmark result.
     pub async fn terminal_status(&self) -> Result<Option<String>> {
         let queue: serde_json::Value = self
-            .http
             .get(format!("{}/api/queue", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -101,7 +143,6 @@ impl RustnzbClient {
         }
 
         let history: serde_json::Value = self
-            .http
             .get(format!("{}/api/history", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -117,7 +158,6 @@ impl RustnzbClient {
 
     pub async fn progress_fraction(&self) -> f64 {
         let queue: serde_json::Value = match self
-            .http
             .get(format!("{}/api/queue", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -152,7 +192,6 @@ impl RustnzbClient {
 
     pub async fn download_speed(&self) -> f64 {
         let queue: serde_json::Value = match self
-            .http
             .get(format!("{}/api/queue", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -171,7 +210,6 @@ impl RustnzbClient {
 
     pub async fn get_stage_timing(&self) -> Result<StageTiming> {
         let history: serde_json::Value = self
-            .http
             .get(format!("{}/api/history", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -219,7 +257,6 @@ impl RustnzbClient {
     /// Fetch internal metrics from the history API after job completion.
     pub async fn get_internal_metrics(&self) -> Result<crate::runner::InternalMetrics> {
         let history: serde_json::Value = self
-            .http
             .get(format!("{}/api/history", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -289,6 +326,7 @@ impl RustnzbClient {
     pub fn clone_client(&self) -> Self {
         Self {
             url: self.url.clone(),
+            access_token: self.access_token.clone(),
             http: self.http.clone(),
         }
     }
@@ -296,7 +334,6 @@ impl RustnzbClient {
     /// Get queue size (number of jobs in queue).
     pub async fn queue_size(&self) -> Result<usize> {
         let queue: serde_json::Value = self
-            .http
             .get(format!("{}/api/queue", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -310,7 +347,6 @@ impl RustnzbClient {
     /// Get status summary from the API.
     pub async fn get_status(&self) -> Result<StatusSummary> {
         let status: serde_json::Value = self
-            .http
             .get(format!("{}/api/status", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -319,7 +355,6 @@ impl RustnzbClient {
             .await?;
 
         let queue: serde_json::Value = self
-            .http
             .get(format!("{}/api/queue", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()
@@ -343,7 +378,6 @@ impl RustnzbClient {
     /// Get count of history entries.
     pub async fn history_count(&self) -> Result<u64> {
         let history: serde_json::Value = self
-            .http
             .get(format!("{}/api/history", self.url))
             .timeout(std::time::Duration::from_secs(10))
             .send()

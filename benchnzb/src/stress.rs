@@ -156,8 +156,12 @@ pub async fn run(cfg: StressConfig) -> Result<()> {
         wait_for_sabnzbd(&sab, 120).await?;
         StressClient::Sabnzbd(sab)
     } else {
-        wait_for_service("rustnzb", &format!("{RUSTNZB_API}/api/status"), 120).await?;
-        StressClient::Rustnzb(crate::clients::rustnzb::RustnzbClient::new(RUSTNZB_API))
+        wait_for_service("rustnzb", &format!("{RUSTNZB_API}/api/health"), 120).await?;
+        {
+            let mut rustnzb = crate::clients::rustnzb::RustnzbClient::new(RUSTNZB_API);
+            rustnzb.initialize_auth().await?;
+            StressClient::Rustnzb(rustnzb)
+        }
     };
 
     // Clear any stale state

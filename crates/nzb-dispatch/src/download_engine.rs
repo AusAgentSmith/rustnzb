@@ -2660,9 +2660,19 @@ pub(crate) fn build_job_submission(
     let assembler = Arc::new(FileAssembler::new());
     for file in &job.files {
         let output_path = job.work_dir.join(&file.filename);
-        if let Err(e) =
-            assembler.register_file(&job.id, &file.id, output_path, file.articles.len() as u32)
-        {
+        let completed_segments: Vec<u32> = file
+            .articles
+            .iter()
+            .filter(|article| article.downloaded)
+            .map(|article| article.segment_number)
+            .collect();
+        if let Err(e) = assembler.register_file_with_completed_segments(
+            &job.id,
+            &file.id,
+            output_path,
+            file.articles.len() as u32,
+            &completed_segments,
+        ) {
             error!(file = %file.filename, "Failed to register file for assembly: {e}");
         }
     }
@@ -2680,7 +2690,7 @@ pub(crate) fn build_job_submission(
                     filename: file.filename.clone(),
                     message_id: article.message_id.clone(),
                     segment_number: article.segment_number,
-                    tried_servers: Vec::new(),
+                    tried_servers: article.tried_servers.clone(),
                     provider_outcomes: HashMap::new(),
                     tries_on_current: 0,
                 })

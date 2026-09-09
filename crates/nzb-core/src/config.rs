@@ -108,6 +108,27 @@ pub struct GeneralConfig {
     /// 0 = no timeout. Default: 30.
     #[serde(default = "default_article_timeout_secs")]
     pub article_timeout_secs: u64,
+    /// Sort queued jobs by remaining percentage whenever progress changes.
+    #[serde(default)]
+    pub auto_sort_remaining_pct: bool,
+    /// Remove downloaded RSS records after this many days. None keeps them.
+    #[serde(default)]
+    pub rss_downloaded_item_expiry_days: Option<u64>,
+    /// Optional directory containing post-processing scripts.
+    #[serde(default)]
+    pub scripts_dir: Option<PathBuf>,
+    /// Script run after a successful post-processing job.
+    #[serde(default)]
+    pub script_success: Option<PathBuf>,
+    /// Script run after a failed post-processing job.
+    #[serde(default)]
+    pub script_failure: Option<PathBuf>,
+    /// Maximum runtime for a post-processing script.
+    #[serde(default = "default_script_timeout_secs")]
+    pub script_timeout_secs: u64,
+    /// Maximum captured output retained from a post-processing script.
+    #[serde(default = "default_script_output_bytes")]
+    pub script_max_output_bytes: usize,
 }
 
 fn default_rss_history_limit() -> Option<usize> {
@@ -152,6 +173,14 @@ pub fn normalize_history_retention(limit: Option<usize>) -> Option<usize> {
     limit.filter(|max| *max > 0)
 }
 
+fn default_script_timeout_secs() -> u64 {
+    300
+}
+
+fn default_script_output_bytes() -> usize {
+    1024 * 1024
+}
+
 impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
@@ -179,6 +208,13 @@ impl Default for GeneralConfig {
             early_failure_check: true,
             required_completion_pct: default_required_completion_pct(),
             article_timeout_secs: default_article_timeout_secs(),
+            auto_sort_remaining_pct: false,
+            rss_downloaded_item_expiry_days: None,
+            scripts_dir: None,
+            script_success: None,
+            script_failure: None,
+            script_timeout_secs: default_script_timeout_secs(),
+            script_max_output_bytes: default_script_output_bytes(),
         }
     }
 }
@@ -249,6 +285,12 @@ pub struct CategoryConfig {
     pub output_dir: Option<PathBuf>,
     /// Post-processing level: 0=none, 1=repair, 2=unpack, 3=repair+unpack
     pub post_processing: u8,
+    /// Filename or relative-path glob patterns to remove after unpacking.
+    #[serde(default)]
+    pub cleanup_patterns: Vec<String>,
+    /// Extensions to remove after unpacking, including or omitting the dot.
+    #[serde(default)]
+    pub unwanted_extensions: Vec<String>,
 }
 
 impl Default for CategoryConfig {
@@ -257,6 +299,8 @@ impl Default for CategoryConfig {
             name: "Default".into(),
             output_dir: None,
             post_processing: 3,
+            cleanup_patterns: Vec::new(),
+            unwanted_extensions: Vec::new(),
         }
     }
 }
@@ -284,6 +328,9 @@ pub struct RssFeedConfig {
     /// Ignored when filter_regex is set (use download rules instead).
     #[serde(default)]
     pub auto_download: bool,
+    /// Ignore entries older than this many days. None disables age filtering.
+    #[serde(default)]
+    pub max_age_days: Option<u64>,
 }
 
 fn default_poll_interval() -> u64 {
@@ -557,6 +604,7 @@ mod tests {
             name: "movies".into(),
             output_dir: Some("/movies".into()),
             post_processing: 3,
+            ..CategoryConfig::default()
         });
 
         assert!(cfg.category("Default").is_some());
@@ -584,6 +632,7 @@ mod tests {
             name: "movies".into(),
             output_dir: None,
             post_processing: 3,
+            ..CategoryConfig::default()
         });
         assert_eq!(cfg.find_category_or_default("movies").name, "movies");
         assert_eq!(cfg.find_category_or_default("unknown").name, "Default");

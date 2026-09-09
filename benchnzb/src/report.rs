@@ -30,7 +30,7 @@ pub fn write_csv(
 ) -> Result<()> {
     let path = dir.join(format!("benchmark_{timestamp}.csv"));
     let mut out = String::from(
-        "scenario,test_type,client,total_bytes,total_sec,download_sec,par2_sec,unpack_sec,\
+        "scenario,test_type,client,total_bytes,direct_write_cache_bytes,nntp_connections,total_sec,download_sec,par2_sec,unpack_sec,\
          avg_speed_mbps,peak_speed_mbps,cpu_avg,cpu_peak,mem_avg_mb,mem_peak_mb,\
          net_rx_avg_mbps,net_rx_peak_mbps,disk_write_avg_mbps,disk_write_peak_mbps,\
          iowait_avg,iowait_peak,\
@@ -49,13 +49,15 @@ pub fn write_csv(
                 (0.0, 0, 0)
             };
             out.push_str(&format!(
-                "{},{},{},{},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},\
+                "{},{},{},{},{},{},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},{:.2},\
                  {:.2},{:.2},{:.2},{:.2},{:.4},{:.4},\
-                 {:.2},{},{},{:?},{},{},{},{},{},{},{}\n",
+                 {:.2},{},{},{:?},{},{},{},{},{},{},{},{}\n",
                 r.scenario,
                 r.test_type,
                 r.client,
                 r.total_bytes,
+                r.direct_write_cache_bytes,
+                r.nntp_connections,
                 r.total_sec,
                 r.download_sec,
                 r.par2_sec,
@@ -75,7 +77,7 @@ pub fn write_csv(
                 int_dl,
                 int_art_ok,
                 int_art_fail,
-                r.outcome,
+                format!("{:?}", r.outcome),
                 r.payload_verified,
                 r.peak_work_dir_bytes,
                 r.fixture_metrics.payload_bytes_served,

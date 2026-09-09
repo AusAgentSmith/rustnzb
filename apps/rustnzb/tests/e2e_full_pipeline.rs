@@ -15,10 +15,25 @@ async fn test_upload_nzb_and_verify_queue() {
     let app = start_test_server(Vec::new()).await;
     let client = reqwest::Client::new();
     let base_url = &app.base_url;
+    let setup = client
+        .post(format!("{}/api/auth/setup", base_url))
+        .json(&serde_json::json!({
+            "username": "pipeline-test",
+            "password": "pipeline-test-password"
+        }))
+        .send()
+        .await
+        .expect("auth setup failed");
+    assert_eq!(setup.status(), 200);
+    let access = setup.json::<serde_json::Value>().await.unwrap()["access_token"]
+        .as_str()
+        .expect("auth setup should return an access token")
+        .to_string();
 
     // 1. Verify server is up: GET /api/status
     let resp = client
         .get(format!("{}/api/status", base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .expect("Failed to reach server");
@@ -30,6 +45,7 @@ async fn test_upload_nzb_and_verify_queue() {
     // 2. Verify queue is initially empty
     let resp = client
         .get(format!("{}/api/queue", base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .unwrap();
@@ -62,6 +78,7 @@ async fn test_upload_nzb_and_verify_queue() {
             "{}/api/queue/add?category=test&priority=1",
             base_url
         ))
+        .bearer_auth(&access)
         .multipart(form)
         .send()
         .await
@@ -76,6 +93,7 @@ async fn test_upload_nzb_and_verify_queue() {
     // 4. Verify job appears in queue
     let resp = client
         .get(format!("{}/api/queue", base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .unwrap();
@@ -198,6 +216,7 @@ async fn test_upload_nzb_and_verify_queue() {
     // 11. Verify now 2 jobs in queue
     let resp = client
         .get(format!("{}/api/queue", base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .unwrap();
@@ -242,6 +261,7 @@ async fn test_upload_nzb_and_verify_queue() {
     let first_job_id = queue["jobs"][0]["id"].as_str().unwrap();
     let resp = client
         .delete(format!("{}/api/queue/{}", base_url, first_job_id))
+        .bearer_auth(&access)
         .send()
         .await
         .unwrap();
@@ -251,6 +271,7 @@ async fn test_upload_nzb_and_verify_queue() {
     // 15. Verify the remaining queue (may have 1 job or 0 depending on timing)
     let resp = client
         .get(format!("{}/api/queue", base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .unwrap();

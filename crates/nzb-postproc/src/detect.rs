@@ -1,7 +1,7 @@
 //! File detection helpers for post-processing.
 //!
 //! Scans a completed download directory to find par2 files, RAR archives,
-//! 7z archives, ZIP archives, and cleanup candidates.
+//! 7z archives, TAR archives, ZIP archives, and cleanup candidates.
 
 use std::collections::BTreeMap;
 use std::io::Read;
@@ -156,6 +156,7 @@ pub fn parse_rar_volume_at(path: &Path) -> Option<RarVolumeInfo> {
 pub enum ArchiveType {
     Rar,
     SevenZip,
+    Tar,
     Zip,
 }
 
@@ -164,6 +165,7 @@ impl std::fmt::Display for ArchiveType {
         match self {
             Self::Rar => write!(f, "RAR"),
             Self::SevenZip => write!(f, "7z"),
+            Self::Tar => write!(f, "TAR"),
             Self::Zip => write!(f, "ZIP"),
         }
     }
@@ -309,7 +311,7 @@ pub fn find_archives(dir: &Path) -> Vec<(ArchiveType, PathBuf)> {
         archives.push((ArchiveType::Rar, path));
     }
 
-    // 7z (including split volumes), and ZIP
+    // 7z (including split volumes), TAR, and ZIP
     for entry in WalkDir::new(dir).into_iter().flatten() {
         let path = entry.path();
         if !path.is_file() {
@@ -325,6 +327,8 @@ pub fn find_archives(dir: &Path) -> Vec<(ArchiveType, PathBuf)> {
         } else if is_split_7z_first_volume(&name) {
             // Split 7z: .7z.001 is the first volume — 7z handles the rest
             archives.push((ArchiveType::SevenZip, path.to_path_buf()));
+        } else if name.ends_with(".tar") {
+            archives.push((ArchiveType::Tar, path.to_path_buf()));
         } else if name.ends_with(".zip") {
             archives.push((ArchiveType::Zip, path.to_path_buf()));
         }
@@ -432,7 +436,11 @@ fn is_cleanup_candidate_at(path: &Path, name_lower: &str) -> bool {
 /// so obfuscated volumes are caught too.
 fn is_cleanup_candidate(name: &str) -> bool {
     // Par2 files: .par2
-    if name.ends_with(".par2") || name.ends_with(".zip") || name.ends_with(".7z") {
+    if name.ends_with(".par2")
+        || name.ends_with(".zip")
+        || name.ends_with(".7z")
+        || name.ends_with(".tar")
+    {
         return true;
     }
 

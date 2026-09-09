@@ -111,6 +111,12 @@ impl TokenStore {
         self.refresh_tokens.write().remove(refresh_token);
     }
 
+    /// Revoke every session after credentials change.
+    pub fn revoke_all(&self) {
+        self.access_tokens.write().clear();
+        self.refresh_tokens.write().clear();
+    }
+
     pub fn cleanup_expired(&self) {
         let now = Instant::now();
         self.access_tokens
@@ -177,6 +183,30 @@ impl CredentialStore {
         Ok(())
     }
 
+    /// Set credentials exactly once. The check and write are serialized so
+    /// two first-boot setup requests cannot race into different accounts.
+    pub fn initialize_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
+        let mut current = self.credentials.write();
+        if current.is_some() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                "credentials already configured",
+            ));
+        }
+        let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
+        if let Some(parent) = self.file_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&self.file_path, &json)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&self.file_path, std::fs::Permissions::from_mode(0o600))?;
+        }
+        *current = Some(creds);
+        Ok(())
+    }
+
     pub fn validate(&self, username: &str, password: &str) -> bool {
         match &*self.credentials.read() {
             Some(creds) => {
@@ -238,11 +268,6 @@ pub async fn h_auth_setup(
     State(state): State<ApiState>,
     Json(req): Json<SetupRequest>,
 ) -> impl IntoResponse {
-    // Only allow if no credentials exist yet
-    if state.credential_store.has_credentials() {
-        return (StatusCode::FORBIDDEN, "credentials already configured").into_response();
-    }
-
     if req.username.is_empty() || req.password.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
@@ -251,14 +276,19 @@ pub async fn h_auth_setup(
             .into_response();
     }
 
-    match state.credential_store.set_credentials(StoredCredentials {
-        username: req.username,
-        password: req.password,
-    }) {
+    match state
+        .credential_store
+        .initialize_credentials(StoredCredentials {
+            username: req.username,
+            password: req.password,
+        }) {
         Ok(_) => {
             // Create tokens for the new user so they're immediately logged in
             let tokens = state.token_store.create_tokens();
             (StatusCode::OK, Json(tokens)).into_response()
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            (StatusCode::FORBIDDEN, "credentials are already configured").into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -300,9 +330,19 @@ pub async fn h_auth_change_credentials(
         username: req.new_username.unwrap_or(current_creds.username),
         password: req.new_password.unwrap_or(current_creds.password),
     };
+    if new_creds.username.is_empty() || new_creds.password.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            "username and password cannot be empty",
+        )
+            .into_response();
+    }
 
     match state.credential_store.set_credentials(new_creds) {
-        Ok(_) => StatusCode::OK.into_response(),
+        Ok(_) => {
+            state.token_store.revoke_all();
+            StatusCode::OK.into_response()
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("failed to save credentials: {e}"),

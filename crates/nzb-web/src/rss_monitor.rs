@@ -112,6 +112,15 @@ impl RssMonitor {
                 info!(pruned, "Pruned old RSS items");
             }
 
+            if let Some(days) = cfg.general.rss_downloaded_item_expiry_days {
+                let cutoff = (Utc::now() - chrono::Duration::days(days as i64)).to_rfc3339();
+                if let Ok(expired) = self.queue_manager.rss_items_expire_downloaded(&cutoff)
+                    && expired > 0
+                {
+                    info!(expired, "Expired downloaded RSS items");
+                }
+            }
+
             // Use the minimum poll interval across all enabled feeds, defaulting to 15 min
             let interval = feeds
                 .iter()
@@ -184,6 +193,14 @@ impl RssMonitor {
                 .next()
                 .unwrap_or(0);
             let published_at = entry.published.or(entry.updated);
+
+            if let Some(max_age_days) = feed.max_age_days
+                && let Some(published_at) = published_at
+                && now.signed_duration_since(published_at).num_seconds()
+                    > (max_age_days as i64).saturating_mul(86_400)
+            {
+                continue;
+            }
 
             pending.push(PendingItem {
                 item: RssItem {
@@ -477,6 +494,7 @@ mod tests {
             filter_regex: None,
             enabled: true,
             auto_download: true,
+            max_age_days: None,
         };
 
         let error = monitor

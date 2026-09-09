@@ -10,6 +10,8 @@ cache_size = 524288000  # 500 MB
 log_level = "info"
 # log_file = "data/rustnzb.log"
 # history_retention = 100  # Number of NZBs to keep in history (omit or 0 = keep all)
+# auto_sort_remaining_pct = false  # Keep queued items ordered by remaining work
+# rss_downloaded_item_expiry_days = 30  # Remove downloaded RSS records after this many days
 # Independent post-processing jobs overlap downloads. Separate repair and
 # extraction gates allow those stages to overlap safely across different jobs.
 # These limits are applied at process start.
@@ -18,6 +20,12 @@ max_repair_workers = 1
 max_extract_workers = 1
 direct_unpack = true  # Extract RAR volumes while downloading when unrar is available
 max_nested_archive_depth = 5  # 0=outer archive only; protects against unbounded nesting
+# Post-processing hooks run without a shell, with a bounded timeout and output capture.
+# scripts_dir = "/data/scripts"
+# script_success = "on-success.sh"
+# script_failure = "on-failure.sh"
+script_timeout_secs = 300
+script_max_output_bytes = 1048576
 
 # NNTP servers — add as many as needed, ordered by priority
 # Use the web UI "Servers" tab to add/edit servers, or uncomment below:
@@ -64,6 +72,8 @@ post_processing = 3  # 0=none, 1=repair, 2=unpack, 3=repair+unpack
 name = "movies"
 output_dir = "movies"
 post_processing = 3
+# cleanup_patterns = ["*.nfo", "sample/*"]
+# unwanted_extensions = [".sfv", ".jpg"]
 
 [[categories]]
 name = "tv"

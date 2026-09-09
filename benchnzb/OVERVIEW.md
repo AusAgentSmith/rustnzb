@@ -31,6 +31,10 @@ metadata.
 
 Runs SABnzbd and rustnzb sequentially against the same NZB, using a file-backed mock NNTP server. Measures download speed, post-processing time, CPU, memory, network, and disk I/O.
 
+RustNZB cache and NNTP connection settings can be swept without editing the
+fixture config. Set `RUSTNZB_BENCH_CACHE_BYTES` and
+`RUSTNZB_BENCH_CONNECTIONS`; both values are stored with every result row.
+
 ### How it works
 
 1. `run.sh` seeds configs, launches Docker Compose (4 containers)

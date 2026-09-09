@@ -84,6 +84,22 @@ Both clients are configured for raw download throughput with post-processing dis
 | Speed limit | None | None |
 | NNTP server | synth-nntp (shared) | synth-nntp (shared) |
 
+### Cache and connection sweep
+
+The v1 runner accepts two environment variables for controlled RustNZB
+experiments:
+
+```bash
+RUSTNZB_BENCH_CACHE_BYTES=268435456 \
+RUSTNZB_BENCH_CONNECTIONS=8 \
+./run.sh --scenarios verify
+```
+
+The runner applies the cache setting through the RustNZB configuration API,
+updates the benchmark NNTP server connection count on every run, and records
+both values in each JSON and CSV result. This keeps comparisons reproducible
+when direct-write buffering or connection defaults change.
+
 ## Known Differences
 
 The following differences between clients are inherent to their architecture and are not corrected for in the test:

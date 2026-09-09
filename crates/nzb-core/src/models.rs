@@ -205,6 +205,9 @@ pub struct HistoryEntry {
     /// Raw NZB XML data (for retry)
     #[serde(skip_serializing)]
     pub nzb_data: Option<Vec<u8>>,
+    /// Serialized per-article outcomes used for missing-only retry.
+    #[serde(skip_serializing)]
+    pub retry_data: Option<Vec<u8>>,
 }
 
 /// Immutable statistics ledger row recorded when a job leaves the queue.
