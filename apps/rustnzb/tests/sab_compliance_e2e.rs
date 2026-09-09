@@ -134,13 +134,15 @@ async fn addfile_reports_enqueue_failure_as_status_false_not_500() {
     let app = start_test_server_broken_storage().await;
     let client = reqwest::Client::new();
 
-    let form = reqwest::multipart::Form::new().text("mode", "addfile").part(
-        "name",
-        reqwest::multipart::Part::bytes(sample_nzb_bytes())
-            .file_name("sample.nzb")
-            .mime_str("application/x-nzb")
-            .unwrap(),
-    );
+    let form = reqwest::multipart::Form::new()
+        .text("mode", "addfile")
+        .part(
+            "name",
+            reqwest::multipart::Part::bytes(sample_nzb_bytes())
+                .file_name("sample.nzb")
+                .mime_str("application/x-nzb")
+                .unwrap(),
+        );
 
     let response = client
         .post(format!("{}/sabnzbd/api", app.base_url))
