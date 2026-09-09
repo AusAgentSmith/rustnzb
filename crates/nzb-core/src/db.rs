@@ -602,7 +602,15 @@ impl Database {
     }
 
     /// Enforce history retention limit by deleting oldest entries.
+    ///
+    /// A limit of `0` is treated as "keep all" and is a no-op: the
+    /// `LIMIT 0` subquery would otherwise match nothing and delete every
+    /// row (GH #136). Callers normalize zero away already; this is the last
+    /// line of defence.
     pub fn history_enforce_retention(&self, max_entries: usize) -> Result<(), NzbError> {
+        if max_entries == 0 {
+            return Ok(());
+        }
         self.conn.execute(
             "DELETE FROM history WHERE id NOT IN (
                 SELECT id FROM history ORDER BY completed_at DESC LIMIT ?1
@@ -1302,6 +1310,19 @@ mod tests {
         assert_eq!(db.history_count().unwrap(), 5);
 
         db.history_enforce_retention(3).unwrap();
+        assert_eq!(db.history_count().unwrap(), 3);
+    }
+
+    /// GH #136: a retention limit of zero must not wipe history.
+    #[test]
+    fn test_history_enforce_retention_zero_keeps_all() {
+        let db = Database::open_memory().unwrap();
+        for i in 0..3 {
+            db.history_insert(&make_history(&format!("ret0-{i}"), &format!("Job {i}")))
+                .unwrap();
+        }
+
+        db.history_enforce_retention(0).unwrap();
         assert_eq!(db.history_count().unwrap(), 3);
     }
 

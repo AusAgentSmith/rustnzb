@@ -54,7 +54,8 @@ pub struct GeneralConfig {
     pub log_level: String,
     /// Log file path (None = stdout only)
     pub log_file: Option<PathBuf>,
-    /// History retention: how many NZBs to keep in history (None = keep all)
+    /// History retention: how many NZBs to keep in history.
+    /// `None` or `Some(0)` both mean keep all; see [`normalize_history_retention`].
     pub history_retention: Option<usize>,
     /// Max number of NZBs downloading simultaneously (default 1)
     pub max_active_downloads: usize,
@@ -139,6 +140,16 @@ fn default_max_nested_archive_depth() -> u8 {
 
 fn default_article_timeout_secs() -> u64 {
     30
+}
+
+/// Normalize a history retention limit so that `0` means "keep all".
+///
+/// SABnzbd users (and this codebase's own `speed_limit_bps`) treat `0` as
+/// unlimited. Enforcing a literal limit of zero would delete every history
+/// row immediately after each completion (GH #136), so a zero is folded into
+/// `None` at every entry point before it reaches the database.
+pub fn normalize_history_retention(limit: Option<usize>) -> Option<usize> {
+    limit.filter(|max| *max > 0)
 }
 
 impl Default for GeneralConfig {
@@ -406,6 +417,13 @@ mod tests {
         assert_eq!(cfg.rss_history_limit, Some(500));
         assert!(cfg.direct_unpack);
         assert_eq!(cfg.max_nested_archive_depth, 5);
+    }
+
+    #[test]
+    fn zero_history_retention_normalizes_to_keep_all() {
+        assert_eq!(normalize_history_retention(Some(0)), None);
+        assert_eq!(normalize_history_retention(None), None);
+        assert_eq!(normalize_history_retention(Some(25)), Some(25));
     }
 
     #[test]

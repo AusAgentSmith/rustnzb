@@ -24,7 +24,9 @@ const MAX_FETCH_BODY_BYTES: usize = 100 * 1024 * 1024;
 
 #[cfg(feature = "webdav")]
 use nzb_web::nzb_core::config::DavConfig;
-use nzb_web::nzb_core::config::{CategoryConfig, RssFeedConfig, ServerConfig};
+use nzb_web::nzb_core::config::{
+    CategoryConfig, RssFeedConfig, ServerConfig, normalize_history_retention,
+};
 use nzb_web::nzb_core::models::*;
 use nzb_web::nzb_core::nzb_parser;
 use nzb_web::nzb_core::sabnzbd_import;
@@ -1111,10 +1113,13 @@ pub async fn h_history_retention_set(
     State(state): State<Arc<AppState>>,
     Json(body): Json<HistoryRetentionBody>,
 ) -> Result<Json<SimpleResponse>, ApiError> {
+    // 0 means "keep all" (GH #136); persist the normalized value so GET
+    // reports what is actually enforced.
+    let retention = normalize_history_retention(body.retention);
     let mut config = (*state.config()).clone();
-    config.general.history_retention = body.retention;
+    config.general.history_retention = retention;
     state.update_config(config).map_err(ApiError::from)?;
-    state.queue_manager.set_history_retention(body.retention);
+    state.queue_manager.set_history_retention(retention);
     Ok(Json(SimpleResponse { status: true }))
 }
 
@@ -1547,6 +1552,7 @@ pub async fn h_general_update(
         config.general.max_extract_workers = max.max(1);
     }
     if let Some(ret) = body.history_retention {
+        let ret = normalize_history_retention(ret);
         state.queue_manager.set_history_retention(ret);
         config.general.history_retention = ret;
     }
