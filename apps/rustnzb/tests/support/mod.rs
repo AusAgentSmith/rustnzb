@@ -37,6 +37,23 @@ impl Drop for TestApp {
 }
 
 pub async fn start_test_server(server_configs: Vec<ServerConfig>) -> TestApp {
+    start_test_server_inner(server_configs, false).await
+}
+
+/// Like [`start_test_server`], but points the incomplete directory at a
+/// regular *file* instead of a directory, so that `add_job`'s
+/// `create_dir_all(incomplete_dir/<job id>)` fails deterministically
+/// (`NotADirectory`) on every platform -- including as root, where a
+/// permission-based failure would not trigger. Used to exercise the enqueue
+/// failure path (rustnzb#129) without depending on filesystem permissions.
+pub async fn start_test_server_broken_storage() -> TestApp {
+    start_test_server_inner(Vec::new(), true).await
+}
+
+async fn start_test_server_inner(
+    server_configs: Vec<ServerConfig>,
+    broken_incomplete_dir: bool,
+) -> TestApp {
     let base = AppConfig::default();
     let config = AppConfig {
         general: nzb_web::nzb_core::config::GeneralConfig {
@@ -55,7 +72,14 @@ pub async fn start_test_server(server_configs: Vec<ServerConfig>) -> TestApp {
     let tmp_dir = tempfile::tempdir().expect("Failed to create temp dir");
     let incomplete_dir = tmp_dir.path().join("incomplete");
     let complete_dir = tmp_dir.path().join("complete");
-    std::fs::create_dir_all(&incomplete_dir).expect("Failed to create incomplete dir");
+    if broken_incomplete_dir {
+        // Create `incomplete` as a file so per-job `create_dir_all` under it
+        // fails, exercising add_job's error path.
+        std::fs::write(&incomplete_dir, b"not a directory")
+            .expect("Failed to create incomplete file");
+    } else {
+        std::fs::create_dir_all(&incomplete_dir).expect("Failed to create incomplete dir");
+    }
     std::fs::create_dir_all(&complete_dir).expect("Failed to create complete dir");
 
     let log_buffer = nzb_web::LogBuffer::new();

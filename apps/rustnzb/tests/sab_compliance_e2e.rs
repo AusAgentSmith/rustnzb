@@ -16,7 +16,7 @@
 
 mod support;
 
-use support::{sample_nzb_bytes, start_test_server};
+use support::{sample_nzb_bytes, start_test_server, start_test_server_broken_storage};
 
 /// Serves `body` once over a raw TCP listener, returning the URL to fetch it
 /// from. Used to exercise `mode=addurl` (a real HTTP GET fetch) without
@@ -119,6 +119,51 @@ async fn addfile_applies_category_and_priority_and_reports_them_in_queue() {
     assert_eq!(slot["cat"], "tv");
     // sabnzbd/constants.py: HIGH_PRIORITY = 1 -> "High", not "Normal".
     assert_eq!(slot["priority"], "High");
+}
+
+/// `mode=addfile` must report a failed enqueue as SABnzbd's
+/// `{"status": false, "error": ...}` on HTTP 200 -- never a 5xx. Real
+/// SABnzbd's `api.py` always returns 200 with a `status` field, and Sonarr
+/// treats a 500 from a SAB download client as a hard, non-retryable grab
+/// failure even though the NZB parsed fine. Regression coverage for
+/// TheDancingDeveloper-org/rustnzb#129, where the queue insert failed after
+/// the handler had already logged success, and the error surfaced to the
+/// client as an opaque HTTP 500.
+#[tokio::test]
+async fn addfile_reports_enqueue_failure_as_status_false_not_500() {
+    let app = start_test_server_broken_storage().await;
+    let client = reqwest::Client::new();
+
+    let form = reqwest::multipart::Form::new().text("mode", "addfile").part(
+        "name",
+        reqwest::multipart::Part::bytes(sample_nzb_bytes())
+            .file_name("sample.nzb")
+            .mime_str("application/x-nzb")
+            .unwrap(),
+    );
+
+    let response = client
+        .post(format!("{}/sabnzbd/api", app.base_url))
+        .multipart(form)
+        .send()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        response.status(),
+        reqwest::StatusCode::OK,
+        "SAB addfile must return HTTP 200 even when the enqueue fails, not a 5xx"
+    );
+    let body: serde_json::Value = response.json().await.unwrap();
+    assert_eq!(
+        body["status"],
+        serde_json::json!(false),
+        "failed enqueue must report status:false, resp={body:?}"
+    );
+    assert!(
+        body["error"].as_str().is_some(),
+        "failed enqueue must include an error message, resp={body:?}"
+    );
 }
 
 /// `mode=addurl` fetches a remote NZB and has no file body to upload, so

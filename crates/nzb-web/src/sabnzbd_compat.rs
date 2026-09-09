@@ -178,16 +178,33 @@ async fn handle_addurl(
             job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
 
             let nzo_id = format!("SABnzbd_nzo_{}", &job.id[..12.min(job.id.len())]);
+            let job_name = job.name.clone();
+            let job_id = job.id.clone();
+            let file_count = job.file_count;
+
+            // As with addfile, report a failed enqueue as `status: false` on
+            // HTTP 200 rather than a 500, and log success only after the
+            // enqueue succeeds (rustnzb#129).
+            let nzb_bytes = data.to_vec();
+            if let Err(error) = qm.add_job(job, Some(nzb_bytes)) {
+                tracing::error!(
+                    name = %job_name,
+                    id = %job_id,
+                    %error,
+                    "Failed to add NZB to queue via URL (arr API)"
+                );
+                return Ok(Json(serde_json::json!({
+                    "status": false,
+                    "error": error.to_string()
+                })));
+            }
 
             tracing::info!(
-                name = %job.name,
-                id = %job.id,
-                files = job.file_count,
+                name = %job_name,
+                id = %job_id,
+                files = file_count,
                 "NZB added to queue via URL (arr API)"
             );
-
-            let nzb_bytes = data.to_vec();
-            qm.add_job(job, Some(nzb_bytes)).map_err(ApiError::from)?;
 
             Ok(Json(serde_json::json!({
                 "status": true,
@@ -457,16 +474,38 @@ async fn dispatch_post(
                     job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
 
                     let nzo_id = format!("SABnzbd_nzo_{}", &job.id[..12.min(job.id.len())]);
+                    let job_name = job.name.clone();
+                    let job_id = job.id.clone();
+                    let file_count = job.file_count;
+
+                    // SABnzbd's addfile always responds HTTP 200 with a JSON
+                    // `status` field; a failed enqueue is reported as
+                    // `status: false`, never a 5xx. Propagating the error as a
+                    // 500 here made Sonarr treat an otherwise-reportable
+                    // failure as a hard download-client error, and the log
+                    // claimed success before the enqueue that actually failed
+                    // (rustnzb#129). Enqueue first, then report the real
+                    // outcome -- mirroring the history-retry path.
+                    let nzb_bytes = data.clone();
+                    if let Err(error) = qm.add_job(job, Some(nzb_bytes)) {
+                        tracing::error!(
+                            name = %job_name,
+                            id = %job_id,
+                            %error,
+                            "Failed to add NZB to queue via arr API"
+                        );
+                        return Ok(Json(serde_json::json!({
+                            "status": false,
+                            "error": error.to_string()
+                        })));
+                    }
 
                     tracing::info!(
-                        name = %job.name,
-                        id = %job.id,
-                        files = job.file_count,
+                        name = %job_name,
+                        id = %job_id,
+                        files = file_count,
                         "NZB added to queue via arr API"
                     );
-
-                    let nzb_bytes = data.clone();
-                    qm.add_job(job, Some(nzb_bytes)).map_err(ApiError::from)?;
 
                     Ok(Json(serde_json::json!({
                         "status": true,
