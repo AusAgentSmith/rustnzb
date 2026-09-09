@@ -5,6 +5,7 @@
 //! to interact with.
 
 use std::collections::{HashMap, HashSet};
+use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
@@ -12,6 +13,7 @@ use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info, warn};
 
@@ -21,7 +23,7 @@ use crate::nzb_core::models::*;
 use crate::nzb_core::nzb_parser;
 use nzb_postproc::{
     PostProcConfig, PostProcLimits, PostProcResourcePool, PostProcResourceSnapshot,
-    has_usable_output, parse_rar_volume, run_pipeline_with_resources,
+    has_usable_output, parse_rar_volume, run_pipeline_with_cleanup,
 };
 
 use crate::direct_unpack::DirectUnpacker;
@@ -30,7 +32,12 @@ use nzb_dispatch::{
     BandwidthConfig, BandwidthLimiter, DispatchEngine, DispatchHandle, ProgressUpdate,
 };
 
-fn cleanup_terminal_work_dir(job_id: &str, work_dir: &std::path::Path, final_status: JobStatus) {
+fn cleanup_terminal_work_dir(
+    job_id: &str,
+    work_dir: &std::path::Path,
+    final_status: JobStatus,
+    retain_for_retry: bool,
+) {
     if !work_dir.exists() {
         return;
     }
@@ -38,6 +45,10 @@ fn cleanup_terminal_work_dir(job_id: &str, work_dir: &std::path::Path, final_sta
     let cleanup_result = match final_status {
         // Failed downloads can be retried from their retained NZB history, so
         // retaining raw articles only leaks disk without improving recovery.
+        JobStatus::Failed if retain_for_retry => {
+            info!(job_id, work_dir = %work_dir.display(), "Retaining partial job files for missing-article retry");
+            return;
+        }
         JobStatus::Failed => std::fs::remove_dir_all(work_dir),
         // A successful job must not lose files if an output move failed. Only
         // remove the directory after the move/pipeline has left it empty.
@@ -129,11 +140,17 @@ pub struct GlobalStatisticsData {
 
 /// Get free disk space for a path (returns 0 on error).
 fn get_disk_free(path: &std::path::Path) -> u64 {
+    let mut candidate = path.to_path_buf();
+    while !candidate.exists() {
+        if !candidate.pop() {
+            return 0;
+        }
+    }
     #[cfg(unix)]
     {
         use std::ffi::CString;
         use std::mem::MaybeUninit;
-        let c_path = match CString::new(path.to_string_lossy().as_bytes()) {
+        let c_path = match CString::new(candidate.to_string_lossy().as_bytes()) {
             Ok(p) => p,
             Err(_) => return 0,
         };
@@ -149,9 +166,117 @@ fn get_disk_free(path: &std::path::Path) -> u64 {
     }
     #[cfg(not(unix))]
     {
-        let _ = path;
+        let _ = candidate;
         0
     }
+}
+
+fn disk_space_available(threshold: u64, paths: &[&std::path::Path]) -> bool {
+    threshold == 0 || paths.iter().all(|path| get_disk_free(path) >= threshold)
+}
+
+#[derive(Debug, Clone, Default)]
+struct PostProcScriptConfig {
+    scripts_dir: Option<std::path::PathBuf>,
+    success: Option<std::path::PathBuf>,
+    failure: Option<std::path::PathBuf>,
+    timeout: Duration,
+    max_output_bytes: usize,
+}
+
+fn resolve_script_path(
+    scripts_dir: Option<&std::path::Path>,
+    configured: &std::path::Path,
+) -> io::Result<std::path::PathBuf> {
+    let candidate = if configured.is_absolute() {
+        configured.to_path_buf()
+    } else {
+        let root = scripts_dir.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "relative post-processing scripts require scripts_dir",
+            )
+        })?;
+        crate::nzb_core::path::safe_join(root, &configured.to_string_lossy()).ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "post-processing script path is unsafe",
+            )
+        })?
+    };
+    let resolved = std::fs::canonicalize(candidate)?;
+    if !std::fs::metadata(&resolved)?.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "post-processing script is not a regular file",
+        ));
+    }
+    if let Some(root) = scripts_dir {
+        let root = std::fs::canonicalize(root)?;
+        if !resolved.starts_with(root) {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "post-processing script is outside scripts_dir",
+            ));
+        }
+    }
+    Ok(resolved)
+}
+
+async fn read_script_output<R: AsyncRead + Unpin>(
+    reader: R,
+    max_output_bytes: usize,
+) -> io::Result<(Vec<u8>, bool)> {
+    let mut output = Vec::new();
+    let mut limited = reader.take(max_output_bytes.saturating_add(1) as u64);
+    limited.read_to_end(&mut output).await?;
+    let truncated = output.len() > max_output_bytes;
+    output.truncate(max_output_bytes);
+    Ok((output, truncated))
+}
+
+fn regular_output_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut pending = vec![root.to_path_buf()];
+    let mut files = Vec::new();
+    while let Some(directory) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(directory) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if metadata.file_type().is_symlink() {
+                continue;
+            }
+            if metadata.is_dir() {
+                pending.push(path);
+            } else if metadata.is_file() {
+                files.push(path);
+            }
+        }
+    }
+    files.sort();
+    files
+}
+
+fn script_output_message(stdout: &(Vec<u8>, bool), stderr: &(Vec<u8>, bool)) -> String {
+    let mut message = String::from_utf8_lossy(&stdout.0).trim().to_string();
+    let error = String::from_utf8_lossy(&stderr.0).trim().to_string();
+    if !error.is_empty() {
+        if !message.is_empty() {
+            message.push_str("; ");
+        }
+        message.push_str(&error);
+    }
+    if stdout.1 || stderr.1 {
+        if !message.is_empty() {
+            message.push_str("; ");
+        }
+        message.push_str("output truncated");
+    }
+    message
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +297,113 @@ struct JobCheckpoint {
     articles_failed: usize,
     /// Number of files completed
     files_completed: usize,
+    /// Full article outcomes. This was added after the original segment-only
+    /// checkpoint so history retries can distinguish missing articles from
+    /// articles that were already written before a failure.
+    #[serde(default)]
+    articles: HashMap<String, Vec<ArticleCheckpoint>>,
+    /// Retained partial work directory for missing-only history retry.
+    #[serde(default)]
+    work_dir: Option<std::path::PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ArticleCheckpoint {
+    message_id: String,
+    segment_number: u32,
+    bytes: u64,
+    downloaded: bool,
+    data_begin: Option<u64>,
+    data_size: Option<u64>,
+    crc32: Option<u32>,
+    tried_servers: Vec<String>,
+    tries: u32,
+}
+
+fn checkpoint_for_job(job: &NzbJob) -> JobCheckpoint {
+    JobCheckpoint {
+        files: job
+            .files
+            .iter()
+            .map(|file| {
+                (
+                    file.filename.clone(),
+                    file.articles
+                        .iter()
+                        .filter(|article| article.downloaded)
+                        .map(|article| article.segment_number)
+                        .collect(),
+                )
+            })
+            .collect(),
+        downloaded_bytes: job.downloaded_bytes,
+        articles_downloaded: job.articles_downloaded,
+        articles_failed: job.articles_failed,
+        files_completed: job.files_completed,
+        articles: job
+            .files
+            .iter()
+            .map(|file| {
+                (
+                    file.filename.clone(),
+                    file.articles
+                        .iter()
+                        .map(|article| ArticleCheckpoint {
+                            message_id: article.message_id.clone(),
+                            segment_number: article.segment_number,
+                            bytes: article.bytes,
+                            downloaded: article.downloaded,
+                            data_begin: article.data_begin,
+                            data_size: article.data_size,
+                            crc32: article.crc32,
+                            tried_servers: article.tried_servers.clone(),
+                            tries: article.tries,
+                        })
+                        .collect(),
+                )
+            })
+            .collect(),
+        work_dir: Some(job.work_dir.clone()),
+    }
+}
+
+fn apply_checkpoint(job: &mut NzbJob, checkpoint: &JobCheckpoint) {
+    job.downloaded_bytes = checkpoint.downloaded_bytes;
+    job.articles_downloaded = checkpoint.articles_downloaded;
+    job.articles_failed = checkpoint.articles_failed;
+    job.files_completed = checkpoint.files_completed;
+    for file in &mut job.files {
+        let outcomes = checkpoint.articles.get(&file.filename);
+        let segments = checkpoint
+            .files
+            .get(&file.filename)
+            .or_else(|| checkpoint.files.get(&file.id));
+        let mut file_bytes: u64 = 0;
+        for article in &mut file.articles {
+            if let Some(outcome) = outcomes.and_then(|items| {
+                items.iter().find(|item| {
+                    item.message_id == article.message_id
+                        || item.segment_number == article.segment_number
+                })
+            }) {
+                article.downloaded = outcome.downloaded;
+                article.data_begin = outcome.data_begin;
+                article.data_size = outcome.data_size;
+                article.crc32 = outcome.crc32;
+                article.tried_servers = outcome.tried_servers.clone();
+                article.tries = outcome.tries;
+            } else if segments.is_some_and(|items| items.contains(&article.segment_number)) {
+                // Checkpoints written before article outcomes existed only
+                // recorded downloaded segment numbers.
+                article.downloaded = true;
+            }
+            if article.downloaded {
+                file_bytes = file_bytes.saturating_add(article.data_size.unwrap_or(article.bytes));
+            }
+        }
+        file.bytes_downloaded = file_bytes;
+        file.assembled = file.articles.iter().all(|article| article.downloaded);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -715,12 +947,16 @@ pub struct QueueManager {
     add_tx: broadcast::Sender<JobAddedEvent>,
     /// Max concurrent active downloads (0 = unlimited).
     max_active_downloads: AtomicUsize,
+    /// Automatically keep the queue ordered by remaining percentage.
+    auto_sort_remaining_pct: AtomicBool,
+    /// Optional bounded post-processing hooks.
+    postproc_scripts: Mutex<PostProcScriptConfig>,
     /// Stage-specific resource gates shared by all post-processing jobs.
     postproc_resources: Arc<PostProcResourcePool>,
     /// Category configs for post-processing decisions.
     categories: Mutex<Vec<CategoryConfig>>,
     /// Minimum free disk space in bytes before pausing downloads.
-    min_free_space: u64,
+    min_free_space: AtomicU64,
     /// Bandwidth limiter for throttling downloads.
     bandwidth: Arc<BandwidthLimiter>,
     /// Whether direct unpack (RAR extraction during download) is enabled.
@@ -839,9 +1075,11 @@ impl QueueManager {
             log_buffer: Some(log_buffer),
             add_tx,
             max_active_downloads: AtomicUsize::new(max_active_downloads),
+            auto_sort_remaining_pct: AtomicBool::new(false),
+            postproc_scripts: Mutex::new(PostProcScriptConfig::default()),
             postproc_resources: PostProcResourcePool::new(postproc_limits),
             categories: Mutex::new(categories),
-            min_free_space,
+            min_free_space: AtomicU64::new(min_free_space),
             bandwidth,
             direct_unpack_enabled: AtomicBool::new(direct_unpack),
             max_nested_archive_depth,
@@ -993,6 +1231,62 @@ impl QueueManager {
         self.start_next_queued();
     }
 
+    /// Enable or disable automatic remaining-percentage ordering.
+    pub fn set_auto_sort_remaining_pct(&self, enabled: bool) {
+        self.auto_sort_remaining_pct
+            .store(enabled, Ordering::Relaxed);
+    }
+
+    pub fn auto_sort_remaining_pct(&self) -> bool {
+        self.auto_sort_remaining_pct.load(Ordering::Relaxed)
+    }
+
+    /// Configure the optional success and failure hooks used after
+    /// post-processing. Script paths are resolved and confined when a job
+    /// invokes them; keeping the raw config here allows live updates without
+    /// rebuilding the queue manager.
+    pub fn set_postproc_scripts(
+        &self,
+        scripts_dir: Option<std::path::PathBuf>,
+        success: Option<std::path::PathBuf>,
+        failure: Option<std::path::PathBuf>,
+        timeout_secs: u64,
+        max_output_bytes: usize,
+    ) {
+        *self.postproc_scripts.lock() = PostProcScriptConfig {
+            scripts_dir,
+            success,
+            failure,
+            timeout: Duration::from_secs(timeout_secs.max(1)),
+            max_output_bytes,
+        };
+    }
+
+    /// Stable sort of the queue by remaining work percentage. The original
+    /// queue order is retained for equal percentages, which keeps repeated
+    /// manual sorts deterministic and avoids active-job churn.
+    pub fn sort_by_remaining_percentage(&self, ascending: bool) {
+        let jobs = self.jobs.lock();
+        let mut order = self.job_order.lock();
+        order.sort_by(|left, right| {
+            let remaining = |id: &String| {
+                jobs.get(id).map_or((0u64, 1u64), |state| {
+                    let total = state.job.total_bytes.max(1);
+                    (total.saturating_sub(state.job.downloaded_bytes), total)
+                })
+            };
+            let (left_remaining, left_total) = remaining(left);
+            let (right_remaining, right_total) = remaining(right);
+            let ordering = (left_remaining as u128 * right_total as u128)
+                .cmp(&(right_remaining as u128 * left_total as u128));
+            if ascending {
+                ordering
+            } else {
+                ordering.reverse()
+            }
+        });
+    }
+
     /// Get max active downloads.
     pub fn get_max_active_downloads(&self) -> usize {
         self.max_active_downloads.load(Ordering::Relaxed)
@@ -1095,6 +1389,32 @@ impl QueueManager {
         mut job: NzbJob,
         nzb_data: Option<Vec<u8>>,
     ) -> crate::nzb_core::Result<()> {
+        if crate::nzb_core::path::safe_component(&job.category).is_none() {
+            return Err(crate::nzb_core::NzbError::Other(
+                "category must be a single safe path component".to_string(),
+            ));
+        }
+        crate::nzb_core::path::safe_component(&job.name).ok_or_else(|| {
+            crate::nzb_core::NzbError::Other(
+                "job name must be a single safe path component".to_string(),
+            )
+        })?;
+        let complete_root = self.complete_dir();
+        let configured_root = self
+            .categories
+            .lock()
+            .iter()
+            .find(|category| category.name == job.category)
+            .and_then(|category| category.output_dir.clone());
+        let output_is_allowed = job.output_dir.starts_with(&complete_root)
+            || configured_root
+                .as_ref()
+                .is_some_and(|root| job.output_dir.starts_with(root));
+        if !output_is_allowed {
+            return Err(crate::nzb_core::NzbError::Other(
+                "job output directory is outside configured storage roots".to_string(),
+            ));
+        }
         // Ensure work directory exists
         std::fs::create_dir_all(&job.work_dir)?;
 
@@ -1163,6 +1483,43 @@ impl QueueManager {
         Ok(())
     }
 
+    /// Rebuild a history job for retry. Newer history rows carry a checkpoint
+    /// and retain a partial work directory when at least one article was
+    /// written, so the dispatcher can enqueue only unresolved articles and
+    /// append them to the existing assembled files. Older rows, and rows
+    /// whose partial directory is gone, deliberately fall back to a full
+    /// retry.
+    pub fn prepare_retry_job(
+        &self,
+        entry: &HistoryEntry,
+        nzb_data: &[u8],
+        retry_data: Option<&[u8]>,
+    ) -> crate::nzb_core::Result<NzbJob> {
+        let mut job = nzb_parser::parse_nzb(&entry.name, nzb_data)?;
+        job.category = entry.category.clone();
+        job.output_dir = self.output_dir_for(&job.category, &job.name)?;
+        job.work_dir = self.incomplete_dir().join(&job.id);
+
+        if entry.status == JobStatus::Failed
+            && let Some(data) = retry_data
+            && let Ok(checkpoint) = serde_json::from_slice::<JobCheckpoint>(data)
+            && let Some(work_dir) = checkpoint.work_dir.as_ref()
+            && std::fs::canonicalize(self.incomplete_dir())
+                .ok()
+                .zip(std::fs::canonicalize(work_dir).ok())
+                .is_some_and(|(root, retained)| retained.starts_with(root))
+            && std::fs::symlink_metadata(work_dir)
+                .map(|metadata| metadata.file_type().is_dir())
+                .unwrap_or(false)
+        {
+            apply_checkpoint(&mut job, &checkpoint);
+            job.articles_failed = 0;
+            job.work_dir = work_dir.clone();
+        }
+
+        Ok(job)
+    }
+
     /// Launch the download task for a job that is already in the jobs map
     /// with status `Downloading`.
     ///
@@ -1187,25 +1544,7 @@ impl QueueManager {
                                 && let Ok(checkpoint) =
                                     serde_json::from_slice::<JobCheckpoint>(&cp_data)
                             {
-                                state.job.downloaded_bytes = checkpoint.downloaded_bytes;
-                                state.job.articles_downloaded = checkpoint.articles_downloaded;
-                                state.job.articles_failed = checkpoint.articles_failed;
-                                state.job.files_completed = checkpoint.files_completed;
-                                for file in &mut state.job.files {
-                                    if let Some(segments) = checkpoint.files.get(&file.id) {
-                                        let mut fbd: u64 = 0;
-                                        for article in &mut file.articles {
-                                            if segments.contains(&article.segment_number) {
-                                                article.downloaded = true;
-                                                fbd += article.bytes;
-                                            }
-                                        }
-                                        file.bytes_downloaded = fbd;
-                                        if file.articles.iter().all(|a| a.downloaded) {
-                                            file.assembled = true;
-                                        }
-                                    }
-                                }
+                                apply_checkpoint(&mut state.job, &checkpoint);
                                 info!(
                                     job_id = %job_id,
                                     name = %state.job.name,
@@ -1233,13 +1572,18 @@ impl QueueManager {
         };
 
         // Pre-flight disk space check
-        let free = get_disk_free(&self.incomplete_dir.lock());
-        if self.min_free_space > 0 && free > 0 && free < self.min_free_space {
+        let incomplete_dir = self.incomplete_dir();
+        let output_dir = job.output_dir.clone();
+        let free = get_disk_free(&incomplete_dir);
+        if !disk_space_available(
+            self.min_free_space(),
+            [incomplete_dir.as_path(), output_dir.as_path()].as_slice(),
+        ) {
             warn!(
                 job_id = %job_id,
                 free_bytes = free,
-                min_free_space = self.min_free_space,
-                "Paused job due to low disk space"
+                min_free_space = self.min_free_space(),
+                "Paused job due to low disk space on a job storage volume"
             );
             let mut jobs = self.jobs.lock();
             if let Some(state) = jobs.get_mut(job_id) {
@@ -1530,6 +1874,9 @@ impl QueueManager {
                         self.persist_job_progress(&job_id);
                         last_db_update = Instant::now();
                     }
+                    if self.auto_sort_remaining_pct() {
+                        self.sort_by_remaining_percentage(true);
+                    }
                 }
                 ProgressUpdate::ArticleFailed {
                     file_id,
@@ -1542,6 +1889,23 @@ impl QueueManager {
                         let mut jobs = self.jobs.lock();
                         if let Some(state) = jobs.get_mut(&job_id) {
                             state.job.articles_failed += 1;
+
+                            if let Some(article) = state
+                                .job
+                                .files
+                                .iter_mut()
+                                .find(|file| file.id == file_id)
+                                .and_then(|file| {
+                                    file.articles
+                                        .iter_mut()
+                                        .find(|article| article.segment_number == segment_number)
+                                })
+                            {
+                                article.tries = article.tries.saturating_add(1);
+                                if !article.tried_servers.contains(&failure.server_id) {
+                                    article.tried_servers.push(failure.server_id.clone());
+                                }
+                            }
 
                             // Update per-server failed stats
                             let sid = &failure.server_id;
@@ -1861,6 +2225,41 @@ impl QueueManager {
             )
         };
 
+        // Repair and extraction can write to both the incomplete and the
+        // category output volumes. Apply the same guard to both paths before
+        // any post-processing work begins.
+        if !disk_space_available(
+            self.min_free_space(),
+            [work_dir.as_path(), output_dir.as_path()].as_slice(),
+        ) {
+            let mut jobs = self.jobs.lock();
+            if let Some(state) = jobs.get_mut(job_id) {
+                let message = "Insufficient free disk space for post-processing".to_string();
+                state.job.status = JobStatus::Failed;
+                state.job.error_message = Some(message.clone());
+                self.move_to_history(
+                    state,
+                    vec![StageResult {
+                        name: "Disk".into(),
+                        status: StageStatus::Failed,
+                        message: Some(message),
+                        duration_secs: 0.0,
+                    }],
+                );
+            }
+            drop(jobs);
+            self.persist_job_progress(job_id);
+            self.start_next_queued();
+            let qm = Arc::clone(self);
+            let jid = job_id.to_string();
+            tokio::spawn(async move {
+                tokio::time::sleep(Duration::from_secs(8)).await;
+                qm.jobs.lock().remove(&jid);
+                qm.job_order.lock().retain(|id| id != &jid);
+            });
+            return;
+        }
+
         // Wait for direct unpack to finish (if active). It may still be
         // extracting the last volume when the download completes.
         let direct_unpack_success = if let Some(du) = direct_unpacker {
@@ -1898,6 +2297,18 @@ impl QueueManager {
                 "Running post-processing pipeline"
             );
 
+            let (cleanup_patterns, unwanted_extensions) = self
+                .categories
+                .lock()
+                .iter()
+                .find(|configured| configured.name == category)
+                .map(|configured| {
+                    (
+                        configured.cleanup_patterns.clone(),
+                        configured.unwanted_extensions.clone(),
+                    )
+                })
+                .unwrap_or_default();
             let config = PostProcConfig {
                 cleanup_after_extract: true,
                 output_dir: Some(output_dir.clone()),
@@ -1908,9 +2319,14 @@ impl QueueManager {
                 max_nested_archive_depth: self.max_nested_archive_depth,
             };
 
-            let result =
-                run_pipeline_with_resources(&work_dir, &config, Some(&self.postproc_resources))
-                    .await;
+            let result = run_pipeline_with_cleanup(
+                &work_dir,
+                &config,
+                Some(&self.postproc_resources),
+                &cleanup_patterns,
+                &unwanted_extensions,
+            )
+            .await;
 
             info!(
                 job_id = %job_id,
@@ -1946,6 +2362,36 @@ impl QueueManager {
             Vec::new()
         };
 
+        // Run the configured hook after the final status is known. Its output
+        // is bounded and the hook cannot change the job's filesystem roots.
+        let script_status = {
+            let jobs = self.jobs.lock();
+            jobs.get(job_id).map(|state| {
+                if state.job.status == JobStatus::Failed {
+                    JobStatus::Failed
+                } else {
+                    JobStatus::Completed
+                }
+            })
+        };
+        let script_stage = match script_status {
+            Some(status) => self.run_postproc_script(job_id, status).await,
+            None => None,
+        };
+        let mut stages = stages;
+        if let Some(stage) = script_stage {
+            if stage.status == StageStatus::Failed {
+                let mut jobs = self.jobs.lock();
+                if let Some(state) = jobs.get_mut(job_id) {
+                    state.job.status = JobStatus::Failed;
+                    if state.job.error_message.is_none() {
+                        state.job.error_message = stage.message.clone();
+                    }
+                }
+            }
+            stages.push(stage);
+        }
+
         // Move to history with real stage results
         {
             let mut jobs = self.jobs.lock();
@@ -1968,6 +2414,123 @@ impl QueueManager {
             qm.jobs.lock().remove(&jid);
             qm.job_order.lock().retain(|id| id != &jid);
         });
+    }
+
+    async fn run_postproc_script(
+        &self,
+        job_id: &str,
+        final_status: JobStatus,
+    ) -> Option<StageResult> {
+        let (job, script_config) = {
+            let jobs = self.jobs.lock();
+            let state = jobs.get(job_id)?;
+            (state.job.clone(), self.postproc_scripts.lock().clone())
+        };
+        let configured = match final_status {
+            JobStatus::Completed => script_config.success,
+            JobStatus::Failed => script_config.failure,
+            _ => None,
+        }?;
+        let started = Instant::now();
+        let script = match resolve_script_path(script_config.scripts_dir.as_deref(), &configured) {
+            Ok(path) => path,
+            Err(error) => {
+                return Some(StageResult {
+                    name: "Script".into(),
+                    status: StageStatus::Failed,
+                    message: Some(format!("Unable to resolve post-processing script: {error}")),
+                    duration_secs: started.elapsed().as_secs_f64(),
+                });
+            }
+        };
+
+        let files = regular_output_files(&job.output_dir);
+        let file_list = files
+            .iter()
+            .map(|path| path.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut command = tokio::process::Command::new(&script);
+        command
+            .current_dir(&job.output_dir)
+            .env("SAB_STATUS", final_status.to_string())
+            .env("SAB_JOB", &job.name)
+            .env("SAB_CAT", &job.category)
+            .env("SAB_FILENAME", &job.name)
+            .env("SAB_COMPLETE", &job.output_dir)
+            .env("SAB_BYTES", job.total_bytes.to_string())
+            .env("SAB_BYTES_DOWNLOADED", job.downloaded_bytes.to_string())
+            .env("SAB_FILES", file_list)
+            .env("RUSTNZB_STATUS", final_status.to_string())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true);
+        let mut child = match command.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                return Some(StageResult {
+                    name: "Script".into(),
+                    status: StageStatus::Failed,
+                    message: Some(format!("Unable to start post-processing script: {error}")),
+                    duration_secs: started.elapsed().as_secs_f64(),
+                });
+            }
+        };
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+        let max_output_bytes = script_config.max_output_bytes;
+        let result = async {
+            let stdout_reader = async {
+                match stdout {
+                    Some(reader) => read_script_output(reader, max_output_bytes).await,
+                    None => Ok((Vec::new(), false)),
+                }
+            };
+            let stderr_reader = async {
+                match stderr {
+                    Some(reader) => read_script_output(reader, max_output_bytes).await,
+                    None => Ok((Vec::new(), false)),
+                }
+            };
+            let (stdout, stderr) = tokio::join!(stdout_reader, stderr_reader);
+            let stdout = stdout?;
+            let stderr = stderr?;
+            let status = child.wait().await?;
+            Ok::<_, io::Error>((status, stdout, stderr))
+        };
+
+        match tokio::time::timeout(script_config.timeout, result).await {
+            Ok(Ok((status, stdout, stderr))) if status.success() => Some(StageResult {
+                name: "Script".into(),
+                status: StageStatus::Success,
+                message: Some(script_output_message(&stdout, &stderr)),
+                duration_secs: started.elapsed().as_secs_f64(),
+            }),
+            Ok(Ok((status, stdout, stderr))) => Some(StageResult {
+                name: "Script".into(),
+                status: StageStatus::Failed,
+                message: Some(format!(
+                    "Post-processing script exited with {status}: {}",
+                    script_output_message(&stdout, &stderr)
+                )),
+                duration_secs: started.elapsed().as_secs_f64(),
+            }),
+            Ok(Err(error)) => Some(StageResult {
+                name: "Script".into(),
+                status: StageStatus::Failed,
+                message: Some(format!("Post-processing script failed: {error}")),
+                duration_secs: started.elapsed().as_secs_f64(),
+            }),
+            Err(_) => Some(StageResult {
+                name: "Script".into(),
+                status: StageStatus::Failed,
+                message: Some(format!(
+                    "Post-processing script exceeded {} second timeout",
+                    script_config.timeout.as_secs()
+                )),
+                duration_secs: started.elapsed().as_secs_f64(),
+            }),
+        }
     }
 
     /// Move a job's files to output and insert a history entry.
@@ -2011,8 +2574,32 @@ impl QueueManager {
             if let Ok(entries) = std::fs::read_dir(&state.job.work_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.is_file() {
-                        let dest = state.job.output_dir.join(entry.file_name());
+                    let is_regular = std::fs::symlink_metadata(&path)
+                        .map(|metadata| metadata.file_type().is_file())
+                        .unwrap_or(false);
+                    let Some(dest) = crate::nzb_core::path::safe_join(
+                        &state.job.output_dir,
+                        &entry.file_name().to_string_lossy(),
+                    ) else {
+                        warn!(
+                            job_id = %state.job.id,
+                            file = %path.display(),
+                            "Refusing to move file with an unsafe output name"
+                        );
+                        continue;
+                    };
+                    if is_regular {
+                        if std::fs::symlink_metadata(&dest)
+                            .map(|metadata| metadata.file_type().is_symlink())
+                            .unwrap_or(false)
+                        {
+                            warn!(
+                                job_id = %state.job.id,
+                                file = %dest.display(),
+                                "Refusing to replace symlink in output directory"
+                            );
+                            continue;
+                        }
                         if let Err(e) = std::fs::rename(&path, &dest) {
                             if let Err(e2) = std::fs::copy(&path, &dest) {
                                 warn!(
@@ -2041,6 +2628,7 @@ impl QueueManager {
         state.job.status = final_status;
 
         // Insert into history with real stage results
+        let retry_data = serde_json::to_vec(&checkpoint_for_job(&state.job)).ok();
         let history_entry = HistoryEntry {
             id: state.job.id.clone(),
             name: state.job.name.clone(),
@@ -2056,6 +2644,7 @@ impl QueueManager {
             error_message: state.job.error_message.clone(),
             server_stats: state.job.server_stats.clone(),
             nzb_data: state.nzb_data.clone(),
+            retry_data,
         };
 
         let db = self.db.lock();
@@ -2108,7 +2697,19 @@ impl QueueManager {
         drop(db);
 
         if history_persisted {
-            cleanup_terminal_work_dir(&state.job.id, &state.job.work_dir, final_status);
+            let retain_for_retry = final_status == JobStatus::Failed
+                && state.nzb_data.is_some()
+                && state
+                    .job
+                    .files
+                    .iter()
+                    .any(|file| file.articles.iter().any(|article| article.downloaded));
+            cleanup_terminal_work_dir(
+                &state.job.id,
+                &state.job.work_dir,
+                final_status,
+                retain_for_retry,
+            );
         } else {
             warn!(
                 job_id = %state.job.id,
@@ -2136,26 +2737,7 @@ impl QueueManager {
             }
 
             // Build and store checkpoint of downloaded article segments
-            let checkpoint = JobCheckpoint {
-                files: state
-                    .job
-                    .files
-                    .iter()
-                    .map(|f| {
-                        let downloaded_segments: Vec<u32> = f
-                            .articles
-                            .iter()
-                            .filter(|a| a.downloaded)
-                            .map(|a| a.segment_number)
-                            .collect();
-                        (f.id.clone(), downloaded_segments)
-                    })
-                    .collect(),
-                downloaded_bytes: state.job.downloaded_bytes,
-                articles_downloaded: state.job.articles_downloaded,
-                articles_failed: state.job.articles_failed,
-                files_completed: state.job.files_completed,
-            };
+            let checkpoint = checkpoint_for_job(&state.job);
 
             if let Ok(data) = serde_json::to_vec(&checkpoint)
                 && let Err(e) = db.queue_store_job_data(job_id, &data)
@@ -2501,6 +3083,7 @@ impl QueueManager {
                     error_message: state.job.error_message.clone(),
                     server_stats: state.job.server_stats.clone(),
                     nzb_data: state.nzb_data.clone(),
+                    retry_data: None,
                 };
                 if let Err(e) = db.history_insert(&history_entry) {
                     error!(job_id = %id, "Failed to insert history for removed failed job: {e}");
@@ -2541,7 +3124,14 @@ impl QueueManager {
             .find(|(_, s)| s.job.id == id || s.job.id.starts_with(id));
         match state {
             Some((_, s)) => {
+                crate::nzb_core::path::safe_component(new_name).ok_or_else(|| {
+                    crate::nzb_core::NzbError::Other(
+                        "job name must be a single safe path component".to_string(),
+                    )
+                })?;
+                let output_dir = self.output_dir_for(&s.job.category, new_name)?;
                 s.job.name = new_name.to_string();
+                s.job.output_dir = output_dir;
                 info!(job_id = %id, new_name = %new_name, "Job renamed");
                 Ok(())
             }
@@ -2551,6 +3141,19 @@ impl QueueManager {
 
     /// Change a job's category in the queue.
     pub fn change_job_category(&self, id: &str, category: &str) -> crate::nzb_core::Result<()> {
+        if crate::nzb_core::path::safe_component(category).is_none() {
+            return Err(crate::nzb_core::NzbError::Other(
+                "category must be a single safe path component".to_string(),
+            ));
+        }
+        let job_name = self
+            .jobs
+            .lock()
+            .iter()
+            .find(|(_, state)| state.job.id == id || state.job.id.starts_with(id))
+            .map(|(_, state)| state.job.name.clone())
+            .ok_or_else(|| crate::nzb_core::NzbError::JobNotFound(id.to_string()))?;
+        let output_dir = self.output_dir_for(category, &job_name)?;
         let mut jobs = self.jobs.lock();
         let state = jobs
             .iter_mut()
@@ -2559,8 +3162,7 @@ impl QueueManager {
             Some((_, s)) => {
                 s.job.category = category.to_string();
                 // Update the output directory to match the new category
-                let complete_dir = self.complete_dir.lock().join(category).join(&s.job.name);
-                s.job.output_dir = complete_dir;
+                s.job.output_dir = output_dir;
                 info!(job_id = %id, category = %category, "Job category changed");
                 Ok(())
             }
@@ -2845,9 +3447,79 @@ impl QueueManager {
         *self.complete_dir.lock() = dir;
     }
 
+    /// Resolve a category and job name to the configured output directory.
+    /// Both values originate from API/NZB input, so they must remain single
+    /// path components before they are joined to a trusted configured root.
+    pub fn output_dir_for(
+        &self,
+        category: &str,
+        name: &str,
+    ) -> crate::nzb_core::Result<std::path::PathBuf> {
+        crate::nzb_core::path::safe_component(category).ok_or_else(|| {
+            crate::nzb_core::NzbError::Other("category must be a single safe path component".into())
+        })?;
+        crate::nzb_core::path::safe_component(name).ok_or_else(|| {
+            crate::nzb_core::NzbError::Other("job name must be a single safe path component".into())
+        })?;
+
+        let categories = self.categories.lock();
+        let category_config = categories
+            .iter()
+            .find(|configured| configured.name == category);
+        if let Some(base) = category_config.and_then(|configured| configured.output_dir.as_ref()) {
+            let root = if base.is_absolute() {
+                base.clone()
+            } else {
+                crate::nzb_core::path::safe_join(&self.complete_dir(), &base.to_string_lossy())
+                    .ok_or_else(|| {
+                        crate::nzb_core::NzbError::Other("category output path is unsafe".into())
+                    })?
+            };
+            return crate::nzb_core::path::safe_join(&root, name).ok_or_else(|| {
+                crate::nzb_core::NzbError::Other("category output path is unsafe".into())
+            });
+        }
+        let category_dir = crate::nzb_core::path::safe_join(&self.complete_dir(), category)
+            .ok_or_else(|| {
+                crate::nzb_core::NzbError::Other("category output path is unsafe".into())
+            })?;
+        crate::nzb_core::path::safe_join(&category_dir, name)
+            .ok_or_else(|| crate::nzb_core::NzbError::Other("job output path is unsafe".into()))
+    }
+
+    /// Return every configured filesystem root that may receive job data.
+    /// Relative category roots are resolved below the complete directory.
+    fn disk_guard_paths(&self) -> Vec<std::path::PathBuf> {
+        let complete = self.complete_dir();
+        let mut paths = vec![self.incomplete_dir(), complete.clone()];
+        for category in self.categories.lock().iter() {
+            let Some(root) = category.output_dir.as_ref() else {
+                continue;
+            };
+            let resolved = if root.is_absolute() {
+                root.clone()
+            } else if let Some(resolved) =
+                crate::nzb_core::path::safe_join(&complete, &root.to_string_lossy())
+            {
+                resolved
+            } else {
+                continue;
+            };
+            if !paths.contains(&resolved) {
+                paths.push(resolved);
+            }
+        }
+        paths
+    }
+
     /// Get the minimum free disk space threshold.
     pub fn min_free_space(&self) -> u64 {
-        self.min_free_space
+        self.min_free_space.load(Ordering::Relaxed)
+    }
+
+    /// Update the disk guard threshold for both preflight and periodic checks.
+    pub fn set_min_free_space(&self, bytes: u64) {
+        self.min_free_space.store(bytes, Ordering::Relaxed);
     }
 
     /// Lock the database and execute a closure with direct access.
@@ -3092,6 +3764,12 @@ impl QueueManager {
         db.history_get_nzb_data(id)
     }
 
+    /// Get per-article retry outcomes persisted with a history entry.
+    pub fn history_get_retry_data(&self, id: &str) -> crate::nzb_core::Result<Option<Vec<u8>>> {
+        let db = self.db.lock();
+        db.history_get_retry_data(id)
+    }
+
     /// Remove a history entry.
     pub fn history_remove(&self, id: &str) -> crate::nzb_core::Result<()> {
         let db = self.db.lock();
@@ -3187,6 +3865,12 @@ impl QueueManager {
     pub fn rss_items_prune(&self, keep: usize) -> crate::nzb_core::Result<usize> {
         let db = self.db.lock();
         db.rss_items_prune(keep)
+    }
+
+    /// Expire downloaded RSS records older than the supplied RFC3339 cutoff.
+    pub fn rss_items_expire_downloaded(&self, cutoff: &str) -> crate::nzb_core::Result<usize> {
+        let db = self.db.lock();
+        db.rss_items_expire_downloaded(cutoff)
     }
 
     /// List all RSS download rules.
@@ -3303,26 +3987,7 @@ impl QueueManager {
                 if let Some(ref data) = checkpoint_data {
                     match serde_json::from_slice::<JobCheckpoint>(data) {
                         Ok(checkpoint) => {
-                            job.downloaded_bytes = checkpoint.downloaded_bytes;
-                            job.articles_downloaded = checkpoint.articles_downloaded;
-                            job.articles_failed = checkpoint.articles_failed;
-                            job.files_completed = checkpoint.files_completed;
-
-                            for file in &mut job.files {
-                                if let Some(segments) = checkpoint.files.get(&file.id) {
-                                    let mut file_bytes_downloaded: u64 = 0;
-                                    for article in &mut file.articles {
-                                        if segments.contains(&article.segment_number) {
-                                            article.downloaded = true;
-                                            file_bytes_downloaded += article.bytes;
-                                        }
-                                    }
-                                    file.bytes_downloaded = file_bytes_downloaded;
-                                    if file.articles.iter().all(|a| a.downloaded) {
-                                        file.assembled = true;
-                                    }
-                                }
-                            }
+                            apply_checkpoint(&mut job, &checkpoint);
 
                             let remaining = job
                                 .article_count
@@ -3632,16 +4297,17 @@ impl QueueManager {
                         info!(total_nntp_connections = total, "NNTP connection summary");
                     }
                 }
-                if tick_count.is_multiple_of(30) && qm.min_free_space > 0 {
-                    let free = get_disk_free(&qm.incomplete_dir.lock());
-                    if free > 0
-                        && free < qm.min_free_space
+                if tick_count.is_multiple_of(30) && qm.min_free_space() > 0 {
+                    let paths = qm.disk_guard_paths();
+                    let path_refs: Vec<_> = paths.iter().map(std::path::PathBuf::as_path).collect();
+                    let free = paths.first().map_or(0, |path| get_disk_free(path));
+                    if !disk_space_available(qm.min_free_space(), &path_refs)
                         && !qm.globally_paused.load(Ordering::Relaxed)
                     {
                         warn!(
                             free_bytes = free,
-                            min_free_space = qm.min_free_space,
-                            "Low disk space, auto-pausing downloads"
+                            min_free_space = qm.min_free_space(),
+                            "Low disk space on a configured storage volume, auto-pausing downloads"
                         );
                         qm.pause_all();
                     }
@@ -3719,6 +4385,88 @@ mod global_pause_tests {
             },
         );
         manager.job_order.lock().push(id);
+    }
+
+    #[tokio::test]
+    async fn remaining_percentage_sort_is_stable_and_does_not_change_status() {
+        let (manager, tempdir) = manager();
+        let mut first = job("first", JobStatus::Downloading, tempdir.path());
+        first.total_bytes = 100;
+        first.downloaded_bytes = 50;
+        let mut second = job("second", JobStatus::Queued, tempdir.path());
+        second.total_bytes = 200;
+        second.downloaded_bytes = 100;
+        let mut third = job("third", JobStatus::Queued, tempdir.path());
+        third.total_bytes = 100;
+        third.downloaded_bytes = 10;
+        insert_job(&manager, first);
+        insert_job(&manager, second);
+        insert_job(&manager, third);
+
+        manager.sort_by_remaining_percentage(true);
+        assert_eq!(
+            manager
+                .job_order
+                .lock()
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["first", "second", "third"]
+        );
+        assert_eq!(
+            manager.get_job("first").unwrap().status,
+            JobStatus::Downloading
+        );
+
+        manager.sort_by_remaining_percentage(false);
+        assert_eq!(
+            manager
+                .job_order
+                .lock()
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["third", "first", "second"]
+        );
+    }
+
+    #[test]
+    fn script_paths_are_confined_to_the_script_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let scripts = dir.path().join("scripts");
+        std::fs::create_dir_all(&scripts).unwrap();
+        let script = scripts.join("success.sh");
+        std::fs::write(&script, b"#!/bin/sh\nexit 0\n").unwrap();
+
+        let resolved =
+            resolve_script_path(Some(&scripts), std::path::Path::new("success.sh")).unwrap();
+        assert_eq!(resolved, std::fs::canonicalize(script).unwrap());
+        assert!(resolve_script_path(Some(&scripts), std::path::Path::new("../escape.sh")).is_err());
+        assert!(resolve_script_path(None, std::path::Path::new("success.sh")).is_err());
+    }
+
+    #[tokio::test]
+    async fn script_output_is_bounded_and_captured() {
+        let (manager, tempdir) = manager();
+        let script = tempdir.path().join("script.sh");
+        std::fs::write(&script, b"#!/bin/sh\nprintf '1234567890'\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        manager.set_postproc_scripts(None, Some(script), None, 2, 4);
+        let mut completed = job("script-job", JobStatus::Completed, tempdir.path());
+        completed.output_dir = tempdir.path().join("output");
+        std::fs::create_dir_all(&completed.output_dir).unwrap();
+        insert_job(&manager, completed);
+
+        let stage = manager
+            .run_postproc_script("script-job", JobStatus::Completed)
+            .await
+            .unwrap();
+        assert_eq!(stage.status, StageStatus::Success);
+        assert!(stage.message.unwrap().contains("output truncated"));
     }
 
     #[tokio::test]

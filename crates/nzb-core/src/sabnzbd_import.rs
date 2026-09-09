@@ -244,6 +244,7 @@ pub fn parse_sabnzbd_ini(content: &str) -> SabnzbdImportPreview {
                     .filter(|s| !s.is_empty())
                     .map(std::path::PathBuf::from),
                 post_processing: kv.get("pp").and_then(|s| s.parse().ok()).unwrap_or(3),
+                ..CategoryConfig::default()
             }
         })
         .collect();
@@ -279,6 +280,7 @@ pub fn parse_sabnzbd_ini(content: &str) -> SabnzbdImportPreview {
                 filter_regex,
                 enabled: kv.get("enable").map(|s| parse_ini_bool(s)).unwrap_or(true),
                 auto_download: false,
+                max_age_days: None,
             })
         })
         .collect();
@@ -424,6 +426,7 @@ pub fn parse_sabnzbd_api_response(json: &serde_json::Value) -> SabnzbdImportPrev
                             .as_u64()
                             .or_else(|| c["pp"].as_str().and_then(|p| p.parse().ok()))
                             .unwrap_or(3) as u8,
+                        ..CategoryConfig::default()
                     }
                 })
                 .collect()

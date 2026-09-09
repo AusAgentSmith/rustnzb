@@ -1,10 +1,11 @@
-//! Archive extraction: RAR, 7z, ZIP.
+//! Archive extraction: RAR, 7z, TAR, ZIP.
 //!
 //! - RAR: Shell out to `unrar` binary
 //! - 7z: Shell out to `7z`/`7zz`/`7za` binary
 //! - ZIP: Uses std::fs + zip crate
 
 use std::collections::HashSet;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -107,6 +108,36 @@ fn output_files(root: &Path) -> std::io::Result<HashSet<PathBuf>> {
     Ok(files)
 }
 
+/// Reject links and non-directory path components left by an external
+/// extractor. Native formats are checked before each write; this is the
+/// equivalent postcondition for unrar/7z, whose archive member lists are not
+/// exposed through a stable API.
+fn validate_extraction_tree(root: &Path) -> anyhow::Result<()> {
+    let mut directories = vec![root.to_path_buf()];
+    while let Some(directory) = directories.pop() {
+        for entry in std::fs::read_dir(&directory)? {
+            let entry = entry?;
+            let path = entry.path();
+            let file_type = entry.file_type()?;
+            if file_type.is_symlink() {
+                anyhow::bail!(
+                    "archive extraction produced a symbolic link `{}`",
+                    path.display()
+                );
+            }
+            if file_type.is_dir() {
+                directories.push(path);
+            } else if !file_type.is_file() {
+                anyhow::bail!(
+                    "archive extraction produced unsupported path `{}`",
+                    path.display()
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 fn newly_extracted_files(
     output_dir: &Path,
     before: &HashSet<PathBuf>,
@@ -117,6 +148,37 @@ fn newly_extracted_files(
         .collect::<Vec<_>>();
     files.sort();
     Ok(files)
+}
+
+fn safe_archive_output_path(root: &Path, name: &str, kind: &str) -> anyhow::Result<PathBuf> {
+    nzb_core::path::safe_join(root, name)
+        .ok_or_else(|| anyhow::anyhow!("{kind} archive contains unsafe path `{name}`"))
+}
+
+fn reject_symlinked_path(root: &Path, path: &Path) -> anyhow::Result<()> {
+    let relative = path
+        .strip_prefix(root)
+        .map_err(|_| anyhow::anyhow!("archive path is outside extraction directory"))?;
+    let mut current = root.to_path_buf();
+    if let Ok(metadata) = std::fs::symlink_metadata(&current)
+        && metadata.file_type().is_symlink()
+    {
+        anyhow::bail!("archive extraction directory is a symbolic link");
+    }
+
+    for component in relative.components() {
+        current.push(component.as_os_str());
+        let Ok(metadata) = std::fs::symlink_metadata(&current) else {
+            continue;
+        };
+        if metadata.file_type().is_symlink() {
+            anyhow::bail!("archive path crosses a symbolic link");
+        }
+        if current != path && !metadata.is_dir() {
+            anyhow::bail!("archive path crosses a non-directory");
+        }
+    }
+    Ok(())
 }
 
 /// Extract RAR archives in a directory.
@@ -170,6 +232,10 @@ pub async fn extract_rar(
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let combined = format!("{stdout}\n{stderr}");
     let success = output.status.success();
+
+    if success {
+        validate_extraction_tree(output_dir)?;
+    }
 
     if !success {
         // Detect password-protected archives (unrar exit code 255 + password prompt)
@@ -239,6 +305,10 @@ pub async fn extract_7z(
     let combined = format!("{stdout}\n{stderr}");
     let success = output.status.success();
 
+    if success {
+        validate_extraction_tree(output_dir)?;
+    }
+
     if !success {
         let is_encrypted = SEVENZ_PASSWORD_PATTERNS
             .iter()
@@ -281,14 +351,32 @@ pub async fn extract_zip(zip_file: &Path, output_dir: &Path) -> anyhow::Result<U
         let file = std::fs::File::open(&zip_path)?;
         let mut archive = zip::ZipArchive::new(file)?;
         let mut extracted = Vec::new();
+        let mut output_paths = HashSet::new();
 
         for i in 0..archive.len() {
             let mut entry = archive.by_index(i)?;
-            let outpath = out_path.join(entry.mangled_name());
+            // Never materialize links from an untrusted archive. Treating a
+            // link payload as a regular file also makes the policy explicit
+            // on platforms where link metadata is partially supported.
+            if entry.is_symlink() {
+                anyhow::bail!(
+                    "ZIP archive contains unsupported symbolic link `{}`",
+                    entry.name()
+                );
+            }
+            let outpath = safe_archive_output_path(&out_path, entry.name(), "ZIP")?;
+            if !output_paths.insert(outpath.clone()) {
+                anyhow::bail!(
+                    "ZIP archive contains duplicate output path `{}`",
+                    entry.name()
+                );
+            }
 
             if entry.is_dir() {
+                reject_symlinked_path(&out_path, &outpath)?;
                 std::fs::create_dir_all(&outpath)?;
             } else {
+                reject_symlinked_path(&out_path, &outpath)?;
                 if let Some(parent) = outpath.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
@@ -308,6 +396,66 @@ pub async fn extract_zip(zip_file: &Path, output_dir: &Path) -> anyhow::Result<U
     .await??;
 
     Ok(result)
+}
+
+/// Extract a TAR archive without materializing links or paths outside the job.
+/// TAR permits both symbolic and hard links; rejecting both keeps extraction
+/// deterministic and prevents a later cleanup or overwrite from escaping the
+/// output directory.
+pub async fn extract_tar(tar_file: &Path, output_dir: &Path) -> anyhow::Result<UnpackResult> {
+    info!(file = %tar_file.display(), dest = %output_dir.display(), "Extracting TAR");
+    let tar_path = tar_file.to_path_buf();
+    let out_path = output_dir.to_path_buf();
+    tokio::task::spawn_blocking(move || -> anyhow::Result<UnpackResult> {
+        let file = std::fs::File::open(&tar_path)?;
+        let mut archive = tar::Archive::new(file);
+        std::fs::create_dir_all(&out_path)?;
+        let mut extracted = Vec::new();
+        let mut output_paths = HashSet::new();
+
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let entry_path = entry.path()?.to_string_lossy().into_owned();
+            let entry_type = entry.header().entry_type();
+            if entry_type.is_symlink() {
+                anyhow::bail!("TAR archive contains unsupported symbolic link `{entry_path}`");
+            }
+            if entry_type.is_hard_link() {
+                anyhow::bail!("TAR archive contains unsupported hard link `{entry_path}`");
+            }
+
+            let outpath = safe_archive_output_path(&out_path, &entry_path, "TAR")?;
+            if !output_paths.insert(outpath.clone()) {
+                anyhow::bail!("TAR archive contains duplicate output path `{entry_path}`");
+            }
+
+            if entry_type.is_dir() {
+                reject_symlinked_path(&out_path, &outpath)?;
+                std::fs::create_dir_all(&outpath)?;
+                continue;
+            }
+            if !entry_type.is_file() {
+                anyhow::bail!("TAR archive contains unsupported entry `{entry_path}`");
+            }
+
+            reject_symlinked_path(&out_path, &outpath)?;
+            if let Some(parent) = outpath.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let mut outfile = std::fs::File::create(&outpath)?;
+            std::io::copy(&mut entry, &mut outfile)?;
+            outfile.flush()?;
+            extracted.push(outpath.to_string_lossy().into_owned());
+        }
+
+        Ok(UnpackResult {
+            success: true,
+            files_extracted: extracted,
+            output: String::new(),
+            error_output: String::new(),
+        })
+    })
+    .await?
 }
 
 pub fn find_unrar() -> Option<String> {
@@ -343,6 +491,7 @@ fn which_exists(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::io::Write;
 
     #[tokio::test]
@@ -376,6 +525,224 @@ mod tests {
         )
         .await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_extract_zip_rejects_duplicate_output_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("duplicate.zip");
+        let out_dir = dir.path().join("out");
+        {
+            let file = std::fs::File::create(&zip_path).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default();
+            writer.add_directory("same.txt/", options).unwrap();
+            writer.start_file("same.txt", options).unwrap();
+            writer.write_all(b"second").unwrap();
+            writer.finish().unwrap();
+        }
+
+        let result = extract_zip(&zip_path, &out_dir).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("duplicate output path"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn test_extract_zip_rejects_parent_and_absolute_paths() {
+        for (index, name) in [
+            "../../outside.txt",
+            "/absolute.txt",
+            r"..\..\outside.txt",
+            r"C:\outside.txt",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let dir = tempfile::tempdir().unwrap();
+            let zip_path = dir.path().join(format!("unsafe-{index}.zip"));
+            let out_dir = dir.path().join("out");
+            let file = std::fs::File::create(&zip_path).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            writer
+                .start_file(*name, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(b"outside").unwrap();
+            writer.finish().unwrap();
+
+            let result = extract_zip(&zip_path, &out_dir).await;
+            let error = result.unwrap_err().to_string();
+            assert!(error.contains("unsafe path"), "{error}");
+            assert!(!dir.path().join("outside.txt").exists());
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_extract_zip_rejects_preexisting_symlink_ancestors() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("symlink-ancestor.zip");
+        let out_dir = dir.path().join("out");
+        let outside_dir = dir.path().join("outside");
+        std::fs::create_dir_all(&out_dir).unwrap();
+        std::fs::create_dir_all(&outside_dir).unwrap();
+        symlink(&outside_dir, out_dir.join("link")).unwrap();
+
+        let file = std::fs::File::create(&zip_path).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        writer
+            .start_file("link/escaped.txt", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"outside").unwrap();
+        writer.finish().unwrap();
+
+        let result = extract_zip(&zip_path, &out_dir).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("symbolic link"), "{error}");
+        assert!(!outside_dir.join("escaped.txt").exists());
+    }
+
+    #[tokio::test]
+    async fn test_extract_zip_rejects_symbolic_links() {
+        let dir = tempfile::tempdir().unwrap();
+        let zip_path = dir.path().join("symlink.zip");
+        let out_dir = dir.path().join("out");
+        {
+            let file = std::fs::File::create(&zip_path).unwrap();
+            let mut writer = zip::ZipWriter::new(file);
+            writer
+                .add_symlink(
+                    "link",
+                    "outside.txt",
+                    zip::write::SimpleFileOptions::default(),
+                )
+                .unwrap();
+            writer.finish().unwrap();
+        }
+
+        let result = extract_zip(&zip_path, &out_dir).await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("symbolic link"), "{error}");
+    }
+
+    fn write_tar(path: &Path, entries: &[(&str, &[u8])]) {
+        let file = std::fs::File::create(path).unwrap();
+        let mut builder = tar::Builder::new(file);
+        for (name, contents) in entries {
+            let mut header = tar::Header::new_gnu();
+            header.set_path(name).unwrap();
+            header.set_size(contents.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder.append(&header, *contents).unwrap();
+        }
+        builder.finish().unwrap();
+    }
+
+    fn write_raw_tar(path: &Path, entries: &[(&str, &[u8])]) {
+        let file = std::fs::File::create(path).unwrap();
+        let mut builder = tar::Builder::new(file);
+        for (name, contents) in entries {
+            let mut header = tar::Header::new_gnu();
+            let name_bytes = name.as_bytes();
+            assert!(name_bytes.len() <= 100);
+            header.as_mut_bytes()[..100].fill(0);
+            header.as_mut_bytes()[..name_bytes.len()].copy_from_slice(name_bytes);
+            header.set_size(contents.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder.append(&header, *contents).unwrap();
+        }
+        builder.finish().unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_extract_tar_valid_and_large_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("payload.tar");
+        let output = dir.path().join("output");
+        let large = vec![b'x'; 128 * 1024];
+        write_tar(
+            &tar_path,
+            &[("nested/hello.txt", b"hello"), ("large.bin", &large)],
+        );
+
+        let result = extract_tar(&tar_path, &output).await.unwrap();
+        assert!(result.success);
+        assert_eq!(fs::read(output.join("nested/hello.txt")).unwrap(), b"hello");
+        assert_eq!(
+            fs::metadata(output.join("large.bin")).unwrap().len(),
+            large.len() as u64
+        );
+    }
+
+    #[tokio::test]
+    async fn test_extract_tar_rejects_traversal_and_duplicate_paths() {
+        for (index, names) in [vec!["../../outside.txt"], vec!["same.txt", "same.txt"]]
+            .into_iter()
+            .enumerate()
+        {
+            let dir = tempfile::tempdir().unwrap();
+            let tar_path = dir.path().join(format!("unsafe-{index}.tar"));
+            let entries: Vec<(&str, &[u8])> = names
+                .iter()
+                .map(|name| (*name, b"data".as_slice()))
+                .collect();
+            if names.iter().any(|name| name.contains("..")) {
+                write_raw_tar(&tar_path, &entries);
+            } else {
+                write_tar(&tar_path, &entries);
+            }
+            let error = extract_tar(&tar_path, &dir.path().join("output"))
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(
+                error.contains("unsafe path") || error.contains("duplicate output path"),
+                "{error}"
+            );
+            assert!(!dir.path().join("outside.txt").exists());
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_extract_tar_rejects_symlink_and_hardlink_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("links.tar");
+        let file = fs::File::create(&tar_path).unwrap();
+        let mut builder = tar::Builder::new(file);
+        let mut symlink_header = tar::Header::new_gnu();
+        symlink_header.set_entry_type(tar::EntryType::Symlink);
+        symlink_header.set_path("link").unwrap();
+        symlink_header.set_link_name("outside").unwrap();
+        symlink_header.set_size(0);
+        symlink_header.set_cksum();
+        builder.append(&symlink_header, &[][..]).unwrap();
+        builder.finish().unwrap();
+        let error = extract_tar(&tar_path, &dir.path().join("output"))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("symbolic link"), "{error}");
+
+        let hardlink_path = dir.path().join("hardlink.tar");
+        let file = fs::File::create(&hardlink_path).unwrap();
+        let mut builder = tar::Builder::new(file);
+        let mut hardlink_header = tar::Header::new_gnu();
+        hardlink_header.set_entry_type(tar::EntryType::Link);
+        hardlink_header.set_path("copy").unwrap();
+        hardlink_header.set_link_name("original").unwrap();
+        hardlink_header.set_size(0);
+        hardlink_header.set_cksum();
+        builder.append(&hardlink_header, &[][..]).unwrap();
+        builder.finish().unwrap();
+        let error = extract_tar(&hardlink_path, &dir.path().join("hardlink-output"))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("hard link"), "{error}");
     }
 
     #[test]

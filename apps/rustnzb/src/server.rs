@@ -161,6 +161,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/queue/{id}/pause", post(handlers::h_queue_pause))
         .route("/queue/{id}/resume", post(handlers::h_queue_resume))
         .route("/queue/{id}/move", post(handlers::h_queue_move))
+        .route("/queue/sort", post(handlers::h_queue_sort))
         .route("/queue/{id}/priority", put(handlers::h_queue_set_priority))
         .route(
             "/queue/{id}/category",
@@ -321,9 +322,19 @@ pub fn build_router(state: Arc<AppState>) -> Router {
                     return Err(ApiError::unauthorized());
                 }
 
-                // If no credentials configured, allow all requests (setup_required state)
+                // Before first-boot setup, only the setup endpoints may be
+                // reached. Treating the entire protected router as public
+                // would expose queue/config mutation while the wizard is open.
                 if !credential_store.has_credentials() {
-                    return Ok(next.run(request).await);
+                    let path = request.uri().path();
+                    if path == "/setup/status"
+                        || path.starts_with("/setup/")
+                        || path == "/api/setup/status"
+                        || path.starts_with("/api/setup/")
+                    {
+                        return Ok(next.run(request).await);
+                    }
+                    return Err(ApiError::unauthorized());
                 }
 
                 // Try Bearer token first

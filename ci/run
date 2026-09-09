@@ -7,7 +7,7 @@ cold=false
 
 usage() {
     printf '%s\n' 'usage: ./ci/run [--cold-cache] TASK [TASK_ARGS...]' >&2
-    printf '%s\n' 'tasks: fmt check test clippy frontend-test frontend-audit frontend-build e2e desktop-test' >&2
+    printf '%s\n' 'tasks: fmt check test clippy harness frontend-test frontend-audit frontend-build e2e desktop-test' >&2
     printf '%s\n' '       build-linux build-linux-arm64 build-windows package-release' >&2
     printf '%s\n' '       verify-image-pins build-ci-images build-image smoke-image' >&2
     exit 2
@@ -27,7 +27,7 @@ lock_value() {
 }
 
 case "$task" in
-    fmt|check|test|clippy|frontend-test|frontend-audit|frontend-build|verify-image-pins) image_key=CORE_IMAGE ;;
+    fmt|check|test|clippy|harness|frontend-test|frontend-audit|frontend-build|verify-image-pins) image_key=CORE_IMAGE ;;
     e2e) image_key=E2E_IMAGE ;;
     desktop-test) image_key=DESKTOP_IMAGE ;;
     build-linux|build-linux-arm64|build-windows|package-release) image_key=CROSS_IMAGE ;;

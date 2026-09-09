@@ -15,12 +15,12 @@ use serde::{Deserialize, Serialize};
 static HTTP_CLIENT: std::sync::LazyLock<reqwest::Client> = std::sync::LazyLock::new(|| {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("Failed to build shared HTTP client")
 });
 
 const MAX_NZB_DECOMPRESSED_BYTES: u64 = 100 * 1024 * 1024;
-const MAX_FETCH_BODY_BYTES: usize = 100 * 1024 * 1024;
 
 #[cfg(feature = "webdav")]
 use nzb_web::nzb_core::config::DavConfig;
@@ -32,7 +32,9 @@ use nzb_web::nzb_core::nzb_parser;
 use nzb_web::nzb_core::sabnzbd_import;
 
 use nzb_web::error::ApiError;
-use nzb_web::fetch_guard::{build_fetch_client, read_response_bytes_limited, validate_fetch_url};
+use nzb_web::fetch_guard::{
+    MAX_FETCH_BODY_BYTES, build_fetch_client, read_response_bytes_limited, validate_fetch_url,
+};
 use nzb_web::log_buffer::LogEntry;
 use nzb_web::state::AppState;
 
@@ -89,6 +91,17 @@ pub struct PauseForQuery {
 #[derive(Deserialize)]
 pub struct MoveJobBody {
     pub position: usize,
+}
+
+#[derive(Deserialize)]
+pub struct SortQueueBody {
+    /// Sort in ascending remaining percentage order when true.
+    #[serde(default = "default_sort_ascending")]
+    pub ascending: bool,
+}
+
+fn default_sort_ascending() -> bool {
+    true
 }
 
 #[derive(Deserialize, Serialize)]
@@ -370,7 +383,9 @@ fn enqueue_nzb(
 
     let qm = &state.queue_manager;
     job.work_dir = qm.incomplete_dir().join(&job.id);
-    job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
+    job.output_dir = qm
+        .output_dir_for(&job.category, &job.name)
+        .map_err(ApiError::from)?;
 
     std::fs::create_dir_all(&job.work_dir).map_err(|e| {
         ApiError::from(anyhow::anyhow!(
@@ -451,6 +466,17 @@ pub async fn h_queue_set_priority(
         .queue_manager
         .set_job_priority(&id, priority)
         .map_err(ApiError::from)?;
+    Ok(Json(SimpleResponse { status: true }))
+}
+
+/// POST /api/queue/sort -- Stable sort by remaining work percentage.
+pub async fn h_queue_sort(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<SortQueueBody>,
+) -> Result<Json<SimpleResponse>, ApiError> {
+    state
+        .queue_manager
+        .sort_by_remaining_percentage(body.ascending);
     Ok(Json(SimpleResponse { status: true }))
 }
 
@@ -681,15 +707,11 @@ pub async fn h_history_retry(
         .map_err(ApiError::from)?
         .ok_or_else(|| ApiError::from(anyhow::anyhow!("No NZB data stored for this entry")))?;
 
-    // Re-parse the NZB
-    let mut job = nzb_parser::parse_nzb(&entry.name, &nzb_data).map_err(ApiError::from)?;
-
-    job.category = entry.category.clone();
-
-    // Set working directories
     let qm = &state.queue_manager;
-    job.work_dir = qm.incomplete_dir().join(&job.id);
-    job.output_dir = qm.complete_dir().join(&job.category).join(&job.name);
+    let retry_data = qm.history_get_retry_data(&id).map_err(ApiError::from)?;
+    let job = qm
+        .prepare_retry_job(&entry, &nzb_data, retry_data.as_deref())
+        .map_err(ApiError::from)?;
 
     std::fs::create_dir_all(&job.work_dir).map_err(|e| {
         ApiError::from(anyhow::anyhow!(
@@ -1214,7 +1236,7 @@ pub async fn h_disk_guards_get(
     }))
 }
 
-/// PUT /api/config/disk-guards -- Update disk guard settings (persisted; restart to apply).
+/// PUT /api/config/disk-guards -- Update disk guard settings.
 pub async fn h_disk_guards_set(
     State(state): State<Arc<AppState>>,
     Json(body): Json<DiskGuardsBody>,
@@ -1222,6 +1244,9 @@ pub async fn h_disk_guards_set(
     let mut config = (*state.config()).clone();
     config.general.min_free_space_bytes = body.min_free_space_bytes;
     config.general.abort_hopeless = body.abort_hopeless;
+    state
+        .queue_manager
+        .set_min_free_space(body.min_free_space_bytes);
     state.update_config(config).map_err(ApiError::from)?;
     Ok(Json(SimpleResponse { status: true }))
 }
@@ -1357,11 +1382,10 @@ pub async fn h_rss_item_download(
     }
 
     job.work_dir = state.queue_manager.incomplete_dir().join(&job.id);
-    job.output_dir = if let Some(ref cat) = item.category {
-        state.queue_manager.complete_dir().join(cat).join(&job.name)
-    } else {
-        state.queue_manager.complete_dir().join(&job.name)
-    };
+    job.output_dir = state
+        .queue_manager
+        .output_dir_for(&job.category, &job.name)
+        .map_err(ApiError::from)?;
 
     std::fs::create_dir_all(&job.work_dir).map_err(|e| {
         ApiError::from(anyhow::anyhow!(
@@ -1507,6 +1531,13 @@ pub struct UpdateGeneralBody {
     pub max_extract_workers: Option<usize>,
     pub history_retention: Option<Option<usize>>,
     pub rss_history_limit: Option<Option<usize>>,
+    pub auto_sort_remaining_pct: Option<bool>,
+    pub rss_downloaded_item_expiry_days: Option<Option<u64>>,
+    pub scripts_dir: Option<String>,
+    pub script_success: Option<String>,
+    pub script_failure: Option<String>,
+    pub script_timeout_secs: Option<u64>,
+    pub script_max_output_bytes: Option<usize>,
 }
 
 /// PUT /api/config/general -- Update general settings.
@@ -1563,6 +1594,48 @@ pub async fn h_general_update(
             let _ = state.queue_manager.rss_items_prune(limit);
         }
     }
+    if let Some(enabled) = body.auto_sort_remaining_pct {
+        state.queue_manager.set_auto_sort_remaining_pct(enabled);
+        config.general.auto_sort_remaining_pct = enabled;
+    }
+    if let Some(days) = body.rss_downloaded_item_expiry_days {
+        config.general.rss_downloaded_item_expiry_days = days;
+    }
+    if let Some(directory) = body.scripts_dir {
+        config.general.scripts_dir = if directory.is_empty() {
+            None
+        } else {
+            Some(directory.into())
+        };
+    }
+    if let Some(script) = body.script_success {
+        config.general.script_success = if script.is_empty() {
+            None
+        } else {
+            Some(script.into())
+        };
+    }
+    if let Some(script) = body.script_failure {
+        config.general.script_failure = if script.is_empty() {
+            None
+        } else {
+            Some(script.into())
+        };
+    }
+    if let Some(timeout) = body.script_timeout_secs {
+        config.general.script_timeout_secs = timeout.max(1);
+    }
+    if let Some(max_output) = body.script_max_output_bytes {
+        config.general.script_max_output_bytes = max_output;
+    }
+
+    state.queue_manager.set_postproc_scripts(
+        config.general.scripts_dir.clone(),
+        config.general.script_success.clone(),
+        config.general.script_failure.clone(),
+        config.general.script_timeout_secs,
+        config.general.script_max_output_bytes,
+    );
 
     state.update_config(config).map_err(ApiError::from)?;
     Ok(Json(SimpleResponse { status: true }))
@@ -1939,9 +2012,8 @@ pub async fn h_import_sabnzbd_api(
             )));
         }
 
-        let json: serde_json::Value = resp
-            .json()
-            .await
+        let body = read_response_bytes_limited(resp, MAX_FETCH_BODY_BYTES).await?;
+        let json: serde_json::Value = serde_json::from_slice(&body)
             .map_err(|e| ApiError::from(anyhow::anyhow!("Invalid JSON from SABnzbd: {e}")))?;
 
         let preview = sabnzbd_import::parse_sabnzbd_api_response(&json);

@@ -5,6 +5,7 @@ pub mod error;
 pub mod groups_db;
 pub mod models;
 pub mod nzb_parser;
+pub mod path;
 pub mod sabnzbd_import;
 
 pub use config::AppConfig;

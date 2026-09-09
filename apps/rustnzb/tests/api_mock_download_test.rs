@@ -28,6 +28,20 @@ async fn upload_nzb_downloads_via_mock_server_and_reaches_history() {
 
     let app = start_test_server(vec![config]).await;
     let client = reqwest::Client::new();
+    let setup = client
+        .post(format!("{}/api/auth/setup", app.base_url))
+        .json(&serde_json::json!({
+            "username": "mock-test",
+            "password": "mock-test-password"
+        }))
+        .send()
+        .await
+        .expect("auth setup failed");
+    assert_eq!(setup.status(), 200);
+    let access = setup.json::<serde_json::Value>().await.unwrap()["access_token"]
+        .as_str()
+        .expect("auth setup should return an access token")
+        .to_string();
 
     let part = reqwest::multipart::Part::bytes(fixture.xml.clone())
         .file_name("mock-download.nzb")
@@ -37,6 +51,7 @@ async fn upload_nzb_downloads_via_mock_server_and_reaches_history() {
 
     let resp = client
         .post(format!("{}/api/queue/add", app.base_url))
+        .bearer_auth(&access)
         .multipart(form)
         .send()
         .await
@@ -50,6 +65,7 @@ async fn upload_nzb_downloads_via_mock_server_and_reaches_history() {
     let history_entry = loop {
         let status: serde_json::Value = client
             .get(format!("{}/api/status", app.base_url))
+            .bearer_auth(&access)
             .send()
             .await
             .expect("status request failed")
@@ -66,6 +82,7 @@ async fn upload_nzb_downloads_via_mock_server_and_reaches_history() {
 
         let history: serde_json::Value = client
             .get(format!("{}/api/history?limit=10", app.base_url))
+            .bearer_auth(&access)
             .send()
             .await
             .expect("history request failed")
@@ -96,6 +113,7 @@ async fn upload_nzb_downloads_via_mock_server_and_reaches_history() {
 
     let idle_status: serde_json::Value = client
         .get(format!("{}/api/status", app.base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .expect("idle status request failed")
@@ -113,6 +131,7 @@ async fn upload_nzb_downloads_via_mock_server_and_reaches_history() {
 
     let queue_after_history: serde_json::Value = client
         .get(format!("{}/api/queue", app.base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .expect("queue request after history failed")

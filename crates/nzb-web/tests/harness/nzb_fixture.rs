@@ -14,7 +14,10 @@
 //! //                into harness::yenc_articles for the mock config
 //! ```
 
+use std::collections::HashMap;
 use std::fmt::Write;
+
+use nzb_nntp::testutil::MockConfig;
 
 #[derive(Default)]
 pub struct NzbFixture<'a> {
@@ -34,6 +37,68 @@ pub struct BuiltFixture<'a> {
     /// `(message_id, raw_body, filename)` tuples ready for
     /// `harness::yenc_articles` to encode and feed into the mock.
     pub articles: Vec<(&'a str, &'a [u8], String)>,
+}
+
+/// Owned, reusable fixture cases for tests that need to hand the same input
+/// to several providers or restart a queue manager. All bytes are generated
+/// from literals, so the catalog never reads the network or wall clock.
+#[derive(Clone, Debug)]
+pub struct FixtureCase {
+    pub name: String,
+    pub xml: Vec<u8>,
+    pub articles: HashMap<String, Vec<u8>>,
+}
+
+impl FixtureCase {
+    pub fn mock_config(&self) -> MockConfig {
+        MockConfig {
+            articles: self.articles.clone(),
+            ..MockConfig::default()
+        }
+    }
+}
+
+/// Stable fixture catalog shared by harness profiles and contract tests.
+pub struct FixtureCatalog;
+
+impl FixtureCatalog {
+    fn from_fixture(fixture: BuiltFixture<'_>, name: &str) -> FixtureCase {
+        let articles = fixture
+            .articles
+            .iter()
+            .map(|(id, body, filename)| {
+                let (encoded, _) =
+                    yenc_simd::encode_article(body, filename, 1, 1, 0, body.len() as u64);
+                ((*id).to_string(), encoded)
+            })
+            .collect();
+        FixtureCase {
+            name: name.into(),
+            xml: fixture.xml,
+            articles,
+        }
+    }
+
+    pub fn single() -> FixtureCase {
+        let fixture = NzbFixture::new("catalog-single")
+            .add_file("catalog.txt", &[("catalog-single-1@test", b"catalog body")])
+            .build();
+        Self::from_fixture(fixture, "catalog-single")
+    }
+
+    pub fn multi_segment() -> FixtureCase {
+        let fixture = NzbFixture::new("catalog-multi")
+            .add_file(
+                "catalog.bin",
+                &[
+                    ("catalog-multi-1@test", b"first"),
+                    ("catalog-multi-2@test", b"second"),
+                    ("catalog-multi-3@test", b"third"),
+                ],
+            )
+            .build();
+        Self::from_fixture(fixture, "catalog-multi")
+    }
 }
 
 impl<'a> NzbFixture<'a> {

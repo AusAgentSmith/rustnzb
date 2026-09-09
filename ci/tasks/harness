@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+. "$(dirname "$0")/lib.sh"
+trap cleanup_frontend EXIT
+task_start harness cargo
+task_target_dir harness
+prepare_placeholder_frontend
+
+cargo test -p nzb-web --tests --locked
+cargo test -p nzb-postproc --tests --locked
+cargo test -p rustnzb --tests --locked
+show_sccache_stats

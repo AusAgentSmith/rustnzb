@@ -34,6 +34,20 @@ npm test -- --watch=false
 npm run build -- --configuration=production
 ```
 
+Compatibility and security regression tests are deterministic and must remain
+network-independent. Use the focused harness gates while iterating:
+
+```bash
+cargo test -p nzb-web --tests --locked
+cargo test -p rustnzb --tests --locked
+cargo test -p nzb-postproc --tests --locked
+```
+
+Golden responses are reviewed as API contract changes: keep dynamic type
+markers for timestamps, rates, paths, and generated identifiers, and update
+the fixture README when the capture source changes. Do not add credentials,
+provider URLs, private hostnames, or personal paths to fixtures or logs.
+
 The containerized task interface in [`ci/run`](ci/run) provides local parity
 with selected build tasks. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for
 the supported commands.

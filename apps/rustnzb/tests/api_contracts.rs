@@ -158,9 +158,78 @@ async fn protected_routes_reject_missing_credentials_and_preserve_auth_contracts
 }
 
 #[tokio::test]
+async fn first_boot_only_exposes_setup_and_setup_is_single_use() {
+    let app = start_app(false).await;
+    let client = reqwest::Client::new();
+
+    assert_eq!(
+        client
+            .get(format!("{}/api/status", app.base_url))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        reqwest::StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        client
+            .get(format!("{}/api/setup/status", app.base_url))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        reqwest::StatusCode::OK
+    );
+
+    let setup = client
+        .post(format!("{}/api/auth/setup", app.base_url))
+        .json(&serde_json::json!({"username":"owner","password":"secret"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(setup.status(), reqwest::StatusCode::OK);
+    let access = setup.json::<serde_json::Value>().await.unwrap()["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    assert_eq!(
+        client
+            .get(format!("{}/api/status", app.base_url))
+            .bearer_auth(&access)
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        reqwest::StatusCode::OK
+    );
+    assert_eq!(
+        client
+            .post(format!("{}/api/auth/setup", app.base_url))
+            .json(&serde_json::json!({"username":"other","password":"secret"}))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        reqwest::StatusCode::FORBIDDEN
+    );
+}
+
+#[tokio::test]
 async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     let app = start_app(false).await;
     let client = reqwest::Client::new();
+    let setup = client
+        .post(format!("{}/api/auth/setup", app.base_url))
+        .json(&serde_json::json!({"username":"owner","password":"secret"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(setup.status(), reqwest::StatusCode::OK);
+    let access = setup.json::<serde_json::Value>().await.unwrap()["access_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let server = serde_json::json!({
         "id":"", "name":"Primary", "host":" news.example.test ", "port":563,
         "ssl":true, "ssl_verify":true, "username":"", "password":"", "connections":8,
@@ -171,6 +240,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     assert_eq!(
         client
             .post(format!("{}/api/config/servers", app.base_url))
+            .bearer_auth(&access)
             .json(&server)
             .send()
             .await
@@ -180,6 +250,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     );
     let servers = client
         .get(format!("{}/api/config/servers", app.base_url))
+        .bearer_auth(&access)
         .send()
         .await
         .unwrap()
@@ -195,6 +266,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     assert_eq!(
         client
             .post(format!("{}/api/config/categories", app.base_url))
+            .bearer_auth(&access)
             .json(&category)
             .send()
             .await
@@ -205,6 +277,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     assert_eq!(
         client
             .post(format!("{}/api/config/categories", app.base_url))
+            .bearer_auth(&access)
             .json(&category)
             .send()
             .await
@@ -217,6 +290,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     assert_eq!(
         client
             .post(format!("{}/api/config/rss-feeds", app.base_url))
+            .bearer_auth(&access)
             .json(&feed)
             .send()
             .await
@@ -227,6 +301,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     assert_eq!(
         client
             .put(format!("{}/api/config/speed-limit", app.base_url))
+            .bearer_auth(&access)
             .json(&serde_json::json!({"speed_limit_bps":1234}))
             .send()
             .await
@@ -237,6 +312,7 @@ async fn config_routes_validate_duplicates_and_persist_successful_updates() {
     assert_eq!(
         client
             .get(format!("{}/api/config/speed-limit", app.base_url))
+            .bearer_auth(&access)
             .send()
             .await
             .unwrap()

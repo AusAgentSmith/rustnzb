@@ -3,6 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+#[cfg(unix)]
+use std::fs::File;
+#[cfg(unix)]
+use std::io::Write;
+#[cfg(unix)]
+use std::os::fd::{AsRawFd, FromRawFd};
+
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -111,6 +118,12 @@ impl TokenStore {
         self.refresh_tokens.write().remove(refresh_token);
     }
 
+    /// Revoke every session after credentials change.
+    pub fn revoke_all(&self) {
+        self.access_tokens.write().clear();
+        self.refresh_tokens.write().clear();
+    }
+
     pub fn cleanup_expired(&self) {
         let now = Instant::now();
         self.access_tokens
@@ -132,12 +145,26 @@ pub struct StoredCredentials {
 
 pub struct CredentialStore {
     credentials: RwLock<Option<StoredCredentials>>,
+    #[cfg(not(unix))]
     file_path: PathBuf,
+    #[cfg(unix)]
+    directory: File,
 }
 
 impl CredentialStore {
     pub fn new(config_dir: PathBuf) -> Self {
+        // Startup creates the configured data directory before constructing
+        // this store. Canonicalizing it here confines the credential file to
+        // that existing directory and removes traversal or symlinked-parent
+        // ambiguity from the subsequent writes.
+        let config_dir = config_dir.canonicalize().unwrap_or_else(|error| {
+            panic!("credential store data directory must exist before startup: {error}")
+        });
         let file_path = config_dir.join("credentials.json");
+        #[cfg(unix)]
+        let directory = File::open(&config_dir).unwrap_or_else(|error| {
+            panic!("credential store data directory must be readable: {error}")
+        });
         let credentials = if file_path.exists() {
             match std::fs::read_to_string(&file_path) {
                 Ok(contents) => serde_json::from_str(&contents).ok(),
@@ -148,7 +175,10 @@ impl CredentialStore {
         };
         Self {
             credentials: RwLock::new(credentials),
+            #[cfg(not(unix))]
             file_path,
+            #[cfg(unix)]
+            directory,
         }
     }
 
@@ -160,20 +190,58 @@ impl CredentialStore {
         self.credentials.read().clone()
     }
 
-    pub fn set_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
-        let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
-        // Create parent directory if needed
-        if let Some(parent) = self.file_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(&self.file_path, &json)?;
-        // Set file permissions to owner-only on unix
+    fn persist(&self, json: &[u8]) -> Result<(), std::io::Error> {
         #[cfg(unix)]
         {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&self.file_path, std::fs::Permissions::from_mode(0o600))?;
+            // The directory handle is opened from the canonical data
+            // directory at startup. The fixed filename never comes from a
+            // request or configuration value, and O_NOFOLLOW prevents a
+            // pre-existing credentials symlink from redirecting the write.
+            let flags =
+                libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC | libc::O_CLOEXEC | libc::O_NOFOLLOW;
+            let fd = unsafe {
+                libc::openat(
+                    self.directory.as_raw_fd(),
+                    c"credentials.json".as_ptr(),
+                    flags,
+                    0o600,
+                )
+            };
+            if fd < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            let mut file = unsafe { File::from_raw_fd(fd) };
+            file.write_all(json)?;
+            if unsafe { libc::fchmod(file.as_raw_fd(), 0o600) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            file.sync_all()
         }
+
+        #[cfg(not(unix))]
+        std::fs::write(&self.file_path, json)
+    }
+
+    pub fn set_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
+        self.persist(json.as_bytes())?;
         *self.credentials.write() = Some(creds);
+        Ok(())
+    }
+
+    /// Set credentials exactly once. The check and write are serialized so
+    /// two first-boot setup requests cannot race into different accounts.
+    pub fn initialize_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
+        let mut current = self.credentials.write();
+        if current.is_some() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                "credentials already configured",
+            ));
+        }
+        let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
+        self.persist(json.as_bytes())?;
+        *current = Some(creds);
         Ok(())
     }
 
@@ -238,11 +306,6 @@ pub async fn h_auth_setup(
     State(state): State<ApiState>,
     Json(req): Json<SetupRequest>,
 ) -> impl IntoResponse {
-    // Only allow if no credentials exist yet
-    if state.credential_store.has_credentials() {
-        return (StatusCode::FORBIDDEN, "credentials already configured").into_response();
-    }
-
     if req.username.is_empty() || req.password.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
@@ -251,14 +314,19 @@ pub async fn h_auth_setup(
             .into_response();
     }
 
-    match state.credential_store.set_credentials(StoredCredentials {
-        username: req.username,
-        password: req.password,
-    }) {
+    match state
+        .credential_store
+        .initialize_credentials(StoredCredentials {
+            username: req.username,
+            password: req.password,
+        }) {
         Ok(_) => {
             // Create tokens for the new user so they're immediately logged in
             let tokens = state.token_store.create_tokens();
             (StatusCode::OK, Json(tokens)).into_response()
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            (StatusCode::FORBIDDEN, "credentials are already configured").into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -300,9 +368,19 @@ pub async fn h_auth_change_credentials(
         username: req.new_username.unwrap_or(current_creds.username),
         password: req.new_password.unwrap_or(current_creds.password),
     };
+    if new_creds.username.is_empty() || new_creds.password.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            "username and password cannot be empty",
+        )
+            .into_response();
+    }
 
     match state.credential_store.set_credentials(new_creds) {
-        Ok(_) => StatusCode::OK.into_response(),
+        Ok(_) => {
+            state.token_store.revoke_all();
+            StatusCode::OK.into_response()
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("failed to save credentials: {e}"),

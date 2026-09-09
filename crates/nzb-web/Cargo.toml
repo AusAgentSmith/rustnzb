@@ -1,6 +1,6 @@
 [package]
 name = "nzb-web"
-version = "0.4.20"
+version = "0.4.21"
 edition = "2024"
 description = "Usenet download engine: queue management, download orchestration, and background services"
 license = "MIT"
@@ -13,7 +13,7 @@ groups-db = ["nzb-postproc/groups-db"]
 [dependencies]
 nzb-nntp = { version = "0.2.22", path = "../nzb-nntp" }
 nzb-decode = { version = "0.1.2", path = "../nzb-decode" }
-nzb-postproc = { version = "0.2.6", path = "../nzb-postproc" }
+nzb-postproc = { version = "0.2.7", path = "../nzb-postproc" }
 nzb-dispatch = { version = "0.2.6", path = "../nzb-dispatch" }
 axum = { version = "0.8", features = ["multipart"] }
 tower = "0.5"
@@ -45,6 +45,7 @@ feed-rs = "2"
 regex = "1"
 libc = "0.2"
 unicode-normalization = "0.1"
+flate2.workspace = true
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }

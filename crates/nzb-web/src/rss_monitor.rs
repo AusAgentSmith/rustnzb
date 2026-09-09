@@ -6,6 +6,9 @@ use arc_swap::ArcSwap;
 use chrono::Utc;
 use tracing::{info, warn};
 
+use crate::fetch_guard::{
+    MAX_FETCH_BODY_BYTES, build_fetch_client, read_response_bytes_limited, validate_fetch_url,
+};
 use crate::nzb_core::config::{AppConfig, RssFeedConfig};
 use crate::nzb_core::models::{Priority, RssItem};
 
@@ -85,11 +88,6 @@ impl RssMonitor {
         // Migrate legacy seen file on first run
         self.migrate_seen_json();
 
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .expect("Failed to create HTTP client");
-
         loop {
             let cfg = self.config.load();
             let feeds = &cfg.rss_feeds;
@@ -99,7 +97,7 @@ impl RssMonitor {
                     continue;
                 }
 
-                if let Err(e) = self.check_feed(&client, feed).await {
+                if let Err(e) = self.check_feed(feed).await {
                     warn!(feed = %feed.name, error = %e, "RSS feed check failed");
                 }
             }
@@ -112,6 +110,15 @@ impl RssMonitor {
                 && pruned > 0
             {
                 info!(pruned, "Pruned old RSS items");
+            }
+
+            if let Some(days) = cfg.general.rss_downloaded_item_expiry_days {
+                let cutoff = (Utc::now() - chrono::Duration::days(days as i64)).to_rfc3339();
+                if let Ok(expired) = self.queue_manager.rss_items_expire_downloaded(&cutoff)
+                    && expired > 0
+                {
+                    info!(expired, "Expired downloaded RSS items");
+                }
             }
 
             // Use the minimum poll interval across all enabled feeds, defaulting to 15 min
@@ -127,22 +134,31 @@ impl RssMonitor {
         }
     }
 
-    async fn check_feed(
-        &self,
-        client: &reqwest::Client,
-        feed: &RssFeedConfig,
-    ) -> anyhow::Result<()> {
+    async fn check_feed(&self, feed: &RssFeedConfig) -> anyhow::Result<()> {
         info!(feed = %feed.name, url = %feed.url, "Checking RSS feed");
 
-        let response = client.get(&feed.url).send().await?;
-        let body = response.bytes().await?;
+        let feed_plan = validate_fetch_url(&feed.url)
+            .await
+            .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+        let feed_client =
+            build_fetch_client(&feed_plan).map_err(|error| anyhow::anyhow!(error.to_string()))?;
+        let response = feed_client.get(feed_plan.url).send().await?;
+        if !response.status().is_success() {
+            anyhow::bail!("HTTP {}", response.status());
+        }
+        let body = read_response_bytes_limited(response, MAX_FETCH_BODY_BYTES)
+            .await
+            .map_err(|error| anyhow::anyhow!(error.to_string()))?;
         let parsed = feed_rs::parser::parse(&body[..])?;
 
         // Compile filter regex if provided
-        let filter = feed
-            .filter_regex
-            .as_ref()
-            .and_then(|r| regex::Regex::new(r).ok());
+        let filter = match feed.filter_regex.as_deref() {
+            None => None,
+            Some(pattern) => Some(
+                Self::compile_filter(pattern)
+                    .ok_or_else(|| anyhow::anyhow!("invalid RSS filter expression"))?,
+            ),
+        };
 
         // Load download rules for this feed
         let rules = self
@@ -178,6 +194,14 @@ impl RssMonitor {
                 .unwrap_or(0);
             let published_at = entry.published.or(entry.updated);
 
+            if let Some(max_age_days) = feed.max_age_days
+                && let Some(published_at) = published_at
+                && now.signed_duration_since(published_at).num_seconds()
+                    > (max_age_days as i64).saturating_mul(86_400)
+            {
+                continue;
+            }
+
             pending.push(PendingItem {
                 item: RssItem {
                     id: entry.id.clone(),
@@ -198,6 +222,17 @@ impl RssMonitor {
 
         // Batch insert all items in one transaction (single DB lock)
         let items_for_insert: Vec<RssItem> = pending.iter().map(|p| p.item.clone()).collect();
+        let downloaded_ids: HashSet<String> = pending
+            .iter()
+            .filter(|pending| {
+                self.queue_manager
+                    .rss_item_get(&pending.item.id)
+                    .ok()
+                    .flatten()
+                    .is_some_and(|item| item.downloaded)
+            })
+            .map(|pending| pending.item.id.clone())
+            .collect();
         let new_items = self
             .queue_manager
             .rss_items_batch_upsert(&items_for_insert)
@@ -205,8 +240,13 @@ impl RssMonitor {
 
         // Now process auto-downloads for newly inserted items only
         // (batch_upsert uses INSERT OR IGNORE so only new items get inserted)
+        let mut handled_ids = HashSet::new();
         for p in &pending {
             let Some(ref url) = p.nzb_url else { continue };
+
+            if downloaded_ids.contains(&p.item.id) || !handled_ids.insert(p.item.id.clone()) {
+                continue;
+            }
 
             // Feed-level filter must pass (if set)
             let passes_filter = match filter {
@@ -219,7 +259,7 @@ impl RssMonitor {
 
             // Check download rules
             let matched_rule = rules.iter().find(|r| {
-                regex::Regex::new(&r.match_regex)
+                Self::compile_filter(&r.match_regex)
                     .map(|re| re.is_match(&p.title))
                     .unwrap_or(false)
             });
@@ -244,26 +284,10 @@ impl RssMonitor {
                 continue;
             }
 
-            // Skip if already downloaded (existing item in DB)
-            if self
-                .queue_manager
-                .rss_item_exists(&p.item.id)
-                .unwrap_or(false)
-            {
-                // Item existed before this batch — already processed previously
-                // Check if it was newly inserted by seeing if it's in our new count
-                // Actually, we can just check the downloaded flag
-                if let Ok(Some(existing)) = self.queue_manager.rss_item_get(&p.item.id)
-                    && existing.downloaded
-                {
-                    continue;
-                }
-            }
-
             info!(feed = %feed.name, title = %p.title, url = %url, "Auto-downloading RSS item");
 
             match self
-                .fetch_and_enqueue(client, url, &p.title, feed, category.as_deref(), priority)
+                .fetch_and_enqueue(url, &p.title, feed, category.as_deref(), priority)
                 .await
             {
                 Ok(()) => {
@@ -283,6 +307,17 @@ impl RssMonitor {
         }
 
         Ok(())
+    }
+
+    fn compile_filter(pattern: &str) -> Option<regex::Regex> {
+        const MAX_PATTERN_BYTES: usize = 512;
+        if pattern.len() > MAX_PATTERN_BYTES {
+            return None;
+        }
+        regex::RegexBuilder::new(pattern)
+            .size_limit(1024 * 1024)
+            .build()
+            .ok()
     }
 
     /// Extract NZB URL from a feed entry's links or media content.
@@ -314,18 +349,24 @@ impl RssMonitor {
 
     async fn fetch_and_enqueue(
         &self,
-        client: &reqwest::Client,
         url: &str,
         name: &str,
         feed: &RssFeedConfig,
         category: Option<&str>,
         priority: i32,
     ) -> anyhow::Result<()> {
-        let response = client.get(url).send().await?;
+        let plan = validate_fetch_url(url)
+            .await
+            .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+        let client =
+            build_fetch_client(&plan).map_err(|error| anyhow::anyhow!(error.to_string()))?;
+        let response = client.get(plan.url).send().await?;
         if !response.status().is_success() {
             anyhow::bail!("HTTP {}", response.status());
         }
-        let data = response.bytes().await?;
+        let data = read_response_bytes_limited(response, MAX_FETCH_BODY_BYTES)
+            .await
+            .map_err(|error| anyhow::anyhow!(error.to_string()))?;
 
         let mut job = crate::nzb_core::nzb_parser::parse_nzb(name, &data)?;
 
@@ -354,7 +395,7 @@ impl RssMonitor {
 
         std::fs::create_dir_all(&job.work_dir)?;
 
-        self.queue_manager.add_job(job, Some(data.to_vec()))?;
+        self.queue_manager.add_job(job, Some(data))?;
         Ok(())
     }
 }
@@ -432,5 +473,34 @@ mod tests {
             assert!(item.downloaded);
             assert!(item.downloaded_at.is_some());
         }
+    }
+
+    #[test]
+    fn feed_filters_fail_closed_at_syntax_and_size_limits() {
+        assert!(RssMonitor::compile_filter(r"release-[0-9]+").is_some());
+        assert!(RssMonitor::compile_filter("(").is_none());
+        assert!(RssMonitor::compile_filter(&"x".repeat(513)).is_none());
+    }
+
+    #[tokio::test]
+    async fn feed_checks_reject_local_targets_before_network_access() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let (monitor, _) = monitor(temp.path().to_path_buf());
+        let feed = RssFeedConfig {
+            name: "local-feed".into(),
+            url: "http://127.0.0.1:9/feed.xml".into(),
+            poll_interval_secs: 900,
+            category: None,
+            filter_regex: None,
+            enabled: true,
+            auto_download: true,
+            max_age_days: None,
+        };
+
+        let error = monitor
+            .check_feed(&feed)
+            .await
+            .expect_err("local addresses must be rejected");
+        assert!(error.to_string().contains("private/reserved"));
     }
 }
