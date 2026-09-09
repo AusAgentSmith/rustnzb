@@ -3,6 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+#[cfg(unix)]
+use std::fs::File;
+#[cfg(unix)]
+use std::io::Write;
+#[cfg(unix)]
+use std::os::fd::{AsRawFd, FromRawFd};
+
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -138,7 +145,10 @@ pub struct StoredCredentials {
 
 pub struct CredentialStore {
     credentials: RwLock<Option<StoredCredentials>>,
+    #[cfg(not(unix))]
     file_path: PathBuf,
+    #[cfg(unix)]
+    directory: File,
 }
 
 impl CredentialStore {
@@ -151,6 +161,10 @@ impl CredentialStore {
             panic!("credential store data directory must exist before startup: {error}")
         });
         let file_path = config_dir.join("credentials.json");
+        #[cfg(unix)]
+        let directory = File::open(&config_dir).unwrap_or_else(|error| {
+            panic!("credential store data directory must be readable: {error}")
+        });
         let credentials = if file_path.exists() {
             match std::fs::read_to_string(&file_path) {
                 Ok(contents) => serde_json::from_str(&contents).ok(),
@@ -161,7 +175,10 @@ impl CredentialStore {
         };
         Self {
             credentials: RwLock::new(credentials),
+            #[cfg(not(unix))]
             file_path,
+            #[cfg(unix)]
+            directory,
         }
     }
 
@@ -173,15 +190,41 @@ impl CredentialStore {
         self.credentials.read().clone()
     }
 
-    pub fn set_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
-        let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
-        std::fs::write(&self.file_path, &json)?;
-        // Set file permissions to owner-only on unix
+    fn persist(&self, json: &[u8]) -> Result<(), std::io::Error> {
         #[cfg(unix)]
         {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&self.file_path, std::fs::Permissions::from_mode(0o600))?;
+            // The directory handle is opened from the canonical data
+            // directory at startup. The fixed filename never comes from a
+            // request or configuration value, and O_NOFOLLOW prevents a
+            // pre-existing credentials symlink from redirecting the write.
+            let flags =
+                libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC | libc::O_CLOEXEC | libc::O_NOFOLLOW;
+            let fd = unsafe {
+                libc::openat(
+                    self.directory.as_raw_fd(),
+                    c"credentials.json".as_ptr(),
+                    flags,
+                    0o600,
+                )
+            };
+            if fd < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            let mut file = unsafe { File::from_raw_fd(fd) };
+            file.write_all(json)?;
+            if unsafe { libc::fchmod(file.as_raw_fd(), 0o600) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            file.sync_all()
         }
+
+        #[cfg(not(unix))]
+        std::fs::write(&self.file_path, json)
+    }
+
+    pub fn set_credentials(&self, creds: StoredCredentials) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
+        self.persist(json.as_bytes())?;
         *self.credentials.write() = Some(creds);
         Ok(())
     }
@@ -197,12 +240,7 @@ impl CredentialStore {
             ));
         }
         let json = serde_json::to_string_pretty(&creds).map_err(std::io::Error::other)?;
-        std::fs::write(&self.file_path, &json)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&self.file_path, std::fs::Permissions::from_mode(0o600))?;
-        }
+        self.persist(json.as_bytes())?;
         *current = Some(creds);
         Ok(())
     }
