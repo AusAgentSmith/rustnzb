@@ -1,0 +1,180 @@
+name: Promote pre-release to stable
+
+# Promote a soaked pre-release (a vX.Y.Z-beta.N image published by release.yml)
+# to the stable channel. The Docker image is copied by DIGEST — the exact bytes
+# that soaked become :vX.Y.Z + :latest, never a fresh rebuild. The standalone
+# release binaries are rebuilt from the same commit so their filenames and
+# embedded version read as the stable version.
+#
+# Trigger manually once the beta has soaked. There is no automatic promotion.
+
+on:
+  workflow_dispatch:
+    inputs:
+      beta_tag:
+        description: 'Pre-release tag to promote (e.g. v1.5.0-beta.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rustnzb-release-promote
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: [self-hosted]
+    outputs:
+      beta_tag: ${{ steps.v.outputs.beta_tag }}
+      stable_tag: ${{ steps.v.outputs.stable_tag }}
+      sha: ${{ steps.v.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Validate the pre-release tag and resolve the stable version
+        id: v
+        env:
+          # Passed through the environment, never interpolated into the script,
+          # so the dispatch input cannot inject shell.
+          BETA_INPUT: ${{ inputs.beta_tag }}
+        run: |
+          beta="$BETA_INPUT"
+          case "$beta" in
+            v[0-9]*-alpha*|v[0-9]*-beta*|v[0-9]*-rc*) ;;
+            *) echo "not a pre-release tag: $beta" >&2; exit 1 ;;
+          esac
+          git fetch --no-tags origin main
+          git fetch origin "refs/tags/$beta:refs/tags/$beta"
+          sha=$(git rev-parse "refs/tags/$beta^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main \
+            || { echo "$beta is not reachable from main" >&2; exit 1; }
+          # Strip the first -suffix: v1.5.0-beta.3 -> v1.5.0
+          stable="${beta%%-*}"
+          case "$stable" in v[0-9]*) ;; *) echo "bad stable version: $stable" >&2; exit 1 ;; esac
+          {
+            echo "beta_tag=$beta"
+            echo "stable_tag=$stable"
+            echo "sha=$sha"
+          } >> "$GITHUB_OUTPUT"
+          printf 'promoting %s -> %s (%s)\n' "$beta" "$stable" "$sha"
+
+  promote-image:
+    needs: resolve
+    permissions:
+      contents: read
+      packages: write
+    runs-on: [self-hosted, docker, publish]
+    env:
+      BETA: ${{ needs.resolve.outputs.beta_tag }}
+      STABLE: ${{ needs.resolve.outputs.stable_tag }}
+      SKOPEO_IMAGE: quay.io/skopeo/stable:v1.19@sha256:77e6c8901f6976bdfa87b8b14c40b96de754794c492d8ed295f77fba1454a4ab
+    steps:
+      - name: Digest-copy the soaked beta image to :stable and :latest
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_CARGO_TOKEN }}
+          OLD_GHCR_TOKEN: ${{ secrets.OLD_GHCR_TOKEN }}
+        run: |
+          docker run --rm --entrypoint sh \
+            -e GH_TOKEN -e FORGEJO_TOKEN -e OLD_GHCR_TOKEN -e GITHUB_ACTOR -e BETA -e STABLE \
+            "$SKOPEO_IMAGE" -ec '
+              ghcr=ghcr.io/thedancingdeveloper-org/rustnzbd
+              forgejo=repo.indexarr.net/indexarr/rustnzbd
+              old=ghcr.io/ausagentsmith-org/rustnzb
+              gh="$GITHUB_ACTOR:$GH_TOKEN"
+              fj="$FORGEJO_TOKEN:$FORGEJO_TOKEN"
+              og="AusAgentSmith:$OLD_GHCR_TOKEN"
+              # The exact soaked digest is the single source for every copy.
+              digest=$(skopeo inspect --creds "$gh" --format "{{.Digest}}" "docker://$ghcr:$BETA")
+              test -n "$digest"
+              src="docker://$ghcr@$digest"
+              for target in \
+                  "$ghcr:$STABLE|$gh" "$ghcr:latest|$gh" \
+                  "$forgejo:$STABLE|$fj" "$forgejo:latest|$fj" \
+                  "$old:$STABLE|$og" "$old:latest|$og"; do
+                ref="${target%%|*}"; creds="${target#*|}"
+                skopeo copy --multi-arch all --src-creds "$gh" --dest-creds "$creds" \
+                  "$src" "docker://$ref"
+                got=$(skopeo inspect --creds "$creds" --format "{{.Digest}}" "docker://$ref")
+                test "$got" = "$digest"
+                printf "copied %s (%s)\n" "$ref" "$got"
+              done
+              printf "promoted soaked digest %s to %s + latest\n" "$digest" "$STABLE"
+            '
+
+  publish-stable-release:
+    needs: resolve
+    permissions:
+      contents: write
+    runs-on: [self-hosted, docker, publish]
+    env:
+      STABLE: ${{ needs.resolve.outputs.stable_tag }}
+      SHA: ${{ needs.resolve.outputs.sha }}
+      CROSS_IMAGE: repo.indexarr.net/indexarr/rustnzb-ci-cross@sha256:89f1f570acb0f8e6514ffcca39bd9f26305263d95274e4c170eedf867d113ad9
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          fetch-depth: 0
+      - name: Build stable release assets from the soaked commit
+        env:
+          GIT_AUTH_TOKEN: ${{ secrets.FORGEJO_CARGO_TOKEN }}
+        run: |
+          printf '%s' "$GIT_AUTH_TOKEN" | docker login repo.indexarr.net --username x-access-token --password-stdin >/dev/null
+          container="rustnzb-promote-assets-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() { docker rm -f "$container" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          docker create --name "$container" -w /workspace \
+            -e GIT_AUTH_TOKEN -e CI_COMMIT_SHA="$SHA" \
+            -e CI_COMMIT_TAG="$STABLE" -e CI_PIPELINE_NUMBER="$GITHUB_RUN_ID" \
+            "$CROSS_IMAGE" sh -ec '
+              ci/tasks/frontend-build
+              ci/tasks/build-linux
+              ci/tasks/build-linux-arm64
+              ci/tasks/build-windows
+              ci/tasks/package-release
+            ' >/dev/null
+          docker cp . "$container:/workspace"
+          docker start -a "$container"
+          mkdir -p .ci-output/packages
+          docker cp "$container:/workspace/.ci-output/packages/." .ci-output/packages/
+          (cd .ci-output/packages && sha256sum -c "SHA256SUMS-${STABLE}.txt")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustnzb-${{ needs.resolve.outputs.stable_tag }}-release-assets
+          path: .ci-output/packages/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Create the stable GitHub release from the promoted commit
+        env:
+          # Deliberately the default GITHUB_TOKEN: a tag/release it creates does
+          # NOT re-trigger release.yml, so the stable image stays the
+          # digest-copied soaked artifact rather than a fresh rebuild that would
+          # overwrite :latest.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          auth=(-H 'Accept: application/vnd.github+json' -H "Authorization: Bearer $GH_TOKEN" -H 'X-GitHub-Api-Version: 2022-11-28')
+          release_id=$(curl -fsS "${auth[@]}" "$api/releases/tags/$STABLE" | jq -r .id 2>/dev/null || true)
+          if [ -z "$release_id" ] || [ "$release_id" = null ]; then
+            payload=$(jq -nc --arg tag "$STABLE" --arg sha "$SHA" \
+              '{tag_name:$tag,target_commitish:$sha,name:("rustnzb "+$tag),draft:false,prerelease:false,generate_release_notes:true}')
+            release_id=$(curl -fsS -X POST "${auth[@]}" -H 'Content-Type: application/json' \
+              --data "$payload" "$api/releases" | jq -r .id)
+          fi
+          test -n "$release_id" && test "$release_id" != null
+          for file in .ci-output/packages/rustnzb-* .ci-output/packages/SHA256SUMS-*; do
+            name=$(basename "$file")
+            old_id=$(curl -fsS "${auth[@]}" "$api/releases/$release_id/assets?per_page=100" \
+              | jq -r --arg name "$name" '.[] | select(.name==$name) | .id' | head -n1)
+            if [ -n "$old_id" ]; then
+              curl -fsS -X DELETE "${auth[@]}" "$api/releases/assets/$old_id" >/dev/null
+            fi
+            curl -fsS -X POST "${auth[@]}" -H 'Content-Type: application/octet-stream' \
+              --data-binary "@$file" \
+              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$release_id/assets?name=$name" >/dev/null
+          done
+          printf 'published stable release %s\n' "$STABLE"

@@ -1,0 +1,89 @@
+#!/bin/sh
+set -eu
+
+# crate-drift — verify the standalone nzb-* repos still match the monorepo.
+#
+# The monorepo is the head: every synced crate's `src/` tree and its package
+# version must be identical in the standalone repo it publishes from. This
+# task clones each standalone repo (from the crate's `repository` field),
+# compares it against `crates/<name>/`, and exits non-zero when any crate has
+# drifted, naming the sync command to fix it. It never writes anywhere.
+#
+# Public repos clone anonymously. For private mirrors, set GH_TOKEN and the
+# clone authenticates the same way as ci/tasks/mirror-github.
+
+TASK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$TASK_DIR/../.." && pwd)
+cd "$REPO_ROOT"
+
+crate_list=ci/nzb-crates.txt
+[ -f "$crate_list" ] || { echo "crate-drift: missing $crate_list" >&2; exit 2; }
+
+workdir=$(mktemp -d)
+askpass=""
+cleanup() { rm -rf "$workdir"; [ -z "$askpass" ] || rm -f "$askpass"; }
+trap cleanup EXIT
+
+if [ -n "${GH_TOKEN:-}" ]; then
+    askpass=$(mktemp)
+    cat >"$askpass" <<'ASK'
+#!/bin/sh
+case "$1" in
+    *Username*) printf '%s\n' x-access-token ;;
+    *Password*) printf '%s\n' "$GH_TOKEN" ;;
+    *) exit 1 ;;
+esac
+ASK
+    chmod 700 "$askpass"
+    export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0
+fi
+
+manifest_field() {
+    # manifest_field <file> <key> — first `<key> = "value"` line's value.
+    grep -m1 "^$2[[:space:]]*=" "$1" | sed 's/[^"]*"\([^"]*\)".*/\1/'
+}
+
+failures=0
+note_drift() { echo "drift: $1" >&2; failures=$((failures + 1)); }
+
+while IFS= read -r crate; do
+    case "$crate" in ''|\#*) continue ;; esac
+
+    manifest="crates/$crate/Cargo.toml"
+    if [ ! -f "$manifest" ]; then
+        note_drift "$crate: no $manifest in the monorepo"
+        continue
+    fi
+
+    mono_version=$(manifest_field "$manifest" version)
+    repo=$(manifest_field "$manifest" repository)
+    if [ -z "$repo" ]; then
+        note_drift "$crate: no repository field in $manifest"
+        continue
+    fi
+
+    dest="$workdir/$crate"
+    if ! git clone --depth 1 --quiet "$repo" "$dest" 2>"$workdir/$crate.err"; then
+        note_drift "$crate: cannot clone $repo"
+        sed 's/^/    /' "$workdir/$crate.err" >&2 || true
+        continue
+    fi
+
+    std_version=$(manifest_field "$dest/Cargo.toml" version)
+    if [ "$mono_version" != "$std_version" ]; then
+        note_drift "$crate: version monorepo=$mono_version standalone=$std_version"
+    fi
+
+    if ! git -c core.fileMode=false diff --no-index --quiet \
+            "$dest/src" "crates/$crate/src"; then
+        note_drift "$crate: src/ differs from the standalone repo — run: ci/tasks/sync-crate $crate"
+        git -c core.fileMode=false diff --no-index --stat \
+            "$dest/src" "crates/$crate/src" 2>/dev/null | sed 's/^/    /' >&2 || true
+    fi
+done <"$crate_list"
+
+if [ "$failures" -ne 0 ]; then
+    echo "crate-drift: $failures crate(s) drifted from the monorepo head" >&2
+    exit 1
+fi
+echo "crate-drift: all synced crates match the monorepo head"

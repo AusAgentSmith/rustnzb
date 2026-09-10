@@ -63,3 +63,14 @@ jobs:
         with:
           name: mutation-report
           path: .ci-artifacts/mutants
+
+  crate-drift:
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Diff the standalone nzb-* repos against the monorepo head
+        run: ci/tasks/crate-drift
+        env:
+          # Optional: a token that can read the standalone repos if any are
+          # private. Public repos clone anonymously and this stays empty.
+          GH_TOKEN: ${{ secrets.NZB_SYNC_TOKEN }}
