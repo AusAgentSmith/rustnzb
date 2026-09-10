@@ -1,0 +1,83 @@
+#!/bin/sh
+set -eu
+
+# sync-crate <name> — carry one nzb-* crate from the monorepo head to its
+# standalone repo.
+#
+# Exports crates/<name> at HEAD (tracked files only), replaces the standalone
+# repo's tree with it, and opens a pull request against that repo's main
+# branch. The monorepo owns version numbers, so the exported Cargo.toml
+# carries the version across untouched. Publishing to crates.io happens from a
+# tag on the standalone repo after this PR merges (see docs/RELEASING.md); this
+# task never publishes and never pushes to the monorepo.
+#
+# Requires GH_TOKEN (a token that can push to and open PRs on the standalone
+# repo) and the gh CLI.
+
+crate=${1:?usage: sync-crate <nzb-crate-name>}
+
+TASK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$TASK_DIR/../.." && pwd)
+cd "$REPO_ROOT"
+
+grep -qx "$crate" ci/nzb-crates.txt \
+    || { echo "$crate is not a synced nzb-* crate (see ci/nzb-crates.txt)" >&2; exit 2; }
+
+manifest="crates/$crate/Cargo.toml"
+[ -f "$manifest" ] || { echo "unknown crate: no $manifest" >&2; exit 2; }
+
+: "${GH_TOKEN:?GH_TOKEN is required}"
+command -v gh >/dev/null 2>&1 || { echo "the gh CLI is required" >&2; exit 127; }
+
+manifest_field() { grep -m1 "^$2[[:space:]]*=" "$1" | sed 's/[^"]*"\([^"]*\)".*/\1/'; }
+
+repo=$(manifest_field "$manifest" repository)
+version=$(manifest_field "$manifest" version)
+[ -n "$repo" ] || { echo "$crate has no repository field" >&2; exit 2; }
+slug=$(printf '%s' "$repo" | sed 's#https://github.com/##; s#\.git$##')
+head_sha=$(git rev-parse --short HEAD)
+branch="sync/monorepo-$head_sha"
+
+workdir=$(mktemp -d)
+askpass=$(mktemp)
+cleanup() { rm -rf "$workdir"; rm -f "$askpass"; }
+trap cleanup EXIT
+
+cat >"$askpass" <<'ASK'
+#!/bin/sh
+case "$1" in
+    *Username*) printf '%s\n' x-access-token ;;
+    *Password*) printf '%s\n' "$GH_TOKEN" ;;
+    *) exit 1 ;;
+esac
+ASK
+chmod 700 "$askpass"
+export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 GH_TOKEN
+
+clone="$workdir/repo"
+git clone --quiet "$repo" "$clone"
+git -C "$clone" checkout -q -B "$branch"
+
+# Replace the standalone tree with the monorepo crate at HEAD. Clear the old
+# tracked files first so deletions in the monorepo propagate, then extract the
+# crate subtree (git archive emits tracked files only, no target/).
+git -C "$clone" ls-files -z | (cd "$clone" && xargs -0 rm -f --)
+git archive "HEAD:crates/$crate" | tar -x -C "$clone"
+
+git -C "$clone" add -A
+if git -C "$clone" diff --cached --quiet; then
+    echo "sync-crate: $crate already matches the standalone repo at v$version; nothing to do"
+    exit 0
+fi
+
+git -C "$clone" commit -q \
+    -m "sync: $crate from rustnzb monorepo $head_sha (v$version)"
+git -C "$clone" push -q --force-with-lease -u origin "$branch"
+
+gh pr create --repo "$slug" --head "$branch" --base main \
+    --title "sync: $crate from rustnzb monorepo $head_sha" \
+    --body "Automated sync of \`crates/$crate\` at rustnzb monorepo commit $head_sha (version $version).
+
+The monorepo owns nzb-* version numbers; this PR carries its current tree across verbatim. After merge, publish v$version from a \`v$version\` tag on this repo — see rustnzb docs/RELEASING.md."
+
+echo "sync-crate: opened a PR on $slug from branch $branch (v$version)"

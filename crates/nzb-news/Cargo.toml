@@ -1,6 +1,6 @@
 [package]
 name = "nzb-news"
-version = "0.1.12"
+version = "0.1.14"
 edition = "2024"
 description = "Layered NNTP download engine: persistent per-connection workers, priority-aware dispatch with cascade-retry, pipelined batch fetching. Pure fetch layer — no decode, no assembly."
 license = "MIT"
@@ -8,13 +8,13 @@ repository = "https://github.com/TheDancingDeveloper-org/nzb-news"
 readme = "README.md"
 
 [dependencies]
-nzb-nntp = { version = "0.2.22", path = "../nzb-nntp" }
+nzb-nntp = { version = "0.2.24", path = "../nzb-nntp" }
 
 tokio = { version = "1", features = ["sync", "rt", "time", "macros"] }
 tracing = "0.1"
 
 [dev-dependencies]
-nzb-nntp = { version = "0.2.22", path = "../nzb-nntp", features = ["test-support"] }
+nzb-nntp = { version = "0.2.24", path = "../nzb-nntp", features = ["test-support"] }
 tokio = { version = "1", features = ["full", "test-util"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
