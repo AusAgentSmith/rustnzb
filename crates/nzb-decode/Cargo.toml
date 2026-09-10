@@ -10,6 +10,7 @@ readme = "README.md"
 [dependencies]
 bytes = "1"
 crc32fast = "1"
+md-5 = "0.11"
 yenc-simd = "0.1"
 tracing = "0.1"
 anyhow = "1"
