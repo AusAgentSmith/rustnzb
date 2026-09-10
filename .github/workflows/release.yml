@@ -35,6 +35,23 @@ jobs:
       IMAGE: ghcr.io/thedancingdeveloper-org/rustnzbd
     steps:
       - uses: actions/checkout@v7
+      # A pre-release tag (v1.2.3-beta.N / -alpha / -rc) publishes the moving
+      # `:beta` channel and never touches `:latest`, so it can soak before a
+      # stable promotion (see promote-release.yml). A plain vX.Y.Z tag is the
+      # stable channel and moves `:latest` as before.
+      - name: Determine release channel
+        id: channel
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            *-alpha*|*-beta*|*-rc*) moving=beta ;;
+            *) moving=latest ;;
+          esac
+          echo "moving=$moving" >> "$GITHUB_OUTPUT"
+          if [ "$moving" = beta ]; then
+            echo "pre-release channel: moving tag :beta (:latest left untouched)"
+          else
+            echo "stable channel: moving tag :latest"
+          fi
       # Authenticate to Docker Hub first -- setup-qemu-action pulls its
       # binfmt image from Docker Hub too, and doing that unauthenticated
       # hits the shared runner's unauthenticated pull rate limit.
@@ -66,7 +83,7 @@ jobs:
           provenance: false
           tags: |
             ${{ env.IMAGE }}:${{ github.ref_name }}
-            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ steps.channel.outputs.moving }}
             ${{ env.IMAGE }}:sha-${{ github.sha }}
           build-args: |
             RUSTNZB_BUILD_REF=${{ github.ref_name }}
@@ -93,10 +110,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_CARGO_TOKEN }}
+          MOVING_TAG: ${{ steps.channel.outputs.moving }}
           SKOPEO_IMAGE: quay.io/skopeo/stable:v1.19@sha256:77e6c8901f6976bdfa87b8b14c40b96de754794c492d8ed295f77fba1454a4ab
         run: |
           docker run --rm --entrypoint sh \
-            -e GH_TOKEN -e FORGEJO_TOKEN -e GITHUB_ACTOR -e GITHUB_REF_NAME \
+            -e GH_TOKEN -e FORGEJO_TOKEN -e GITHUB_ACTOR -e GITHUB_REF_NAME -e MOVING_TAG \
             "$SKOPEO_IMAGE" -ec '
               src="docker://ghcr.io/thedancingdeveloper-org/rustnzbd:$GITHUB_REF_NAME"
               dst="docker://repo.indexarr.net/indexarr/rustnzbd:$GITHUB_REF_NAME"
@@ -106,7 +124,7 @@ jobs:
               skopeo copy --multi-arch all \
                 --src-creds "$GITHUB_ACTOR:$GH_TOKEN" \
                 --dest-creds "$FORGEJO_TOKEN:$FORGEJO_TOKEN" "$src" \
-                docker://repo.indexarr.net/indexarr/rustnzbd:latest
+                "docker://repo.indexarr.net/indexarr/rustnzbd:$MOVING_TAG"
               src_digest=$(skopeo inspect --creds "$GITHUB_ACTOR:$GH_TOKEN" --format "{{.Digest}}" "$src")
               dst_digest=$(skopeo inspect --creds "$FORGEJO_TOKEN:$FORGEJO_TOKEN" --format "{{.Digest}}" "$dst")
               test "$src_digest" = "$dst_digest"
@@ -116,10 +134,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
           OLD_GHCR_TOKEN: ${{ secrets.OLD_GHCR_TOKEN }}
+          MOVING_TAG: ${{ steps.channel.outputs.moving }}
           SKOPEO_IMAGE: quay.io/skopeo/stable:v1.19@sha256:77e6c8901f6976bdfa87b8b14c40b96de754794c492d8ed295f77fba1454a4ab
         run: |
           docker run --rm --entrypoint sh \
-            -e GH_TOKEN -e OLD_GHCR_TOKEN -e GITHUB_ACTOR -e GITHUB_REF_NAME \
+            -e GH_TOKEN -e OLD_GHCR_TOKEN -e GITHUB_ACTOR -e GITHUB_REF_NAME -e MOVING_TAG \
             "$SKOPEO_IMAGE" -ec '
               src="docker://ghcr.io/thedancingdeveloper-org/rustnzbd:$GITHUB_REF_NAME"
               dst="docker://ghcr.io/ausagentsmith-org/rustnzb:$GITHUB_REF_NAME"
@@ -129,7 +148,7 @@ jobs:
               skopeo copy --multi-arch all \
                 --src-creds "$GITHUB_ACTOR:$GH_TOKEN" \
                 --dest-creds "AusAgentSmith:$OLD_GHCR_TOKEN" "$src" \
-                docker://ghcr.io/ausagentsmith-org/rustnzb:latest
+                "docker://ghcr.io/ausagentsmith-org/rustnzb:$MOVING_TAG"
               src_digest=$(skopeo inspect --creds "$GITHUB_ACTOR:$GH_TOKEN" --format "{{.Digest}}" "$src")
               dst_digest=$(skopeo inspect --creds "AusAgentSmith:$OLD_GHCR_TOKEN" --format "{{.Digest}}" "$dst")
               test "$src_digest" = "$dst_digest"

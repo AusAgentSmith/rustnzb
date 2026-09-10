@@ -3,6 +3,43 @@
 GitHub is the release authority for rustnzb. Release tags use the `vX.Y.Z`
 format and must point to a commit reachable from `main`.
 
+## Release channels
+
+The container image is published to GHCR (`…/rustnzbd`) on three tag channels:
+
+- **`:latest`** — the current stable release. Moved only by a stable
+  `vX.Y.Z` release.
+- **`:beta`** — the newest pre-release, for soak testing before a stable
+  promotion. A pre-release tag **never** moves `:latest`.
+- **`:vX.Y.Z`** / **`:vX.Y.Z-beta.N`** — immutable, one per tag.
+
+Pre-release tags use a suffix: `vX.Y.Z-beta.N` (also `-rc.N` / `-alpha.N`).
+They are flagged as GitHub pre-releases and publish only `:vX.Y.Z-beta.N` and
+`:beta`. Cutting a pre-release tag is how a build enters soak testing.
+
+## Beta soak and promotion
+
+Prefer shipping a stable release only after a pre-release has soaked:
+
+1. Tag a pre-release on a `main` commit, e.g. `v1.5.0-beta.1`, and push it.
+   The release workflow publishes `:v1.5.0-beta.1` + `:beta` and a GitHub
+   pre-release. `:latest` is untouched.
+2. Let it soak. Bump the suffix (`-beta.2`, …) for fixes during soak.
+3. When satisfied, run the **Promote pre-release to stable** workflow
+   (`workflow_dispatch`) with the soaked tag. It copies the **exact image
+   digest** that soaked to `:v1.5.0` + `:latest`, then rebuilds the standalone
+   release binaries from the same commit and publishes the stable GitHub
+   release.
+
+Because promotion copies the soaked image by digest, `:v1.5.0` is byte-identical
+to the beta that was tested; only the tag changes. The image's own embedded
+build ref therefore still reads the pre-release version it was built as — that
+is the promoted lineage, not a rebuild. The standalone binaries are rebuilt and
+carry the stable version.
+
+A stable `vX.Y.Z` tag pushed directly (a hotfix without soak) still works and
+takes the rebuild path below.
+
 ## Release checklist
 
 1. Update the workspace version in `Cargo.toml` and any user-visible version
