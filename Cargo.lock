@@ -1878,6 +1878,7 @@ name = "nzb-postproc"
 version = "0.2.8"
 dependencies = [
  "anyhow",
+ "crc32fast",
  "md-5 0.11.0",
  "nzb-core",
  "opentelemetry",

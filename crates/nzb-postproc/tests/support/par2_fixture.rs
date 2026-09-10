@@ -13,10 +13,16 @@
 //!   and the *expected* filename. The 16K hash is what `rename_to_par2_names`
 //!   matches obfuscated files against.
 //!
-//! Recovery (`RecvSlic`) and slice-checksum (`IFSC`) packets are omitted: they
-//! only matter for actual repair, which these tests never reach. Verification
-//! will therefore report files as damaged — that is fine and expected, because
-//! the assertions are about *filenames on disk*, not repair outcomes.
+//! * **IFSC** — one per file: the per-slice MD5 and CRC32 checksums, with the
+//!   final partial slice zero-padded to the slice size, exactly as PAR2 (and
+//!   `rust_par2`'s verifier) compute them. This is what lets `verify` report a
+//!   correct file as intact and what the in-flight slice verifier (WI-144)
+//!   checks decoded slices against.
+//!
+//! Recovery (`RecvSlic`) packets are still omitted: they only matter for actual
+//! repair, which these fixtures do not exercise. `verify` reports the recovery
+//! set as unrepairable (zero recovery blocks), which is fine — the assertions
+//! here are about slice checksums and filenames, not repair.
 //!
 //! Packet layout implemented here (little-endian), per the PAR 2.0 spec:
 //!
@@ -36,6 +42,7 @@ use md5::{Digest, Md5};
 const MAGIC: &[u8; 8] = b"PAR2\x00PKT";
 const TYPE_MAIN: &[u8; 16] = b"PAR 2.0\x00Main\x00\x00\x00\x00";
 const TYPE_FILE_DESC: &[u8; 16] = b"PAR 2.0\x00FileDesc";
+const TYPE_IFSC: &[u8; 16] = b"PAR 2.0\x00IFSC\x00\x00\x00\x00";
 
 /// One file recorded in the recovery set.
 struct FileEntry {
@@ -46,6 +53,8 @@ struct FileEntry {
     hash: [u8; 16],
     hash_16k: [u8; 16],
     size: u64,
+    /// Per-slice (MD5, CRC32) checksums, in slice order.
+    slices: Vec<([u8; 16], u32)>,
 }
 
 /// Builds a PAR2 index file describing a set of files by content.
@@ -84,12 +93,29 @@ impl Par2Fixture {
         id_input.extend_from_slice(expected_name.as_bytes());
         let file_id: [u8; 16] = Md5::digest(&id_input).into();
 
+        // Per-slice checksums for the IFSC packet. Each slice is hashed
+        // zero-padded to the slice size, matching PAR2 and rust_par2's verifier.
+        let slice_size = self.slice_size as usize;
+        let mut slices = Vec::new();
+        let mut off = 0;
+        while off < contents.len() {
+            let end = (off + slice_size).min(contents.len());
+            let mut chunk = contents[off..end].to_vec();
+            chunk.resize(slice_size, 0);
+            let slice_md5: [u8; 16] = Md5::digest(&chunk).into();
+            let mut crc = crc32fast::Hasher::new();
+            crc.update(&chunk);
+            slices.push((slice_md5, crc.finalize()));
+            off = end;
+        }
+
         self.files.push(FileEntry {
             expected_name: expected_name.to_string(),
             file_id,
             hash,
             hash_16k,
             size,
+            slices,
         });
         self
     }
@@ -121,6 +147,18 @@ impl Par2Fixture {
                 body.push(0);
             }
             out.extend_from_slice(&self.packet(TYPE_FILE_DESC, &body));
+        }
+
+        // One IFSC packet per file: file ID then (MD5[16] + CRC32[4]) per slice.
+        // 16 + 20*n is always 4-aligned, so the packet length stays valid.
+        for file in &self.files {
+            let mut body = Vec::new();
+            body.extend_from_slice(&file.file_id);
+            for (slice_md5, crc32) in &file.slices {
+                body.extend_from_slice(slice_md5);
+                body.extend_from_slice(&crc32.to_le_bytes());
+            }
+            out.extend_from_slice(&self.packet(TYPE_IFSC, &body));
         }
 
         std::fs::write(path, &out).unwrap();
