@@ -320,6 +320,35 @@ impl Database {
             )?;
         }
 
+        if version < 10 {
+            info!("Applying database migration v10: per-article damage ledger");
+            // Created empty. `history.retry_data` (v9) is a retry checkpoint,
+            // not damage evidence, so there is no backfill: it carries no
+            // failure reason, per-server evidence, TTL, or server fingerprint
+            // to reconstruct a confirmed-missing record from. See WI-143.
+            self.conn.execute_batch(
+                "
+                CREATE TABLE IF NOT EXISTS damage_ledger (
+                    scope_id TEXT NOT NULL,
+                    file_index INTEGER NOT NULL,
+                    segment_number INTEGER NOT NULL,
+                    message_id TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    evidence TEXT,
+                    first_refused_at TEXT,
+                    confirmed_at TEXT,
+                    expires_at TEXT,
+                    server_fingerprint TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (scope_id, file_index, segment_number)
+                );
+                CREATE INDEX IF NOT EXISTS idx_damage_ledger_file
+                    ON damage_ledger (scope_id, file_index);
+                DELETE FROM schema_version;
+                INSERT INTO schema_version (version) VALUES (10);
+                ",
+            )?;
+        }
+
         Ok(())
     }
 

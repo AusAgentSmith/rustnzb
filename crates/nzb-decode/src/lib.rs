@@ -7,8 +7,10 @@
 
 pub mod assembler;
 pub mod cache;
+pub mod slice_map;
 pub mod yenc;
 
 pub use assembler::FileAssembler;
 pub use cache::ArticleCache;
+pub use slice_map::{FileSlices, SliceDigest, SliceLayout, SliceState, SliceVerifier};
 pub use yenc::{YencDecodeResult, decode_yenc};

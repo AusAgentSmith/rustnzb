@@ -1,0 +1,11 @@
+# Standalone nzb-* crates kept in sync from this monorepo (the head).
+# One crate directory name per line; blank lines and #-comments are ignored.
+# The monorepo owns version numbers; standalone repos are sync targets.
+# Used by ci/tasks/sync-crate and ci/tasks/crate-drift.
+nzb-core
+nzb-nntp
+nzb-decode
+nzb-news
+nzb-dispatch
+nzb-postproc
+nzb-web
